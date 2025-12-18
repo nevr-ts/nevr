@@ -1,4 +1,4 @@
-# @zapi/cli
+# @zapi-ts/cli
 
 [![Beta](https://img.shields.io/badge/status-beta-orange.svg)](https://github.com/zapi-ts/zapi)
 
@@ -7,9 +7,9 @@ Command-line interface for [zapi](https://github.com/zapi-ts/zapi) - Zero to API
 ## Installation
 
 ```bash
-npm install -g @zapi/cli
+npm install -g @zapi-ts/cli
 # or use with npx
-npx @zapi/cli generate
+npx @zapi-ts/cli generate
 ```
 
 ## Usage
@@ -38,7 +38,7 @@ zapi init
 For full project scaffolding, use:
 
 ```bash
-npm create zapi@latest
+npm create zapi-ts@latest
 ```
 
 ## Configuration
@@ -46,7 +46,7 @@ npm create zapi@latest
 Create a `zapi.config.ts` file in your project root:
 
 ```typescript
-import { entity, string, text, belongsTo } from "@zapi/core"
+import { entity, string, text, belongsTo } from "@zapi-ts/core"
 
 export const user = entity("user", {
   email: string.unique(),
@@ -67,7 +67,7 @@ export default {
 Then run:
 
 ```bash
-npx @zapi/cli generate
+npx @zapi-ts/cli generate
 npx prisma db push --schema=./generated/prisma/schema.prisma
 ```
 

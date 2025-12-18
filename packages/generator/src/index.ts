@@ -1,12 +1,12 @@
 // =============================================================================
-// @ZAPI/GENERATOR
+// @ZAPI-TS/GENERATOR
 // Code generators for Prisma schema, TypeScript types, and API client
 // =============================================================================
 
 import { writeFileSync, mkdirSync, existsSync } from "fs"
 import { join, dirname } from "path"
-import type { Entity, FieldDef, FieldType } from "@zapi/core"
-import { pluralize, resolveEntity } from "@zapi/core"
+import type { Entity, FieldDef, FieldType } from "@zapi-ts/core"
+import { pluralize, resolveEntity } from "@zapi-ts/core"
 
 // -----------------------------------------------------------------------------
 // Constants

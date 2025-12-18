@@ -1,5 +1,5 @@
 {
-  "name": "@zapi/cli",
+  "name": "@zapi-ts/cli",
   "version": "0.1.0-beta.1",
   "description": "CLI for zapi - Zero to API in seconds",
   "type": "module",
@@ -18,8 +18,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@zapi/core": "workspace:*",
-    "@zapi/generator": "workspace:*",
+    "@zapi-ts/core": "workspace:*",
+    "@zapi-ts/generator": "workspace:*",
     "commander": "^14.0.0"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
 {
-  "name": "@zapi/generator",
+  "name": "@zapi-ts/generator",
   "version": "0.1.0-beta.1",
   "description": "Code generators for zapi - Prisma schema, TypeScript types, API client",
   "type": "module",
@@ -26,7 +26,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@zapi/core": "workspace:*"
+    "@zapi-ts/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

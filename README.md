@@ -22,7 +22,7 @@ Docs live in Zapi doc/ (VitePress). Quick start below; full guides cover every k
 
 ```bash
 # Scaffold a new project
-npm create zapi@latest my-api
+npm create zapi-ts@latest my-api
 
 cd my-api
 npm run generate   # generates Prisma schema, types, client
@@ -37,7 +37,7 @@ Your API runs at http://localhost:3000/api
 Describe entities once. Zapi wires the rest.
 
 ```ts
-import { entity, string, text, bool, belongsTo } from "@zapi/core"
+import { entity, string, text, bool, belongsTo } from "@zapi-ts/core"
 
 export const user = entity("user", {
   email: string.unique(),
@@ -59,9 +59,9 @@ From this, you get CRUD endpoints, validation, auth rules, Prisma schema, TS typ
 ```ts
 import express from "express"
 import { PrismaClient } from "@prisma/client"
-import { zapi } from "@zapi/core"
-import { prisma } from "@zapi/core/drivers/prisma"
-import { expressAdapter, expressDevAuth } from "@zapi/core/adapters/express"
+import { zapi } from "@zapi-ts/core"
+import { prisma } from "@zapi-ts/core/drivers/prisma"
+import { expressAdapter, expressDevAuth } from "@zapi-ts/core/adapters/express"
 import { user, post } from "./entities"
 
 const db = new PrismaClient()
@@ -89,14 +89,14 @@ app.listen(3000)
 - Driver: implements data access (`zapi/drivers/prisma`)
 - Adapter: bridges HTTP (`zapi/adapters/express`, `zapi/adapters/hono`)
 - Plugins: extend fields, hooks, routes, middleware
-- Generator: `@zapi/generator` or CLI `@zapi/cli`
+- Generator: `@zapi-ts/generator` or CLI `@zapi-ts/cli`
 
 ## Generator & Client
 
 Generate schema, types, and a typed client:
 
 ```ts
-import { generate } from "@zapi/generator"
+import { generate } from "@zapi-ts/generator"
 import { user, post } from "./entities"
 
 generate([user, post], { outDir: "./generated", prismaProvider: "sqlite" })
@@ -265,11 +265,11 @@ Zapi automatically handles errors and returns standardized JSON responses:
 | Package | Description |
 |---------|-------------|
 | `zapi` | Core library |
-| `@zapi/plugin` | Core plugin system |
-| `@zapi/adapters/express` | Express adapter |
-| `@zapi/drivers/prisma` | Prisma database driver |
-| `@zapi/generator` | Code generators |
-| `@zapi/cli` | CLI tool |
+| `@zapi-ts/plugin` | Core plugin system |
+| `@zapi-ts/adapters/express` | Express adapter |
+| `@zapi-ts/drivers/prisma` | Prisma database driver |
+| `@zapi-ts/generator` | Code generators |
+| `@zapi-ts/cli` | CLI tool |
 | `create-zapi` | Project scaffolder |
 
 ## Plugin System

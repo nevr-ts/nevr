@@ -20,16 +20,16 @@
 ## Installation
 
 ```bash
-npm install @zapi/core
+npm install @zapi-ts/core
 # or
-pnpm add @zapi/core
+pnpm add @zapi-ts/core
 ```
 
 ## Quick Start
 
 ```typescript
-import { entity, string, text, belongsTo } from "@zapi/core"
-import { zapi } from "@zapi/core"
+import { entity, string, text, belongsTo } from "@zapi-ts/core"
+import { zapi } from "@zapi-ts/core"
 
 // 1. Define entities
 const user = entity("user", {
@@ -48,8 +48,8 @@ const post = entity("post", {
 
 // 2. Mount to your framework (Express + Prisma example)
 import express from "express"
-import { expressAdapter, expressDevAuth } from "@zapi/core/adapters/express"
-import { prisma } from "@zapi/core/drivers/prisma"
+import { expressAdapter, expressDevAuth } from "@zapi-ts/core/adapters/express"
+import { prisma } from "@zapi-ts/core/drivers/prisma"
 import { PrismaClient } from "@prisma/client"
 
 const app = express()
@@ -68,7 +68,7 @@ app.listen(3000)
 ## Entity DSL
 
 ```typescript
-import { entity, string, text, int, bool, datetime, belongsTo, hasMany } from "@zapi/core"
+import { entity, string, text, int, bool, datetime, belongsTo, hasMany } from "@zapi-ts/core"
 
 const task = entity("task", {
   // String fields
@@ -128,7 +128,7 @@ import { timestamps } from "zapi/plugins/timestamps"
 Use the generator to create Prisma schema, TypeScript types, and API client:
 
 ```typescript
-import { generate } from "@zapi/generator"
+import { generate } from "@zapi-ts/generator"
 import { entities } from "./entities"
 
 generate(entities, {

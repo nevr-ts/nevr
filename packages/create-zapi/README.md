@@ -1,4 +1,4 @@
-# create-zapi
+# create-zapi-ts
 
 [![Beta](https://img.shields.io/badge/status-beta-orange.svg)](https://github.com/zapi-ts/zapi)
 
@@ -7,13 +7,13 @@ Scaffold a new [zapi](https://github.com/zapi-ts/zapi) project - Zero to API in 
 ## Usage
 
 ```bash
-npm create zapi@latest
+npm create zapi-ts@latest
 # or
-npx create-zapi
+npx create-zapi-ts
 # or
-pnpm create zapi
+pnpm create zapi-ts
 # or
-bun create zapi
+bun create zapi-ts
 ```
 
 ## What It Creates

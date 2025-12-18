@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // =============================================================================
 // ZAPI CLI
-// Usage: npx @zapi/cli generate
+// Usage: npx @zapi-ts/cli generate
 //        npx zapi generate (if installed globally)
 // =============================================================================
 
@@ -68,7 +68,7 @@ program
 
 Create a zapi.config.ts file with your entities:
 
-  import { entity, string, text, belongsTo } from "@zapi/core"
+  import { entity, string, text, belongsTo } from "@zapi-ts/core"
 
   export const user = entity("user", {
     email: string.unique(),
@@ -116,7 +116,7 @@ Create a zapi.config.ts file with your entities:
       console.log(`   📦 Found ${entities.length} entities`)
 
       // Import generator and run
-      const { generate } = await import("@zapi/generator")
+      const { generate } = await import("@zapi-ts/generator")
 
       generate(entities, {
         outDir: options.out,
@@ -152,7 +152,7 @@ program
 Or manually:
 
    1. Create zapi.config.ts with your entities
-   2. Run: npx @zapi/cli generate
+   2. Run: npx @zapi-ts/cli generate
    3. Run: npx prisma db push --schema=./generated/prisma/schema.prisma
    4. Create your server file and run it
 

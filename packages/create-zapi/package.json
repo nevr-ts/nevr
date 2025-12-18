@@ -1,10 +1,10 @@
 {
-  "name": "create-zapi",
+  "name": "create-zapi-ts",
   "version": "0.1.0-beta.1",
   "description": "Create a new zapi project - Zero to API in seconds",
   "type": "module",
   "bin": {
-    "create-zapi": "./dist/index.js"
+    "create-zapi-ts": "./dist/index.js"
   },
   "main": "dist/index.js",
   "files": [

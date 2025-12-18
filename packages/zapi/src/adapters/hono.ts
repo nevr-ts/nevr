@@ -151,8 +151,8 @@ function getCorsHeaders(
  * @example
  * ```typescript
  * import { Hono } from "hono"
- * import { zapi } from "@zapi/core"
- * import { honoAdapter } from "@zapi/adapter-hono"
+ * import { zapi } from "@zapi-ts/core"
+ * import { honoAdapter } from "@zapi-ts/adapter-hono"
  *
  * const app = new Hono()
  *
@@ -230,8 +230,8 @@ export function honoAdapter(
  * @example
  * ```typescript
  * import { Hono } from "hono"
- * import { zapi } from "@zapi/core"
- * import { mountZapi } from "@zapi/adapter-hono"
+ * import { zapi } from "@zapi-ts/core"
+ * import { mountZapi } from "@zapi-ts/adapter-hono"
  *
  * const app = new Hono()
  * mountZapi(app, api, { prefix: "/api" })

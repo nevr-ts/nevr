@@ -1,5 +1,5 @@
 {
-  "name": "@zapi/core",
+  "name": "@zapi-ts/core",
   "version": "0.1.0-beta.1",
   "description": "Zero to API in seconds - Entity-first, type-safe API framework",
   "type": "module",
