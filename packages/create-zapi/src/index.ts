@@ -31,8 +31,8 @@ const templates = {
   },
   "dependencies": {
     "@prisma/client": "^5.7.0",
-    "@zapi-ts/generator": "^0.1.0",
-    "@zapi-ts/core": "^0.1.0",
+    "@zapi-ts/generator": "^0.1.0-beta.2",
+    "@zapi-ts/core": "^0.1.0-beta.2",
     "express": "^4.18.2"
   },
   "devDependencies": {
