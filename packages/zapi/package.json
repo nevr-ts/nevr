@@ -1,7 +1,7 @@
 {
   "name": "nevr",
   "version": "0.1.2",
-  "description": "Nevr write boilerplate again - Entity-first, type-safe API framework",
+  "description": "Nevr: The Zero-API framework. Define your entities, never write boilerplate again.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -88,21 +88,22 @@
     }
   },
   "keywords": [
-    "zapi",
-    "api",
-    "rest",
-    "crud",
-    "entity",
+    "nevr",
+    "zero-api",
+    "entity-first",
     "type-safe",
+    "crud-generator",
+    "backend-automation",
     "typescript",
+    "orm",
+    "prisma",
     "express",
-    "hono",
-    "prisma"
+    "hono"
   ],
   "author": "",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/zapi"
+    "url": "https://github.com/nevr-ts/nevr"
   }
 }

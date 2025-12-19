@@ -2,7 +2,7 @@
   "name": "nevr-monorepo",
   "version": "0.1.2",
   "private": true,
-  "description": "Nevr write boilerplate again - Entity-first, type-safe API framework",
+  "description": "Nevr: The Zero-API framework. Define your entities, never write boilerplate again.",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",

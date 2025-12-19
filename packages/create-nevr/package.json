@@ -30,7 +30,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nevrjs/nevr",
+    "url": "https://github.com/nevr-ts/nevr",
     "directory": "packages/create-nevr"
   }
 }
