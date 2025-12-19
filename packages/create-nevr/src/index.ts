@@ -34,6 +34,7 @@ const templates = {
     "@nevr/generator": "^0.1.0",
     "nevr": "^0.1.0",
     "better-auth": "^1.0.0",
+    "dotenv": "^16.4.0",
     "express": "^4.18.2"
   },
   "devDependencies": {
@@ -138,54 +139,25 @@ generated
   // src/entities/
   // ==========================================================================
 
-  "src/entities/user.ts": () => `import { entity, string, text, email } from "nevr"
-
-export const user = entity("user", {
-  email: email.unique(),
-  name: string.min(1).max(100),
-  bio: text.optional(),
-  role: string.default("user"),
-}).rules({
-  create: ["everyone"],
-  read: ["everyone"],
-  list: ["everyone"],
-  update: [({ user, resource }) => user?.id === resource?.id],
-  delete: ["admin"],
-})
-`,
-
-  "src/entities/post.ts": () => `import { entity, string, text, bool, belongsTo } from "nevr"
-import { user } from "./user.js"
-
-export const post = entity("post", {
-  title: string.min(1).max(200),
-  slug: string.unique().optional(),
-  body: text,
-  excerpt: text.optional(),
-  published: bool.default(false),
-  author: belongsTo(() => user),
-}).ownedBy("author")
-`,
-
-  "src/entities/comment.ts": () => `import { entity, text, belongsTo } from "nevr"
-import { user } from "./user.js"
-import { post } from "./post.js"
-
-export const comment = entity("comment", {
-  body: text.min(1).max(2000),
-  post: belongsTo(() => post).onDelete("cascade"),
-  author: belongsTo(() => user),
-}).ownedBy("author")
-`,
-
   "src/entities/index.ts": () => `// =============================================================================
 // ENTITY EXPORTS
-// Add new entities here after creating them
+// Add your entities here after creating them
 // =============================================================================
 
-export { user } from "./user.js"
-export { post } from "./post.js"
-export { comment } from "./comment.js"
+// Example: Create src/entities/post.ts and export it here
+// export { post } from "./post.js"
+`,
+
+  "src/entities/.gitkeep": () => `# Your custom entities go here
+# Example: post.ts
+
+# import { entity, string, text, bool, belongsTo } from "nevr"
+#
+# export const post = entity("post", {
+#   title: string.min(1).max(200),
+#   body: text,
+#   published: bool.default(false),
+# })
 `,
 
   // ==========================================================================
@@ -212,28 +184,61 @@ export { comment } from "./comment.js"
 `,
 
   // ==========================================================================
-  // src/plugins/ (example)
+  // src/plugins/ 
   // ==========================================================================
 
-  "src/plugins/.gitkeep": () => `# Custom plugins go here
-# Example: audit-log.ts
+  "src/plugins/auth.ts": () => `// =============================================================================
+// AUTH PLUGIN CONFIGURATION
+// Powered by Better Auth
+// =============================================================================
 
-# import type { Plugin } from "nevr"
-#
-# export const auditLog: Plugin = {
-#   name: "audit-log",
-#   hooks: {
-#     afterCreate: async (ctx) => {
-#       console.log(\`[AUDIT] \${ctx.user?.id} created \${ctx.entity}\`)
-#     },
-#     afterUpdate: async (ctx) => {
-#       console.log(\`[AUDIT] \${ctx.user?.id} updated \${ctx.entity}\`)
-#     },
-#     afterDelete: async (ctx) => {
-#       console.log(\`[AUDIT] \${ctx.user?.id} deleted \${ctx.entity}\`)
-#     }
-#   }
-# }
+import { auth } from "nevr/plugins/auth"
+
+/**
+ * Auth plugin configuration
+ * 
+ * This plugin provides:
+ * - Email/password authentication
+ * - Session management (cookies)
+ * - OAuth providers (Google, GitHub, Discord, Apple)
+ * - JWT tokens for API authentication
+ * 
+ * Routes (auto-mounted at /api/auth/*):
+ * - POST /api/auth/sign-up      Create account
+ * - POST /api/auth/sign-in      Sign in  
+ * - POST /api/auth/sign-out     Sign out
+ * - GET  /api/auth/session      Get current session
+ */
+export const authPlugin = auth({
+  // Secret is loaded from BETTER_AUTH_SECRET env variable
+  // You can also set it explicitly: secret: "your-secret-here"
+  
+  // Auth mode: "session" (cookies) | "bearer" (API tokens) | "jwt" (JWT tokens)
+  mode: "session",
+  
+  // Enable email/password authentication
+  emailAndPassword: true,
+  
+  // OAuth providers (uncomment and configure in .env)
+  // providers: {
+  //   google: {
+  //     clientId: process.env.GOOGLE_CLIENT_ID!,
+  //     clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+  //   },
+  //   github: {
+  //     clientId: process.env.GITHUB_CLIENT_ID!,
+  //     clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+  //   },
+  // },
+})
+`,
+
+  "src/plugins/index.ts": () => `// =============================================================================
+// PLUGIN EXPORTS
+// Export all plugins from here
+// =============================================================================
+
+export { authPlugin } from "./auth.js"
 `,
 
   // ==========================================================================
@@ -298,57 +303,27 @@ export { comment } from "./comment.js"
 // NEVR CONFIGURATION
 // =============================================================================
 
-import { user, post, comment } from "./entities/index.js"
-import { auth } from "nevr/plugins/auth"
+// Import entities (add your entities here)
+import * as entities from "./entities/index.js"
 
-// Import custom plugins (uncomment when created)
-// import { auditLog } from "./plugins/audit-log.js"
+// Import plugins
+import { authPlugin } from "./plugins/index.js"
 
-// Import custom routes (uncomment when created)
-// import { authRoutes } from "./routes/auth.js"
+// Convert entity exports to array
+const entityArray = Object.values(entities).filter(e => e && typeof e === "object")
 
 export const config = {
   // Database provider
   database: "${db}" as const,
 
-  // Entities
-  entities: [user, post, comment],
+  // Your custom entities (defined in src/entities/)
+  entities: entityArray,
 
   // Plugins
   plugins: [
-    // Auth plugin - powered by Better Auth
-    // Provides: signup, signin, signout, session management, OAuth, etc.
-    // Routes: /api/auth/sign-up, /api/auth/sign-in, /api/auth/sign-out, etc.
-    auth({
-      // Required: Set BETTER_AUTH_SECRET in .env
-      // secret: process.env.BETTER_AUTH_SECRET,
-      
-      // Auth mode: "session" (cookies) | "bearer" (API tokens) | "jwt" (JWT tokens)
-      mode: "session",
-      
-      // Enable email/password auth
-      emailAndPassword: true,
-      
-      // OAuth providers (uncomment and configure)
-      // providers: {
-      //   google: {
-      //     clientId: process.env.GOOGLE_CLIENT_ID!,
-      //     clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      //   },
-      //   github: {
-      //     clientId: process.env.GITHUB_CLIENT_ID!,
-      //     clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-      //   },
-      // },
-    }),
-    
-    // Custom plugins
-    // auditLog,
-  ],
-
-  // Custom routes (uncomment to enable)
-  routes: [
-    // ...authRoutes,
+    // Auth plugin - provides user authentication
+    // See src/plugins/auth.ts for configuration
+    authPlugin,
   ],
 }
 
@@ -364,10 +339,31 @@ export default config
 // Run: npm run generate
 // =============================================================================
 
+import "dotenv/config"
 import { generate } from "@nevr/generator"
 import { config } from "./config.js"
 
-generate(config.entities, {
+// Get entities from plugins (auth plugin adds user, session, account, verification)
+const pluginEntities = config.plugins
+  .filter(p => p && typeof p === "object" && "entities" in p)
+  .flatMap((p: any) => p.entities || [])
+
+// Combine custom entities + plugin entities
+const allEntities = [...config.entities, ...pluginEntities]
+
+// Check for name collisions
+const entityNames = allEntities.map((e: any) => e.name || e._name)
+const duplicates = entityNames.filter((name: string, i: number) => entityNames.indexOf(name) !== i)
+if (duplicates.length > 0) {
+  console.error(\`❌ Entity name collision detected: \${duplicates.join(", ")}\`)
+  console.error("Plugin entities cannot have the same name as your custom entities.")
+  process.exit(1)
+}
+
+console.log("📦 Generating schema for entities:")
+entityNames.forEach((name: string) => console.log(\`   - \${name}\`))
+
+generate(allEntities, {
   outDir: "./generated",
   prismaProvider: "${db}",
 })
@@ -380,6 +376,9 @@ generate(config.entities, {
   "src/index.ts": () => `// =============================================================================
 // NEVR SERVER
 // =============================================================================
+
+// Load environment variables FIRST
+import "dotenv/config"
 
 import express from "express"
 import { PrismaClient } from "@prisma/client"
@@ -446,25 +445,10 @@ app.listen(port, () => {
 ║                                                                ║
 ╠════════════════════════════════════════════════════════════════╣
 ║                                                                ║
-║   CRUD Endpoints (auto-generated):                             ║
+║   CRUD Endpoints:                                              ║
 ║   ────────────────────────────────────────────────────────     ║
-║   GET     /api/users              List users                   ║
-║   POST    /api/users              Create user                  ║
-║   GET     /api/users/:id          Get user                     ║
-║   PUT     /api/users/:id          Update user                  ║
-║   DELETE  /api/users/:id          Delete user                  ║
-║                                                                ║
-║   GET     /api/posts              List posts                   ║
-║   POST    /api/posts              Create post                  ║
-║   GET     /api/posts/:id          Get post                     ║
-║   PUT     /api/posts/:id          Update post                  ║
-║   DELETE  /api/posts/:id          Delete post                  ║
-║                                                                ║
-║   GET     /api/comments           List comments                ║
-║   POST    /api/comments           Create comment               ║
-║   GET     /api/comments/:id       Get comment                  ║
-║   PUT     /api/comments/:id       Update comment               ║
-║   DELETE  /api/comments/:id       Delete comment               ║
+║   Your custom entities will have auto-generated CRUD routes.   ║
+║   Create entities in src/entities/ and run npm run generate.   ║
 ║                                                                ║
 ╠════════════════════════════════════════════════════════════════╣
 ║                                                                ║
@@ -474,7 +458,7 @@ app.listen(port, () => {
 ║   ?sort=field               Sort ascending                     ║
 ║   ?sort=-field              Sort descending                    ║
 ║   ?limit=20&offset=0        Pagination                         ║
-║   ?include=author           Include relations                  ║
+║   ?include=relation         Include relations                  ║
 ║                                                                ║
 ╚════════════════════════════════════════════════════════════════╝
 \`)
@@ -762,15 +746,16 @@ async function main() {
     ["src/generate.ts", (templates as any)["src/generate.ts"](database)],
     ["src/index.ts", templates["src/index.ts"]()],
 
-    // src/entities/
-    ["src/entities/user.ts", (templates as any)["src/entities/user.ts"]()],
-    ["src/entities/post.ts", (templates as any)["src/entities/post.ts"]()],
-    ["src/entities/comment.ts", (templates as any)["src/entities/comment.ts"]()],
+    // src/entities/ (empty - user creates their own)
     ["src/entities/index.ts", (templates as any)["src/entities/index.ts"]()],
+    ["src/entities/.gitkeep", (templates as any)["src/entities/.gitkeep"]()],
+
+    // src/plugins/ (with auth plugin)
+    ["src/plugins/auth.ts", (templates as any)["src/plugins/auth.ts"]()],
+    ["src/plugins/index.ts", (templates as any)["src/plugins/index.ts"]()],
 
     // Placeholder files with examples
     ["src/hooks/.gitkeep", (templates as any)["src/hooks/.gitkeep"]()],
-    ["src/plugins/.gitkeep", (templates as any)["src/plugins/.gitkeep"]()],
     ["src/routes/.gitkeep", (templates as any)["src/routes/.gitkeep"]()],
     ["src/middleware/.gitkeep", (templates as any)["src/middleware/.gitkeep"]()],
     ["src/utils/.gitkeep", (templates as any)["src/utils/.gitkeep"]()],
