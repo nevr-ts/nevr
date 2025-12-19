@@ -107,6 +107,7 @@ export { validateInput, validateQueryParams } from "./validation.js"
 
 // Errors
 export {
+  NevrErrorClass,
   ZapiErrorClass,
   createErrorResponse,
   validationError,
@@ -206,6 +207,22 @@ export { matchRoute, pluralize, singularize } from "./router.js"
 
 // Main factory
 export { zapi } from "./nevr.js"
+
+// Alias for nevr (backwards compat and new API)
+export { zapi as nevr } from "./nevr.js"
+
+// =============================================================================
+// TYPE ALIASES - Nevr naming convention
+// These are aliases for the Zapi* types for cleaner naming
+// =============================================================================
+
+export type {
+  ZapiRequest as NevrRequest,
+  ZapiResponse as NevrResponse,
+  ZapiError as NevrError,
+  ZapiConfig as NevrConfig,
+  ZapiInstance as NevrInstance,
+} from "./types.js"
 
 // =============================================================================
 // ADAPTERS (HTTP framework integrations)

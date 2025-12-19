@@ -37,7 +37,7 @@ program
 program
   .command("generate")
   .description("Generate Prisma schema, types, and client from entities")
-  .option("-c, --config <path>", "Path to zapi config file", "./zapi.config.ts")
+  .option("-c, --config <path>", "Path to nevr config file", "./nevr.config.ts")
   .option("-o, --out <dir>", "Output directory", "./generated")
   .option("-p, --provider <provider>", "Database provider (sqlite, postgresql, mysql)", "sqlite")
   .action(async (options) => {

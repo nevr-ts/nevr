@@ -9,19 +9,22 @@ import type { ZapiResponse, ZapiError, ErrorCode, ValidationError } from "./type
 // Error Classes
 // -----------------------------------------------------------------------------
 
-export class ZapiErrorClass extends Error {
+export class NevrErrorClass extends Error {
   code: ErrorCode
   status: number
   details?: ValidationError[]
 
   constructor(code: ErrorCode, message: string, details?: ValidationError[]) {
     super(message)
-    this.name = "ZapiError"
+    this.name = "NevrError"
     this.code = code
     this.status = errorCodeToStatus(code)
     this.details = details
   }
 }
+
+// Alias for backward compatibility
+export { NevrErrorClass as ZapiErrorClass }
 
 // -----------------------------------------------------------------------------
 // Status Code Mapping
@@ -102,11 +105,11 @@ export function internalError(message: string = "Internal server error"): ZapiRe
 // -----------------------------------------------------------------------------
 
 /**
- * Convert any error to a ZapiResponse
+ * Convert any error to a NevrResponse
  */
 export function handleError(error: unknown): ZapiResponse {
-  // Known Zapi error
-  if (error instanceof ZapiErrorClass) {
+  // Known Nevr error
+  if (error instanceof NevrErrorClass) {
     return createErrorResponse(error.code, error.message, error.details)
   }
 

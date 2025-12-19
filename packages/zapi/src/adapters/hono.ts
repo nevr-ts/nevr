@@ -230,24 +230,27 @@ export function honoAdapter(
  * @example
  * ```typescript
  * import { Hono } from "hono"
- * import { zapi } from "nevr"
+ * import { nevr } from "nevr"
  * import { mountNevr } from "nevr/adapters/hono"
  *
  * const app = new Hono()
  * mountNevr(app, api, { prefix: "/api" })
  * ```
  */
-export function mountZapi(
+export function mountNevr(
   app: Hono<any>,
-  zapi: ZapiInstance,
+  api: ZapiInstance,
   options: HonoAdapterOptions = {}
 ): void {
   const prefix = options.prefix || "/api"
-  const handler = honoAdapter(zapi, options)
+  const handler = honoAdapter(api, options)
 
   // Mount on all methods with wildcard
   app.all(`${prefix}/*`, handler)
 }
+
+// Alias for backward compatibility
+export { mountNevr as mountZapi }
 
 // -----------------------------------------------------------------------------
 // Helper: Development Auth

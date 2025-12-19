@@ -1,6 +1,6 @@
 // =============================================================================
 // PRISMA DRIVER
-// Prisma database driver for zapi - uses Driver Factory pattern
+// Prisma database driver for nevr - uses Driver Factory pattern
 // =============================================================================
 
 import type { Driver, QueryOptions, Where } from "../types.js"

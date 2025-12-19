@@ -357,3 +357,14 @@ export interface ZapiInstance {
   getEntity: (name: string) => Entity | undefined
   getDriver: () => Driver
 }
+
+// =============================================================================
+// TYPE ALIASES - Nevr naming convention
+// These are the new preferred type names
+// =============================================================================
+
+export type NevrRequest = ZapiRequest
+export type NevrResponse = ZapiResponse
+export type NevrError = ZapiError
+export type NevrConfig = ZapiConfig
+export type NevrInstance = ZapiInstance

@@ -122,13 +122,13 @@ function getCorsHeaders(cors: string | string[] | boolean, origin?: string): Rec
 // -----------------------------------------------------------------------------
 
 /**
- * Create an Express middleware handler for zapi
+ * Create an Express middleware handler for nevr
  *
  * @example
  * ```typescript
  * import express from "express"
- * import { zapi } from "@zapi-x/core"
- * import { expressAdapter } from "@zapi-x/adapter-express"
+ * import { nevr } from "nevr"
+ * import { expressAdapter } from "nevr/adapters/express"
  *
  * const app = express()
  * app.use(express.json())
@@ -174,7 +174,7 @@ export function expressAdapter(
       const zapiRequest = await expressToZapi(req, getUser)
 
       if (debugLogs) {
-        console.log(`[zapi:express] ${req.method} ${req.path}`)
+        console.log(`[nevr:express] ${req.method} ${req.path}`)
       }
 
       // Handle request
@@ -184,7 +184,7 @@ export function expressAdapter(
       sendResponse(res, response)
     } catch (error) {
       if (debugLogs) {
-        console.error("[zapi:express] Unhandled error:", error)
+        console.error("[nevr:express] Unhandled error:", error)
       }
       
       res.status(500).json({

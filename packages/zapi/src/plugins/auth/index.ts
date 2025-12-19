@@ -4,14 +4,14 @@
 // 
 // Philosophy:
 // - Better Auth handles ALL authentication logic
-// - Zapi controls schema generation
+// - Nevr controls schema generation
 // - Plugin mounts Better Auth routes and middleware
 // =============================================================================
 
 import { betterAuth } from "better-auth"
 import { bearer, jwt } from "better-auth/plugins"
 import { prismaAdapter } from "better-auth/adapters/prisma"
-import { createPlugin, type Plugin, type Route, type Middleware, type ZapiInstance, type ZapiRequest } from "../../index.js"
+import { createPlugin, type Plugin, type Route, type Middleware, type NevrInstance, type NevrRequest } from "../../index.js"
 import type { AuthPluginOptions, AuthUser, AuthSession } from "./types.js"
 import { getAuthEntities, getUserAuthFields, getJwksEntity } from "./entities.js"
 
@@ -181,9 +181,9 @@ export function auth(options: AuthPluginOptions = {}): Plugin {
     // -------------------------------------------------------------------------
     // Routes - Mount Better Auth handler
     // -------------------------------------------------------------------------
-    routes: ((zapi: ZapiInstance): Route[] => {
+    routes: ((api: NevrInstance): Route[] => {
       // Get Prisma client from driver
-      const driver = zapi.driver as any
+      const driver = api.driver as any
       const prismaClient = driver.prisma || driver.db || driver._prisma
       
       if (!prismaClient) {

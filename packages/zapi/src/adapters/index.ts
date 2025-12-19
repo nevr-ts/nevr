@@ -1,6 +1,6 @@
 // =============================================================================
 // ADAPTERS
-// HTTP framework adapters for zapi
+// HTTP framework adapters for nevr
 // =============================================================================
 
 // Express Adapter
@@ -14,6 +14,7 @@ export {
 // Hono Adapter
 export {
   honoAdapter,
+  mountNevr,
   mountZapi,
   devAuth as honoDevAuth,
   jwtAuth as honoJwtAuth,

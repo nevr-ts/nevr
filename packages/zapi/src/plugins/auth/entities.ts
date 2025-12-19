@@ -6,7 +6,49 @@
 import type { Entity, FieldDef } from "../../types.js"
 
 // -----------------------------------------------------------------------------
-// User Fields (Added to user entity)
+// User Entity
+// Core user model required by Better Auth
+// -----------------------------------------------------------------------------
+
+export const userEntity: Entity = {
+  name: "user",
+  config: {
+    fields: {
+      name: {
+        type: "string",
+        optional: false,
+        unique: false,
+      },
+      email: {
+        type: "string",
+        optional: false,
+        unique: true,
+      },
+      emailVerified: {
+        type: "boolean",
+        optional: false,
+        unique: false,
+        default: false,
+      },
+      image: {
+        type: "string",
+        optional: true,
+        unique: false,
+      },
+    },
+    rules: {
+      create: [],  // Managed by Better Auth
+      read: ["authenticated"],
+      update: ["owner"],
+      delete: ["admin"],
+      list: ["admin"],
+    },
+    timestamps: true,
+  },
+}
+
+// -----------------------------------------------------------------------------
+// User Fields (for extending existing user entity)
 // These fields are required by Better Auth
 // -----------------------------------------------------------------------------
 
@@ -191,6 +233,7 @@ export const verificationEntity: Entity = {
 
 export function getAuthEntities(): Entity[] {
   return [
+    userEntity,
     sessionEntity,
     accountEntity,
     verificationEntity,
