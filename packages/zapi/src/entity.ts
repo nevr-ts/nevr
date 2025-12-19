@@ -131,7 +131,10 @@ export function entity(
 // Helper: Resolve Entity (handle lazy loading)
 // -----------------------------------------------------------------------------
 
-export function resolveEntity(entityOrBuilder: Entity | EntityBuilder): Entity {
+export function resolveEntity(entityOrBuilder: Entity | EntityBuilder | undefined): Entity {
+  if (!entityOrBuilder) {
+    throw new Error("[Zapi] Cannot resolve undefined entity. Make sure all entity references are properly defined.")
+  }
   if ("build" in entityOrBuilder && typeof entityOrBuilder.build === "function") {
     return entityOrBuilder.build()
   }

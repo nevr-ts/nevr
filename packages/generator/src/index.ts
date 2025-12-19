@@ -83,7 +83,11 @@ datasource db {
     const entity = resolveEntity(entityDef)
     for (const [fieldName, field] of Object.entries(entity.config.fields)) {
       if (field.relation?.type === "belongsTo") {
-        const relatedEntity = resolveEntity(field.relation.entity())
+        const relatedEntityOrBuilder = field.relation.entity()
+        if (!relatedEntityOrBuilder) {
+          throw new Error(`[Generator] Cannot resolve entity for relation "${fieldName}" in entity "${entity.name}". The entity function returned undefined.`)
+        }
+        const relatedEntity = resolveEntity(relatedEntityOrBuilder)
         if (!inverseRelations[relatedEntity.name]) {
           inverseRelations[relatedEntity.name] = []
         }
@@ -105,7 +109,11 @@ datasource db {
     
     for (const [fieldName, field] of Object.entries(entity.config.fields)) {
       if (field.relation?.type === "belongsTo") {
-        const relatedEntity = resolveEntity(field.relation.entity())
+        const relatedEntityOrBuilder = field.relation.entity()
+        if (!relatedEntityOrBuilder) {
+          throw new Error(`[Generator] Cannot resolve entity for relation "${fieldName}" in entity "${entity.name}". The entity function returned undefined.`)
+        }
+        const relatedEntity = resolveEntity(relatedEntityOrBuilder)
         if (!targetCounts[relatedEntity.name]) {
           targetCounts[relatedEntity.name] = []
         }
@@ -180,6 +188,9 @@ datasource db {
 
       // Resolve the related entity (might be Entity or EntityBuilder)
       const relatedEntityOrBuilder = field.relation.entity()
+      if (!relatedEntityOrBuilder) {
+        throw new Error(`[Generator] Cannot resolve entity for relation "${fieldName}" in entity "${entity.name}". The entity function returned undefined.`)
+      }
       const relatedEntity = resolveEntity(relatedEntityOrBuilder)
       const relatedModel = pascalCase(relatedEntity.name)
 

@@ -4,6 +4,8 @@
 // =============================================================================
 
 import type { FieldDef, FieldType, RelationDef, Entity } from "./types.js"
+import type { EntityBuilder } from "./entity.js"
+import { resolveEntity } from "./entity.js"
 
 // -----------------------------------------------------------------------------
 // Field Builder
@@ -97,13 +99,13 @@ export class FieldBuilder {
 // -----------------------------------------------------------------------------
 
 export class RelationBuilder {
-  private _entityFn: () => Entity
+  private _entityFn: () => Entity | EntityBuilder
   private _type: "belongsTo" | "hasMany" | "hasOne"
   private _foreignKey?: string
   private _onDelete?: "cascade" | "setNull" | "restrict"
   private _optional: boolean = false
 
-  constructor(type: "belongsTo" | "hasMany" | "hasOne", entityFn: () => Entity) {
+  constructor(type: "belongsTo" | "hasMany" | "hasOne", entityFn: () => Entity | EntityBuilder) {
     this._type = type
     this._entityFn = entityFn
   }
@@ -141,13 +143,19 @@ export class RelationBuilder {
   _build(fieldName: string): FieldDef {
     const foreignKey = this._foreignKey || `${fieldName}Id`
 
+    // Wrap entity function to resolve EntityBuilder to Entity
+    const resolvedEntityFn = () => {
+      const entityOrBuilder = this._entityFn()
+      return resolveEntity(entityOrBuilder)
+    }
+
     return {
       type: "string",
       optional: this._optional || this._type !== "belongsTo",
       unique: this._type === "hasOne",
       relation: {
         type: this._type,
-        entity: this._entityFn,
+        entity: resolvedEntityFn,
         foreignKey,
         references: "id",
         onDelete: this._onDelete,
@@ -192,19 +200,19 @@ export const email = new FieldBuilder("string")._setEmail()
 // -----------------------------------------------------------------------------
 
 /** Many-to-one relation */
-export function belongsTo(entity: Entity | (() => Entity)): RelationBuilder {
+export function belongsTo(entity: Entity | EntityBuilder | (() => Entity) | (() => EntityBuilder)): RelationBuilder {
   const entityFn = typeof entity === "function" ? entity : () => entity
   return new RelationBuilder("belongsTo", entityFn)
 }
 
 /** One-to-many relation */
-export function hasMany(entity: Entity | (() => Entity)): RelationBuilder {
+export function hasMany(entity: Entity | EntityBuilder | (() => Entity) | (() => EntityBuilder)): RelationBuilder {
   const entityFn = typeof entity === "function" ? entity : () => entity
   return new RelationBuilder("hasMany", entityFn)
 }
 
 /** One-to-one relation */
-export function hasOne(entity: Entity | (() => Entity)): RelationBuilder {
+export function hasOne(entity: Entity | EntityBuilder | (() => Entity) | (() => EntityBuilder)): RelationBuilder {
   const entityFn = typeof entity === "function" ? entity : () => entity
   return new RelationBuilder("hasOne", entityFn)
 }

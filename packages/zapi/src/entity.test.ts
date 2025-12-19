@@ -232,6 +232,34 @@ describe("Relations", () => {
       expect(authorField.relation).toBeDefined()
       expect(authorField.relation?.type).toBe("belongsTo")
     })
+
+    it("should work with EntityBuilder (not yet built)", () => {
+      const PostBuilder = entity("post", {
+        title: string,
+      })
+
+      const Comment = entity("comment", {
+        content: string,
+        post: belongsTo(() => PostBuilder),
+      }).build()
+
+      const postField = Comment.config.fields.post
+      expect(postField.relation).toBeDefined()
+      expect(postField.relation?.type).toBe("belongsTo")
+      // Verify the entity function resolves correctly
+      const resolvedPost = postField.relation!.entity()
+      expect(resolvedPost.name).toBe("post")
+    })
+
+    it("should work with onDelete modifier", () => {
+      const Post = entity("post", {
+        title: string,
+        author: belongsTo(() => User).onDelete("cascade"),
+      }).build()
+
+      const authorField = Post.config.fields.author
+      expect(authorField.relation?.onDelete).toBe("cascade")
+    })
   })
 
   describe("hasMany()", () => {

@@ -41,4 +41,5 @@ export {
   parseEntityRef,
   resolveEntityRef,
   clearEntityCache,
+  getPluginEntityFn,
 } from "./reference.js"

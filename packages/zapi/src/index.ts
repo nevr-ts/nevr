@@ -166,6 +166,7 @@ export {
   parseEntityRef,
   resolveEntityRef,
   clearEntityCache,
+  getPluginEntityFn,
 } from "./plugins/core/index.js"
 
 export type {

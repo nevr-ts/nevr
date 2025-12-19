@@ -116,3 +116,51 @@ export function resolveEntityRef(ref: string, localEntities: Map<string, Entity>
 export function clearEntityCache(): void {
   entityCache.clear()
 }
+
+// -----------------------------------------------------------------------------
+// Helper: Get Plugin Entity as Entity Function
+// Converts getPluginEntity result to a function that returns Entity
+// -----------------------------------------------------------------------------
+
+/**
+ * Get a plugin entity as a function that returns Entity
+ * Useful for relationships: belongsTo(() => getPluginEntityFn("auth", "user"))
+ * 
+ * @example
+ * belongsTo(() => getPluginEntityFn("auth", "user"))
+ */
+export function getPluginEntityFn(pluginId: string, entityName: string): () => Entity {
+  return () => {
+    const cacheKey = `${pluginId}.${entityName}`
+    
+    // Check cache first
+    if (entityCache.has(cacheKey)) {
+      return entityCache.get(cacheKey)!
+    }
+    
+    // Get plugin instance
+    const pluginInstance = getPluginInstance(pluginId)
+    if (!pluginInstance) {
+      throw new Error(`[Zapi] Plugin "${pluginId}" not found. Make sure it's registered.`)
+    }
+    
+    // Find entity in plugin's schema
+    const schema = pluginInstance.schema
+    if (!schema?.entities?.[entityName]) {
+      throw new Error(`[Zapi] Entity "${entityName}" not found in plugin "${pluginId}"`)
+    }
+    
+    // Create a placeholder entity for relationship resolution
+    const entity: Entity = {
+      name: entityName,
+      config: {
+        fields: {},
+        rules: {},
+        timestamps: true,
+      },
+    }
+    
+    entityCache.set(cacheKey, entity)
+    return entity
+  }
+}
