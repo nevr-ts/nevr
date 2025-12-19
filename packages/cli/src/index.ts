@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // =============================================================================
-// ZAPI CLI
-// Usage: npx @zapi-x/cli generate
-//        npx zapi generate (if installed globally)
+// NEVR CLI
+// Usage: npx @nevr/cli generate
+//        npx nevr generate (if installed globally)
 // =============================================================================
 
 import { Command } from "commander"
@@ -26,8 +26,8 @@ try {
 }
 
 program
-  .name("zapi")
-  .description("Zero to API in seconds - Generate API from entities")
+  .name("nevr")
+  .description("Nevr write boilerplate again - Generate API from entities")
   .version(version)
 
 // -----------------------------------------------------------------------------
@@ -42,7 +42,7 @@ program
   .option("-p, --provider <provider>", "Database provider (sqlite, postgresql, mysql)", "sqlite")
   .action(async (options) => {
     try {
-      console.log("\n⚡ zapi generate\n")
+      console.log("\n⚡ nevr generate\n")
       
       const configPath = resolve(process.cwd(), options.config)
 
@@ -66,9 +66,9 @@ program
       if (!foundPath) {
         console.error(`❌ Config file not found: ${configPath}
 
-Create a zapi.config.ts file with your entities:
+Create a nevr.config.ts file with your entities:
 
-  import { entity, string, text, belongsTo } from "@zapi-x/core"
+  import { entity, string, text, belongsTo } from "nevr"
 
   export const user = entity("user", {
     email: string.unique(),
@@ -116,7 +116,7 @@ Create a zapi.config.ts file with your entities:
       console.log(`   📦 Found ${entities.length} entities`)
 
       // Import generator and run
-      const { generate } = await import("@zapi-x/generator")
+      const { generate } = await import("@nevr/generator")
 
       generate(entities, {
         outDir: options.out,
@@ -142,21 +142,21 @@ Next steps:
 
 program
   .command("init")
-  .description("Initialize a new zapi project (use npm create zapi for full scaffolding)")
+  .description("Initialize a new nevr project (use npm create nevr for full scaffolding)")
   .action(() => {
     console.log(`
-⚡ To create a new zapi project, run:
+⚡ To create a new nevr project, run:
 
-   npm create zapi@latest
+   npm create nevr@latest
 
 Or manually:
 
-   1. Create zapi.config.ts with your entities
-   2. Run: npx @zapi-x/cli generate
+   1. Create nevr.config.ts with your entities
+   2. Run: npx @nevr/cli generate
    3. Run: npx prisma db push --schema=./generated/prisma/schema.prisma
    4. Create your server file and run it
 
-Documentation: https://github.com/zapi-ts/zapi
+Documentation: https://github.com/nevr-ts/nevr
 `)
   })
 

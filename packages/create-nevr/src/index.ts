@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // =============================================================================
-// CREATE-ZAPI
-// Scaffold a new zapi project
-// Usage: npm create zapi-x@latest
+// CREATE-NEVR
+// Scaffold a new nevr project - Nevr write boilerplate again
+// Usage: npm create nevr@latest
 // =============================================================================
 
 import prompts from "prompts"
@@ -31,8 +31,8 @@ const templates = {
   },
   "dependencies": {
     "@prisma/client": "^5.7.0",
-    "@zapi-x/generator": "^0.1.0-beta.3",
-    "@zapi-x/core": "^0.1.0-beta.3",
+    "@nevr/generator": "^0.1.0",
+    "nevr": "^0.1.0",
     "express": "^4.18.2"
   },
   "devDependencies": {
@@ -106,7 +106,7 @@ generated
   // src/entities/
   // ==========================================================================
 
-  "src/entities/user.ts": () => `import { entity, string, text, email } from "@zapi-x/core"
+  "src/entities/user.ts": () => `import { entity, string, text, email } from "nevr"
 
 export const user = entity("user", {
   email: email.unique(),
@@ -122,7 +122,7 @@ export const user = entity("user", {
 })
 `,
 
-  "src/entities/post.ts": () => `import { entity, string, text, bool, belongsTo } from "@zapi-x/core"
+  "src/entities/post.ts": () => `import { entity, string, text, bool, belongsTo } from "nevr"
 import { user } from "./user.js"
 
 export const post = entity("post", {
@@ -135,7 +135,7 @@ export const post = entity("post", {
 }).ownedBy("author")
 `,
 
-  "src/entities/comment.ts": () => `import { entity, text, belongsTo } from "@zapi-x/core"
+  "src/entities/comment.ts": () => `import { entity, text, belongsTo } from "nevr"
 import { user } from "./user.js"
 import { post } from "./post.js"
 
@@ -163,7 +163,7 @@ export { comment } from "./comment.js"
   "src/hooks/.gitkeep": () => `# Custom lifecycle hooks go here
 # Example: post.hooks.ts
 
-# import type { Plugin } from "@zapi-x/core"
+# import type { Plugin } from "nevr"
 #
 # export const postHooks: Plugin = {
 #   name: "post-hooks",
@@ -186,7 +186,7 @@ export { comment } from "./comment.js"
   "src/plugins/.gitkeep": () => `# Custom plugins go here
 # Example: audit-log.ts
 
-# import type { Plugin } from "@zapi-x/core"
+# import type { Plugin } from "nevr"
 #
 # export const auditLog: Plugin = {
 #   name: "audit-log",
@@ -211,7 +211,7 @@ export { comment } from "./comment.js"
   "src/routes/.gitkeep": () => `# Custom routes go here (non-CRUD endpoints)
 # Example: auth.ts
 
-# import type { Route } from "@zapi-x/core"
+# import type { Route } from "nevr"
 #
 # export const authRoutes: Route[] = [
 #   {
@@ -239,7 +239,7 @@ export { comment } from "./comment.js"
   "src/middleware/.gitkeep": () => `# Custom middleware go here
 # Example: rate-limit.ts
 
-# import type { Middleware } from "@zapi-x/core"
+# import type { Middleware } from "nevr"
 #
 # export const rateLimitMiddleware: Middleware = {
 #   name: "rate-limit",
@@ -263,7 +263,7 @@ export { comment } from "./comment.js"
   // ==========================================================================
 
   "src/config.ts": (db: string) => `// =============================================================================
-// ZAPI CONFIGURATION
+// NEVR CONFIGURATION
 // =============================================================================
 
 import { user, post, comment } from "./entities/index.js"
@@ -304,7 +304,7 @@ export default config
 // Run: npm run generate
 // =============================================================================
 
-import { generate } from "@zapi-x/generator"
+import { generate } from "@nevr/generator"
 import { config } from "./config.js"
 
 generate(config.entities, {
@@ -318,14 +318,14 @@ generate(config.entities, {
   // ==========================================================================
 
   "src/index.ts": () => `// =============================================================================
-// ZAPI SERVER
+// NEVR SERVER
 // =============================================================================
 
 import express from "express"
 import { PrismaClient } from "@prisma/client"
-import { zapi } from "@zapi-x/core"
-import { prisma } from "@zapi-x/core/drivers/prisma"
-import { expressAdapter, expressDevAuth } from "@zapi-x/core/adapters/express"
+import { zapi } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { expressAdapter, expressDevAuth } from "nevr/adapters/express"
 import { config } from "./config.js"
 
 // -----------------------------------------------------------------------------
@@ -369,7 +369,7 @@ app.listen(port, () => {
   console.log(\`
 ╔════════════════════════════════════════════════════════════════╗
 ║                                                                ║
-║   🚀 zapi server running!                                      ║
+║   🚀 nevr server running!                                      ║
 ║                                                                ║
 ║   Local:      http://localhost:\${port}                           ║
 ║   API:        http://localhost:\${port}/api                       ║
@@ -431,7 +431,7 @@ process.on("SIGINT", async () => {
 
   "README.md": (name: string) => `# ${name}
 
-A REST API powered by [@zapi-x/core](https://github.com/zapidev/zapi).
+A REST API powered by [nevr](https://github.com/nevr-ts/nevr).
 
 ## Quick Start
 
@@ -468,7 +468,7 @@ ${name}/
 │   ├── middleware/         # Custom middleware
 │   ├── utils/              # Utility functions
 │   │
-│   ├── config.ts           # Zapi configuration
+│   ├── config.ts           # Nevr configuration
 │   ├── generate.ts         # Generator script
 │   └── index.ts            # Server entry point
 │
@@ -486,7 +486,7 @@ ${name}/
 1. Create \`src/entities/product.ts\`:
 
 \`\`\`typescript
-import { entity, string, int, float, belongsTo } from "@zapi-x/core"
+import { entity, string, int, float, belongsTo } from "nevr"
 import { user } from "./user.js"
 
 export const product = entity("product", {
@@ -598,7 +598,7 @@ const post = await api.posts.create({
 
 ## Learn More
 
-- [zapi Documentation](https://github.com/zapidev/zapi)
+- [nevr Documentation](https://github.com/nevr-ts/nevr)
 - [Prisma Documentation](https://www.prisma.io/docs)
 `,
 }
@@ -611,8 +611,8 @@ async function main() {
   console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║                                                            ║
-║   ⚡ create-zapi                                           ║
-║   Zero to API in seconds                                   ║
+║   ⚡ create-nevr                                            ║
+║   Nevr write boilerplate again                             ║
 ║                                                            ║
 ╚════════════════════════════════════════════════════════════╝
 `)

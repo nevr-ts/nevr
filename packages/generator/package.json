@@ -1,7 +1,7 @@
 {
-  "name": "@zapi-x/generator",
-  "version": "0.1.0-beta.3",
-  "description": "Code generators for zapi - Prisma schema, TypeScript types, API client",
+  "name": "@nevr/generator",
+  "version": "0.1.1",
+  "description": "Code generators for Nevr - Prisma schema, TypeScript types, API client",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -26,7 +26,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@zapi-x/core": "workspace:*"
+    "nevr": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -34,11 +34,11 @@
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   },
-  "keywords": ["zapi", "generator", "prisma", "typescript", "codegen"],
+  "keywords": ["nevr", "generator", "prisma", "typescript", "codegen", "api"],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/zapi",
+    "url": "https://github.com/nevrjs/nevr",
     "directory": "packages/generator"
   }
 }

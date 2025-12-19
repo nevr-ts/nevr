@@ -1,6 +1,6 @@
 // =============================================================================
 // EXPRESS ADAPTER
-// Express adapter for zapi - uses Adapter Factory pattern
+// Express adapter for nevr - uses Adapter Factory pattern
 // =============================================================================
 
 import type { Request, Response, Router, RequestHandler, NextFunction } from "express"

@@ -1,14 +1,14 @@
-# Zapi
+# Nevr
 
-[![Beta](https://img.shields.io/badge/status-beta-orange.svg)](https://github.com/zapi-x/zapi)
-[![CI](https://github.com/zapi-x/zapi/actions/workflows/ci.yml/badge.svg)](https://github.com/zapi-x/zapi/actions/workflows/ci.yml)
+[![Beta](https://img.shields.io/badge/status-beta-orange.svg)](https://github.com/nevr-ts/nevr)
+[![CI](https://github.com/nevr-ts/nevr/actions/workflows/ci.yml/badge.svg)](https://github.com/nevr-ts/nevr/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> ⚠️ **Beta Software**: Zapi is under active development. APIs may change before v1.0.
+> ⚠️ **Beta Software**: Nevr is under active development. APIs may change before v1.0.
 
-Zero to API in seconds. Framework-agnostic, database-agnostic, fully type-safe.
+**Nevr write boilerplate again.** Framework-agnostic, database-agnostic, fully type-safe.
 
-Zapi lets you describe your domain once with a tiny, fluent DSL and get:
+Nevr lets you describe your domain once with a tiny, fluent DSL and get:
 - REST CRUD endpoints with ownership-aware authorization
 - Input validation and clear error responses
 - Clean framework adapters (Express, Hono)
@@ -16,13 +16,13 @@ Zapi lets you describe your domain once with a tiny, fluent DSL and get:
 - Optional plugins (auth, timestamps) without lock‑in
 - Generated Prisma schema, shared TS types, and a typed API client
 
-Docs live in Zapi doc/ (VitePress). Quick start below; full guides cover every keyword.
+Docs live in Nevr doc/ (VitePress). Quick start below; full guides cover every keyword.
 
 ## Quick Start
 
 ```bash
 # Scaffold a new project
-npm create zapi-x@latest my-api
+npm create nevr@latest my-api
 
 cd my-api
 npm run generate   # generates Prisma schema, types, client
@@ -34,10 +34,10 @@ Your API runs at http://localhost:3000/api
 
 ## Core Idea
 
-Describe entities once. Zapi wires the rest.
+Describe entities once. Nevr wires the rest.
 
 ```ts
-import { entity, string, text, bool, belongsTo } from "@zapi-x/core"
+import { entity, string, text, bool, belongsTo } from "nevr"
 
 export const user = entity("user", {
   email: string.unique(),
@@ -59,9 +59,9 @@ From this, you get CRUD endpoints, validation, auth rules, Prisma schema, TS typ
 ```ts
 import express from "express"
 import { PrismaClient } from "@prisma/client"
-import { zapi } from "@zapi-x/core"
-import { prisma } from "@zapi-x/core/drivers/prisma"
-import { expressAdapter, expressDevAuth } from "@zapi-x/core/adapters/express"
+import { zapi } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { expressAdapter, expressDevAuth } from "nevr/adapters/express"
 import { user, post } from "./entities"
 
 const db = new PrismaClient()
@@ -86,17 +86,17 @@ app.listen(3000)
 - Relations: `belongsTo(entity)`, `hasMany(entity)`, `hasOne(entity)` with `.foreignKey()`, `.onDelete()`, `.optional()`
 - Rules: `everyone`, `authenticated`, `admin`, `owner`, `ownerOrAdmin`
 - Validation: automatic by field definitions (min/max/optional/unique/email)
-- Driver: implements data access (`zapi/drivers/prisma`)
-- Adapter: bridges HTTP (`zapi/adapters/express`, `zapi/adapters/hono`)
+- Driver: implements data access (`nevr/drivers/prisma`)
+- Adapter: bridges HTTP (`nevr/adapters/express`, `nevr/adapters/hono`)
 - Plugins: extend fields, hooks, routes, middleware
-- Generator: `@zapi-x/generator` or CLI `@zapi-x/cli`
+- Generator: `@nevr/generator` or CLI `@nevr/cli`
 
 ## Generator & Client
 
 Generate schema, types, and a typed client:
 
 ```ts
-import { generate } from "@zapi-x/generator"
+import { generate } from "@nevr/generator"
 import { user, post } from "./entities"
 
 generate([user, post], { outDir: "./generated", prismaProvider: "sqlite" })
@@ -135,7 +135,7 @@ Adapter helpers (Express)
 
 ## Documentation
 
-- Developer docs live in Zapi doc/ (VitePress). Start with Zapi doc/docs/guide/getting-started.md
+- Developer docs live in Nevr doc/ (VitePress). Start with Nevr doc/docs/guide/getting-started.md
 - To run docs locally:
 
 ```bash
@@ -241,7 +241,7 @@ Zapi automatically handles errors and returns standardized JSON responses:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        ZAPI CORE                            │
+│                        NEVR CORE                            │
 │  Entity DSL │ Validation │ Rules │ Plugin System │ Router   │
 └──────────────────────────┬──────────────────────────────────┘
                            │
@@ -264,17 +264,14 @@ Zapi automatically handles errors and returns standardized JSON responses:
 
 | Package | Description |
 |---------|-------------|
-| `zapi` | Core library |
-| `@zapi-x/plugin` | Core plugin system |
-| `@zapi-x/adapters/express` | Express adapter |
-| `@zapi-x/drivers/prisma` | Prisma database driver |
-| `@zapi-x/generator` | Code generators |
-| `@zapi-x/cli` | CLI tool |
-| `create-zapi` | Project scaffolder |
+| `nevr` | Core library |
+| `@nevr/generator` | Code generators |
+| `@nevr/cli` | CLI tool |
+| `create-nevr` | Project scaffolder |
 
 ## Plugin System
 
-Extend zapi with plugins:
+Extend nevr with plugins:
 
 ```typescript
 const api = zapi({

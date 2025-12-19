@@ -1,6 +1,6 @@
 // =============================================================================
-// ZAPI CORE
-// Main entry point - creates zapi instance
+// NEVR CORE
+// Main entry point - creates nevr instance
 // =============================================================================
 
 import type {

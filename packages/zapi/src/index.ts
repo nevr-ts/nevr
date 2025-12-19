@@ -1,6 +1,6 @@
 // =============================================================================
-// ZAPI
-// Zero to API in seconds - Framework Agnostic API Builder
+// NEVR
+// Nevr write boilerplate again - Framework Agnostic API Builder
 // =============================================================================
 
 // Types
@@ -205,29 +205,29 @@ export type {
 export { matchRoute, pluralize, singularize } from "./router.js"
 
 // Main factory
-export { zapi } from "./zapi.js"
+export { zapi } from "./nevr.js"
 
 // =============================================================================
 // ADAPTERS (HTTP framework integrations)
 // =============================================================================
 // Note: Adapters are available via subpath imports:
-// - zapi/adapters/express
-// - zapi/adapters/hono
+// - nevr/adapters/express
+// - nevr/adapters/hono
 // Direct imports avoid loading unused adapters
 
 // =============================================================================
 // DRIVERS (Database integrations)
 // =============================================================================
 // Note: Drivers are available via subpath imports:
-// - zapi/drivers/prisma
+// - nevr/drivers/prisma
 // Direct imports avoid loading unused drivers
 
 // =============================================================================
 // PLUGINS (Feature extensions)
 // =============================================================================
 // Note: Plugins are available via subpath imports:
-// - zapi/plugins/auth
-// - zapi/plugins/payments
-// - zapi/plugins/storage
-// - zapi/plugins/timestamps
+// - nevr/plugins/auth
+// - nevr/plugins/payments
+// - nevr/plugins/storage
+// - nevr/plugins/timestamps
 // Direct imports avoid loading optional dependencies like better-auth

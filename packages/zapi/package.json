@@ -1,7 +1,7 @@
 {
-  "name": "@zapi-x/core",
-  "version": "0.1.0-beta.3",
-  "description": "Zero to API in seconds - Entity-first, type-safe API framework",
+  "name": "nevr",
+  "version": "0.1.1",
+  "description": "Nevr write boilerplate again - Entity-first, type-safe API framework",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

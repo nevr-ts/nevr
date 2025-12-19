@@ -1,15 +1,15 @@
-# @zapi-x/cli
+# @nevr/cli
 
-[![Beta](https://img.shields.io/badge/status-beta-orange.svg)](https://github.com/zapi-x/zapi)
+[![Beta](https://img.shields.io/badge/status-beta-orange.svg)](https://github.com/nevr-ts/nevr)
 
-Command-line interface for [zapi](https://github.com/zapi-x/zapi) - Zero to API in seconds.
+Command-line interface for [nevr](https://github.com/nevr-ts/nevr) - Nevr write boilerplate again.
 
 ## Installation
 
 ```bash
-npm install -g @zapi-x/cli
+npm install -g @nevr/cli
 # or use with npx
-npx @zapi-x/cli generate
+npx @nevr/cli generate
 ```
 
 ## Usage
@@ -19,34 +19,34 @@ npx @zapi-x/cli generate
 Generate Prisma schema, TypeScript types, and API client from your entity definitions:
 
 ```bash
-zapi generate
+nevr generate
 ```
 
 Options:
-- `-c, --config <path>` - Path to zapi config file (default: `./zapi.config.ts`)
+- `-c, --config <path>` - Path to nevr config file (default: `./nevr.config.ts`)
 - `-o, --out <dir>` - Output directory (default: `./generated`)
 - `-p, --provider <provider>` - Database provider: sqlite, postgresql, mysql (default: `sqlite`)
 
 ### Init Command
 
-Get help on initializing a new zapi project:
+Get help on initializing a new nevr project:
 
 ```bash
-zapi init
+nevr init
 ```
 
 For full project scaffolding, use:
 
 ```bash
-npm create zapi-x@latest
+npm create nevr@latest
 ```
 
 ## Configuration
 
-Create a `zapi.config.ts` file in your project root:
+Create a `nevr.config.ts` file in your project root:
 
 ```typescript
-import { entity, string, text, belongsTo } from "@zapi-x/core"
+import { entity, string, text, belongsTo } from "nevr"
 
 export const user = entity("user", {
   email: string.unique(),
@@ -67,7 +67,7 @@ export default {
 Then run:
 
 ```bash
-npx @zapi-ts/cli generate
+npx @nevr/cli generate
 npx prisma db push --schema=./generated/prisma/schema.prisma
 ```
 
@@ -81,7 +81,7 @@ The generator creates:
 
 ## Learn More
 
-- [zapi Documentation](https://github.com/zapi-ts/zapi)
+- [Nevr Documentation](https://github.com/nevr-ts/nevr)
 - [Prisma Documentation](https://prisma.io/docs)
 
 ## License

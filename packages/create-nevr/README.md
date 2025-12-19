@@ -1,19 +1,19 @@
-# create-zapi-x
+# create-nevr
 
-[![Beta](https://img.shields.io/badge/status-beta-orange.svg)](https://github.com/zapi-x/zapi)
+[![Beta](https://img.shields.io/badge/status-beta-orange.svg)](https://github.com/nevr-ts/nevr)
 
-Scaffold a new [zapi](https://github.com/zapi-x/zapi) project - Zero to API in seconds.
+Scaffold a new [nevr](https://github.com/nevr-ts/nevr) project - Nevr write boilerplate again.
 
 ## Usage
 
 ```bash
-npm create zapi-x@latest
+npm create nevr@latest
 # or
-npx create-zapi-x
+npx create-nevr
 # or
-pnpm create zapi-x
+pnpm create nevr
 # or
-bun create zapi-x
+bun create nevr
 ```
 
 ## What It Creates
@@ -35,7 +35,7 @@ my-api/
 │   ├── middleware/         # Custom middleware
 │   ├── utils/              # Utility functions
 │   │
-│   ├── config.ts           # Zapi configuration
+│   ├── config.ts           # Nevr configuration
 │   ├── generate.ts         # Generator script
 │   └── index.ts            # Server entry point
 │
@@ -86,11 +86,6 @@ Your API is running at `http://localhost:3000/api` 🚀
 | `/api/posts/:id` | GET | Get post |
 | `/api/posts/:id` | PUT | Update post |
 | `/api/posts/:id` | DELETE | Delete post |
-| `/api/comments` | GET | List comments |
-| `/api/comments` | POST | Create comment |
-| `/api/comments/:id` | GET | Get comment |
-| `/api/comments/:id` | PUT | Update comment |
-| `/api/comments/:id` | DELETE | Delete comment |
 
 ## Query Parameters
 
@@ -100,18 +95,10 @@ Your API is running at `http://localhost:3000/api` 🚀
 - `?limit=20&offset=0` - Pagination
 - `?include=author` - Include relations
 
-## Development Auth
-
-In development mode, use headers for authentication:
-
-- `X-User-Id: <user-id>` - Set current user
-- `X-User-Role: admin` - Set user role
-
 ## Learn More
 
-- [zapi Documentation](https://github.com/zapi-ts/zapi)
+- [Nevr Documentation](https://github.com/nevr-ts/nevr)
 - [Prisma Documentation](https://prisma.io/docs)
-- [Express Documentation](https://expressjs.com/)
 
 ## License
 

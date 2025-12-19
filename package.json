@@ -1,8 +1,8 @@
 {
-  "name": "zapi-monorepo",
-  "version": "0.1.0-beta.3",
+  "name": "nevr-monorepo",
+  "version": "0.1.1",
   "private": true,
-  "description": "Zero to API in seconds",
+  "description": "Nevr write boilerplate again - Entity-first, type-safe API framework",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",

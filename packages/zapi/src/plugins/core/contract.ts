@@ -1,6 +1,6 @@
 // =============================================================================
 // PLUGIN CONTRACT
-// The core interface and types that ALL Zapi plugins must follow
+// The core interface and types that ALL Nevr plugins must follow
 // =============================================================================
 
 import type { Entity, FieldDef, Route, Middleware, ZapiInstance, ZapiRequest, Hooks } from "../../types.js"

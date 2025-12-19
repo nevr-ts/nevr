@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from "vitest"
 import { generatePrismaSchema, generateTypes, generateClient } from "./index.js"
-import { entity, string, text, int, bool, datetime, belongsTo, hasMany } from "@zapi-x/core"
+import { entity, string, text, int, bool, datetime, belongsTo, hasMany } from "nevr"
 
 // =============================================================================
 // Test Entities

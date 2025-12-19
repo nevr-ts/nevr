@@ -1,20 +1,20 @@
-# @zapi-x/generator
+# @nevr/generator
 
-[![Beta](https://img.shields.io/badge/status-beta-orange.svg)](https://github.com/zapi-x/zapi)
+[![Beta](https://img.shields.io/badge/status-beta-orange.svg)](https://github.com/nevr-ts/nevr)
 
-Code generator for [zapi](https://github.com/zapi-x/zapi) - generates Prisma schema, TypeScript types, and API client from entity definitions.
+Code generator for [nevr](https://github.com/nevr-ts/nevr) - generates Prisma schema, TypeScript types, and API client from entity definitions.
 
 ## Installation
 
 ```bash
-npm install @zapi-x/generator
+npm install @nevr/generator
 ```
 
 ## Usage
 
 ```typescript
-import { generate } from "@zapi-x/generator"
-import { entity, string, text, belongsTo } from "@zapi-x/core"
+import { generate } from "@nevr/generator"
+import { entity, string, text, belongsTo } from "nevr"
 
 // Define entities
 const user = entity("user", {
@@ -56,7 +56,7 @@ Options:
 Generate only the Prisma schema.
 
 ```typescript
-import { generatePrismaSchema } from "@zapi-x/generator"
+import { generatePrismaSchema } from "@nevr/generator"
 
 const schema = generatePrismaSchema([user, post], {
   provider: "postgresql",
@@ -70,7 +70,7 @@ console.log(schema) // Prisma schema string
 Generate only the TypeScript type definitions.
 
 ```typescript
-import { generateTypes } from "@zapi-x/generator"
+import { generateTypes } from "@nevr/generator"
 
 const types = generateTypes([user, post])
 
@@ -82,76 +82,17 @@ console.log(types) // TypeScript interfaces
 Generate only the API client.
 
 ```typescript
-import { generateClient } from "@zapi-x/generator"
+import { generateClient } from "@nevr/generator"
 
 const client = generateClient([user, post])
 
 console.log(client) // Client code
 ```
 
-## Features
+## Learn More
 
-### Inverse Relations
-
-The generator automatically creates inverse relations. For example:
-
-```typescript
-const project = entity("project", {
-  owner: belongsTo(() => user),
-}).build()
-```
-
-Will generate:
-
-```prisma
-model User {
-  id        String    @id @default(cuid())
-  // ... other fields
-  projects  Project[] // Auto-generated inverse relation
-}
-
-model Project {
-  id      String @id @default(cuid())
-  ownerId String
-  owner   User   @relation(fields: [ownerId], references: [id])
-}
-```
-
-### Multiple Relations to Same Entity
-
-When an entity has multiple relations to the same target entity, the generator automatically adds relation names:
-
-```typescript
-const task = entity("task", {
-  assignee: belongsTo(() => user),
-  createdBy: belongsTo(() => user),
-}).build()
-```
-
-Generates:
-
-```prisma
-model Task {
-  assigneeId  String
-  assignee    User   @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  createdById String
-  createdBy   User   @relation("TaskCreatedBy", fields: [createdById], references: [id])
-}
-
-model User {
-  assignedTasks Task[] @relation("TaskAssignee")
-  createdTasks  Task[] @relation("TaskCreatedBy")
-}
-```
-
-## CLI Usage
-
-For command-line usage, install `@zapi-x/cli`:
-
-```bash
-npm install -g @zapi-x/cli
-zapi generate
-```
+- [Nevr Documentation](https://github.com/nevr-ts/nevr)
+- [Prisma Documentation](https://prisma.io/docs)
 
 ## License
 

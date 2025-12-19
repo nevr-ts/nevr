@@ -1,10 +1,10 @@
 {
-  "name": "create-zapi-x",
-  "version": "0.1.0-beta.3",
-  "description": "Create a new zapi project - Zero to API in seconds",
+  "name": "create-nevr",
+  "version": "0.1.1",
+  "description": "Create a new Nevr project - Nevr write boilerplate again",
   "type": "module",
   "bin": {
-    "create-zapi-x": "./dist/index.js"
+    "create-nevr": "./dist/index.js"
   },
   "main": "dist/index.js",
   "files": [
@@ -26,11 +26,11 @@
     "tsup": "^8.5.0",
     "typescript": "^5.7.0"
   },
-  "keywords": ["zapi", "create", "scaffold", "cli", "api", "rest", "prisma"],
+  "keywords": ["nevr", "create", "scaffold", "cli", "api", "rest", "prisma"],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zapidev/zapi",
-    "directory": "packages/create-zapi"
+    "url": "https://github.com/nevrjs/nevr",
+    "directory": "packages/create-nevr"
   }
 }

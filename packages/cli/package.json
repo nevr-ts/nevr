@@ -1,10 +1,10 @@
 {
-  "name": "@zapi-x/cli",
-  "version": "0.1.0-beta.3",
-  "description": "CLI for zapi - Zero to API in seconds",
+  "name": "@nevr/cli",
+  "version": "0.1.1",
+  "description": "CLI for Nevr - Nevr write boilerplate again",
   "type": "module",
   "bin": {
-    "zapi": "./dist/index.js"
+    "nevr": "./dist/index.js"
   },
   "main": "dist/index.js",
   "files": [
@@ -18,8 +18,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@zapi-x/core": "workspace:*",
-    "@zapi-x/generator": "workspace:*",
+    "nevr": "workspace:*",
+    "@nevr/generator": "workspace:*",
     "commander": "^14.0.0"
   },
   "devDependencies": {
@@ -27,11 +27,11 @@
     "tsup": "^8.5.0",
     "typescript": "^5.7.0"
   },
-  "keywords": ["zapi", "cli", "generator", "prisma", "api"],
+  "keywords": ["nevr", "cli", "generator", "prisma", "api"],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zapi-ts/zapi",
+    "url": "https://github.com/nevrjs/nevr",
     "directory": "packages/cli"
   }
 }

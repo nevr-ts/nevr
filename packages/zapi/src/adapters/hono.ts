@@ -1,6 +1,6 @@
 // =============================================================================
 // HONO ADAPTER
-// Hono adapter for zapi - lightweight, fast, and edge-ready
+// Hono adapter for nevr - lightweight, fast, and edge-ready
 // =============================================================================
 
 import type { Context, MiddlewareHandler, Hono } from "hono"
@@ -146,13 +146,13 @@ function getCorsHeaders(
 // -----------------------------------------------------------------------------
 
 /**
- * Create a Hono middleware handler for zapi
+ * Create a Hono middleware handler for nevr
  *
  * @example
  * ```typescript
  * import { Hono } from "hono"
- * import { zapi } from "@zapi-x/core"
- * import { honoAdapter } from "@zapi-x/adapter-hono"
+ * import { zapi } from "nevr"
+ * import { honoAdapter } from "nevr/adapters/hono"
  *
  * const app = new Hono()
  *
@@ -194,7 +194,7 @@ export function honoAdapter(
       const zapiRequest = await honoToZapi(c, getUser)
 
       if (debugLogs) {
-        console.log(`[zapi:hono] ${c.req.method} ${c.req.path}`)
+        console.log(`[nevr:hono] ${c.req.method} ${c.req.path}`)
       }
 
       // Handle request
@@ -204,7 +204,7 @@ export function honoAdapter(
       return sendResponse(c, response)
     } catch (error) {
       if (debugLogs) {
-        console.error("[zapi:hono] Unhandled error:", error)
+        console.error("[nevr:hono] Unhandled error:", error)
       }
 
       return c.json(
@@ -221,20 +221,20 @@ export function honoAdapter(
 }
 
 // -----------------------------------------------------------------------------
-// Mount Helper - Mount zapi routes on a Hono app
+// Mount Helper - Mount nevr routes on a Hono app
 // -----------------------------------------------------------------------------
 
 /**
- * Mount zapi on a Hono app with automatic route registration
+ * Mount nevr on a Hono app with automatic route registration
  *
  * @example
  * ```typescript
  * import { Hono } from "hono"
- * import { zapi } from "@zapi-x/core"
- * import { mountZapi } from "@zapi-x/adapter-hono"
+ * import { zapi } from "nevr"
+ * import { mountNevr } from "nevr/adapters/hono"
  *
  * const app = new Hono()
- * mountZapi(app, api, { prefix: "/api" })
+ * mountNevr(app, api, { prefix: "/api" })
  * ```
  */
 export function mountZapi(
