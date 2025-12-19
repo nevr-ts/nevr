@@ -41,7 +41,7 @@ jobs:
           cd packages/zapi && pnpm publish --access public --no-git-checks
           cd ../generator && pnpm publish --access public --no-git-checks
           cd ../cli && pnpm publish --access public --no-git-checks
-          cd ../create-zapi && pnpm publish --access public --no-git-checks
+          cd ../create-nevr && pnpm publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
