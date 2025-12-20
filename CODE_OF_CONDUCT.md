@@ -67,7 +67,7 @@ reporter of any incident.
 ## Attribution
 
 This Code of Conduct is adapted from the [Contributor Covenant][homepage],
-version 2.0, available at
-https://www.contributor-covenant.org/version/2/0/code_of_conduct.html.
+version 3.0, available at
+https://www.contributor-covenant.org/version/3/0/code_of_conduct.html.
 
 [homepage]: https://www.contributor-covenant.org
