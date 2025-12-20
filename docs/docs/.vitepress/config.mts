@@ -1,7 +1,6 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  base: '/nevr/',
   title: "Nevr",
   description: "Nevr write boilerplate again — The Framework Agnostic API Builder",
   head: [
