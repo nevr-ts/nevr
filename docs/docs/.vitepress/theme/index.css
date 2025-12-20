@@ -60,3 +60,21 @@
 }
 }
 
+.side-by-side-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  margin: 1rem 0;
+}
+@media (min-width: 960px) {
+  .side-by-side-grid {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+.side-right {
+  background: var(--vp-c-bg-soft);
+  border-radius: 12px;
+  padding: 1rem;
+  border: 1px solid var(--vp-c-divider);
+}

@@ -38,9 +38,9 @@ features:
 
 <br>
 
-# Why Zapi?
+# Why Nevr?
 
-Building APIs shouldn't require 6 files for every endpoint. Zapi lets you **define once, ship everywhere**.
+Building APIs shouldn't require 6 files for every endpoint. Nevr lets you **define once, ship everywhere**.
 
 ---
 
@@ -62,11 +62,11 @@ Building APIs shouldn't require 6 files for every endpoint. Zapi lets you **defi
 
   <div class="side-right">
   
-   **The Zapi Solution**
+   **The Nevr Solution**
   
   ```typescript
   // 1 file, 5 lines — that's it
-  import { entity, string, email } from "zapi"
+  import { entity, string, email } from "nevr"
   
   export const user = entity("user", {
     name: string.min(1).max(100),
@@ -77,26 +77,7 @@ Building APIs shouldn't require 6 files for every endpoint. Zapi lets you **defi
   </div>
 </div>
 
-<style>
-.side-by-side-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 2rem;
-  margin: 1rem 0;
-}
-@media (min-width: 960px) {
-  .side-by-side-grid {
-    grid-template-columns: 1fr 1fr;
-    align-items: start;
-  }
-}
-.side-right {
-  background: var(--vp-c-bg-soft);
-  border-radius: 12px;
-  padding: 1rem;
-  border: 1px solid var(--vp-c-divider);
-}
-</style>
+
 
 ## Problem 2: The Type Safety Gap
 
@@ -106,16 +87,16 @@ In most stacks, your database types (SQL/Prisma), API types (DTOs), and Frontend
 - **Frontend:** Still using `user.name`.
 - **Result:** 💥 Runtime crash in production.
 
-### The Zapi Solution
+### The Nevr Solution
 
-Zapi generates the client **from the entity definition**. If you change the entity, the frontend build fails immediately.
+nevr generates the client **from the entity definition**. If you change the entity, the frontend build fails immediately.
 
 ```typescript
 // Frontend code (Auto-generated)
-import { zapi } from "@/lib/api"
+import { nevr } from "@/lib/api"
 
 // TypeScript knows exactly what fields exist
-const user = await zapi.users.get("123")
+const user = await nevr.users.get("123")
 console.log(user.fullName) // ✅ Typed!
 console.log(user.name)     // ❌ Error: Property 'name' does not exist
 ```
@@ -135,7 +116,7 @@ app.put("/posts/:id", (req, res) => {
 })
 ```
 
-### The Zapi Solution
+### The Nevr Solution
 
 Authorization is declarative and part of the entity definition.
 
@@ -157,9 +138,9 @@ You often define validation logic twice: once in your database (SQL constraints)
 - **API:** `string.max(120)`
 - **Result:** Database errors that leak to the user.
 
-### The Zapi Solution
+### The Nevr Solution
 
-Zapi is the **Single Source of Truth**.
+nevr is the **Single Source of Truth**.
 
 ```typescript
 // Defines BOTH database schema AND runtime validation
@@ -173,9 +154,9 @@ Keeping Swagger/OpenAPI documentation in sync with your code is a chore.
 - **Docs:** You forget to update the YAML file.
 - **Result:** Frustrated consumers and broken integrations.
 
-### The Zapi Solution
+### The Nevr Solution
 
-Zapi **is** the documentation. Because the schema is the source of truth, Zapi generates the OpenAPI spec automatically. It is mathematically impossible for the docs to be out of sync with the code.
+nevr **is** the documentation. Because the schema is the source of truth, nevr generates the OpenAPI spec automatically. It is mathematically impossible for the docs to be out of sync with the code.
 
 ---
 
@@ -186,7 +167,7 @@ Zapi **is** the documentation. Because the schema is the source of truth, Zapi g
     <h3>Your Input</h3>
 
 ```typescript
-import { entity, string, email } from "zapi"
+import { entity, string, email } from "nevr"
 
 export const user = entity("user", {
   name: string.min(1).max(100),
@@ -196,7 +177,7 @@ export const user = entity("user", {
 
   </div>
   <div class="payoff-output">
-    <h3>Zapi Generates</h3>
+    <h3>nevr Generates</h3>
     <div class="feature-list">
       <div class="feature-item">
         <div class="feature-icon">🔌</div>
