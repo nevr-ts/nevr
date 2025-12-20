@@ -265,7 +265,7 @@ entity("post", { ... }).ownedBy("author")
 Inject dependencies (like database clients or services) into every request:
 
 ```typescript
-const api = zapi({
+const api = nevr({
   // ...
   context: async (req) => ({
     db: new PrismaClient(),
@@ -327,7 +327,7 @@ Nevr automatically handles errors and returns standardized JSON responses:
 Extend nevr with plugins:
 
 ```typescript
-const api = zapi({
+const api = nevr({
   entities: [...],
   driver: prisma(db),
   plugins: [

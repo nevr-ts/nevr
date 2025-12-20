@@ -24,7 +24,7 @@
 - 🔐 **Built-in authentication** — [Better Auth](https://better-auth.com) integration with OAuth, sessions, JWT
 - 🔌 **Framework agnostic** — Works with Express, Hono, and more
 - 🗄️ **Database agnostic** — Prisma driver included, more coming soon
-- 🧩 **Plugin system** — Extend with auth, timestamps, or custom plugins
+- 🧩 **Plugin system** — Extend with auth, timestamps, or custom plugins and more
 - ⚡ **Zero config** — Sensible defaults, full customization when needed
 - 📦 **Auto-generated clients** — Type-safe API clients for your frontend
 
@@ -37,14 +37,21 @@ pnpm add nevr
 # or
 yarn add nevr
 ```
+## 🆕 Create a New Nevr Project
+
+```bash
+#quick installation with project scaffolding
+npm create nevr@latest my-nevr-app
+```
 
 ## 🚀 Quick Start
 
 ```typescript
 import { entity, string, text, belongsTo, nevr } from "nevr"
-import { expressAdapter, expressDevAuth } from "nevr/adapters/express"
+import { expressAdapter} from "nevr/adapters/express"
 import { prisma } from "nevr/drivers/prisma"
 import { PrismaClient } from "@prisma/client"
+import {zapi as nevr} from "nevr"
 import express from "express"
 
 // 1️⃣ Define your entities
@@ -69,7 +76,7 @@ const api = nevr({
 
 // 3️⃣ Mount to Express
 const app = express()
-app.use("/api", expressAdapter(api, { getUser: expressDevAuth, cors: true }))
+app.use("/api", expressAdapter(api, { cors: true }))
 app.listen(3000, () => console.log("API running at http://localhost:3000/api"))
 ```
 
@@ -165,26 +172,15 @@ const api = nevr({
 ### Express
 
 ```typescript
-import { expressAdapter, expressDevAuth } from "nevr/adapters/express"
+import { expressAdapter,devAuth } from "nevr/adapters/express"
 
 const app = express()
 
-// Development (auto-login as user 1)
 app.use("/api", expressAdapter(api, { 
-  getUser: expressDevAuth,
+  getUser: devAuth,
   cors: true 
 }))
-
-// Production (custom auth)
-app.use("/api", expressAdapter(api, { 
-  getUser: async (req) => {
-    const token = req.headers.authorization?.split(" ")[1]
-    return token ? await verifyToken(token) : null
-  },
-  cors: true
-}))
 ```
-
 ### Hono
 
 ```typescript
