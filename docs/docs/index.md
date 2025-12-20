@@ -5,9 +5,8 @@ hero:
   text: The Zero-API Framework.
   tagline: Define your entities once. Get a type-safe API, Database, and Frontend Client instantly.
   image:
-    src: /logo.png
-    alt: Nevr Logo
-    style: width 150px; height auto;
+    src: /hero.PNG
+    alt: Nevr Hero Image
   actions:
     - theme: brand
       text: Get Started
@@ -292,5 +291,13 @@ export const user = entity("user", {
   font-size: 0.9rem;
   color: var(--vp-c-text-2);
 }
+@media (min-width: 600px) {
+ .image-container img{
+  max-width: 100%!important;
+  height: auto;
+  margin-top: 2rem;
+}
+}
+
 </style>
 
