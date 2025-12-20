@@ -1,6 +1,6 @@
 {
   "name": "nevr",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "description": "Nevr: The Zero-API framework. Define your entities, never write boilerplate again.",
   "type": "module",
   "main": "./dist/index.js",
