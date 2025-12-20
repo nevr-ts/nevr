@@ -34,7 +34,7 @@ importers:
         version: 14.0.2
       nevr:
         specifier: workspace:*
-        version: link:../zapi
+        version: link:../nevr
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
@@ -69,7 +69,7 @@ importers:
     dependencies:
       nevr:
         specifier: workspace:*
-        version: link:../zapi
+        version: link:../nevr
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
