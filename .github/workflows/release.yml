@@ -63,7 +63,7 @@ jobs:
           }
           
           # Publish all packages
-          publish_package "packages/zapi"
+          publish_package "packages/nevr"
           publish_package "packages/generator"
           publish_package "packages/cli"
           publish_package "packages/create-nevr"
