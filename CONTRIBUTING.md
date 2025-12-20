@@ -84,7 +84,7 @@ To set up your development environment for contributing to Nevr, follow these st
     ```
 9. **Run the documentation locally**: To view and edit the documentation, you can run:
    ```bash
-    pnpm -F docs dev
+    pnpm -F docs docs:dev
     ```
 ## 🚀 Contributing Workflow
 ---
