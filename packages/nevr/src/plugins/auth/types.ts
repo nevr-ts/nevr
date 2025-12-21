@@ -3,6 +3,7 @@
 // =============================================================================
 
 import type { Entity } from "../../types.js"
+import type { PluginExtension } from "../core/contract.js"
 
 // -----------------------------------------------------------------------------
 // OAuth Provider Configuration
@@ -166,6 +167,11 @@ export interface AuthPluginOptions {
    * Default: "/auth"
    */
   basePath?: string
+
+  /**
+   * Plugin extension for customizing entities, routes, and behavior
+   */
+  extend?: PluginExtension
 }
 
 // -----------------------------------------------------------------------------
