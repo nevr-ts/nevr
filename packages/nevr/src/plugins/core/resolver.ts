@@ -17,6 +17,9 @@ import type {
   EntityRoutesConfig,
 } from "./contract.js"
 
+// Re-export types for convenience
+export type { ResolvedEntityMeta, ResolvedPlugin } from "./contract.js"
+
 // -----------------------------------------------------------------------------
 // Convert Plugin Field to Zapi Field
 // -----------------------------------------------------------------------------
