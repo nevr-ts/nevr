@@ -1,6 +1,6 @@
 {
   "name": "@nevr/generator",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Code generators for Nevr - Prisma schema, TypeScript types, API client",
   "type": "module",
   "main": "dist/index.cjs",

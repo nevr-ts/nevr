@@ -1,6 +1,6 @@
 {
   "name": "nevr-monorepo",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "Nevr: The Zero-API framework. Define your entities, never write boilerplate again.",
   "scripts": {

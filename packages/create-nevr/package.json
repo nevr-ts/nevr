@@ -1,6 +1,6 @@
 {
   "name": "create-nevr",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Create a new Nevr project - Nevr write boilerplate again",
   "type": "module",
   "bin": {
