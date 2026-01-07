@@ -61,7 +61,7 @@ const HELP = `
     npm create nevr@latest my-api --no-interactive
 `
 
-const VERSION = "0.2.2"
+const VERSION = "0.3.0"
 
 // -----------------------------------------------------------------------------
 // Parse CLI Arguments
@@ -135,11 +135,19 @@ const templateConfig = {
 
 function generateProject(config: ProjectConfig): void {
   const { name, template, database, withAuth, packageManager } = config
-  const dir = join(process.cwd(), name)
 
-  if (existsSync(dir)) {
-    console.error(`\n❌ Directory "${name}" already exists\n`)
-    process.exit(1)
+  // Handle "." for current directory
+  const isCurrentDir = name === "." || name === "./"
+  const dir = isCurrentDir ? process.cwd() : join(process.cwd(), name)
+  const displayName = isCurrentDir ? "current directory" : name
+
+  // Allow existing empty directories or current directory
+  if (existsSync(dir) && !isCurrentDir) {
+    const contents = require("fs").readdirSync(dir)
+    if (contents.length > 0) {
+      console.error(`\n❌ Directory "${name}" already exists and is not empty\n`)
+      process.exit(1)
+    }
   }
 
   console.log(`\n📁 Creating ${name}...\n`)

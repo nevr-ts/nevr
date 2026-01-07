@@ -98,8 +98,33 @@ prisma/migrations
 import { auth } from "nevr/plugins/auth"
 
 export const authPlugin = auth({
-  mode: "session",
-  emailAndPassword: true,
+  // Secret for signing session tokens (from .env)
+  secret: process.env.AUTH_SECRET || "dev-secret-change-in-production",
+  
+  // Email/Password authentication
+  emailAndPassword: {
+    enabled: true,
+    // minPasswordLength: 8,
+    // requireEmailVerification: false,
+  },
+  
+  // Session configuration
+  session: {
+    expiresIn: 60 * 60 * 24 * 7, // 7 days
+    updateAge: 60 * 60 * 24,     // 1 day
+  },
+  
+  // OAuth providers (uncomment and add credentials to enable)
+  // socialProviders: {
+  //   google: {
+  //     clientId: process.env.GOOGLE_CLIENT_ID || "",
+  //     clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+  //   },
+  //   github: {
+  //     clientId: process.env.GITHUB_CLIENT_ID || "",
+  //     clientSecret: process.env.GITHUB_CLIENT_SECRET || "",
+  //   },
+  // },
 })
 `,
 
