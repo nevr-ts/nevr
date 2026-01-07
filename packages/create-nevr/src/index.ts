@@ -61,7 +61,7 @@ const HELP = `
     npm create nevr@latest my-api --no-interactive
 `
 
-const VERSION = "0.3.1"
+const VERSION = "0.3.2"
 
 // -----------------------------------------------------------------------------
 // Parse CLI Arguments

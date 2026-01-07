@@ -47,14 +47,15 @@ import { cors } from "hono/cors"
 import { PrismaClient } from "@prisma/client"
 import { nevr } from "nevr"
 import { prisma } from "nevr/drivers/prisma"
-import { honoAdapter } from "nevr/adapters/hono"
+import { honoAdapter${withAuth ? ", sessionAuth" : ""} } from "nevr/adapters/hono"
 import { config } from "./nevr.config.js"
 
 const db = new PrismaClient()
+const driver = prisma(db)
 
 const api = nevr({
   entities: config.entities,
-  driver: prisma(db),
+  driver,
   plugins: config.plugins,
 })
 
@@ -67,7 +68,8 @@ app.get("/health", (c) => {
 })
 
 app.route("/api", honoAdapter(api, {
-  debugLogs: process.env.NODE_ENV !== "production",
+  debugLogs: process.env.NODE_ENV !== "production",${withAuth ? `
+  getUser: sessionAuth(driver),` : ""}
 }))
 
 const port = parseInt(process.env.PORT || "3000")
