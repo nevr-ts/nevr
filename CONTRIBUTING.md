@@ -8,10 +8,11 @@ First off, thank you for considering contributing to Nevr! By helping us, you ar
 ## 🌟 Our Philosophy
 ---
 
-Nevr is designed to solve the **6 Backend Nightmares**. We believe:
-1. **Best practices belong in the system**, not just in a Senior's head.
-2. **Type-safety is non-negotiable.**
-3. **The Plugin System is the heart.** If a feature is complex, it should be a plugin.
+Nevr is built on **4 Core Pillars**. We believe:
+1. **Entity-First Architecture**: Your entity definition is the single source of truth for database, API, and types.
+2. **End-to-End Type Safety**: Types should flow automatically from your backend to your frontend without code generation.
+3. **Industrial-Grade Tooling**: Best practices like Workflow Engines and Dependency Injection should be built-in, not bolted on.
+4. **Plugin-Driven Core**: The core should be lean. Complex features (Auth, Storage, Payments) belong in plugins.
 
 
 
