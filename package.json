@@ -2,7 +2,7 @@
   "name": "nevr-monorepo",
   "version": "0.2.2",
   "private": true,
-  "description": "Nevr: The Zero-API framework. Define your entities, never write boilerplate again.",
+  "description": "The Entity-First Full Stack Framework for TypeScript. Define your entities, never write boilerplate again.",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
@@ -12,9 +12,13 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "tsup": "^8.5.0",
     "turbo": "^2.6.0",
     "typescript": "^5.7.0",
-    "tsup": "^8.5.0",
+    "vite": "^5.4.21",
     "vitest": "^3.0.0"
   },
   "packageManager": "pnpm@8.15.0",
