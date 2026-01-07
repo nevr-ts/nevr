@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // =============================================================================
 // CREATE-NEVR
-// Scaffold a new nevr project - Nevr write boilerplate again
+// Scaffold a new nevr project - Vite-like experience
 // Usage: npm create nevr@latest
 // =============================================================================
 
@@ -9,708 +9,136 @@ import prompts from "prompts"
 import { mkdirSync, writeFileSync, existsSync } from "fs"
 import { join } from "path"
 import { execSync } from "child_process"
+import { parseArgs } from "util"
+
+import { baseTemplates } from "./templates/base.js"
+import { expressTemplates } from "./templates/express.js"
+import { honoTemplates } from "./templates/hono.js"
 
 // -----------------------------------------------------------------------------
-// Templates
+// Types
 // -----------------------------------------------------------------------------
 
-const templates = {
-  "package.json": (name: string, db: string) => `{
-  "name": "${name}",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "generate": "tsx src/generate.ts",
-    "db:push": "prisma db push --schema=./generated/prisma/schema.prisma",
-    "db:migrate": "prisma migrate dev --schema=./generated/prisma/schema.prisma",
-    "db:studio": "prisma studio --schema=./generated/prisma/schema.prisma"
-  },
-  "dependencies": {
-    "@prisma/client": "^5.7.0",
-    "@nevr/generator": "^0.1.0",
-    "nevr": "^0.1.0",
-    "better-auth": "^1.0.0",
-    "dotenv": "^16.4.0",
-    "express": "^4.18.2"
-  },
-  "devDependencies": {
-    "@types/express": "^4.17.21",
-    "@types/node": "^20.11.0",
-    "prisma": "^5.7.0",
-    "tsx": "^4.7.0",
-    "typescript": "^5.3.0"
+type Template = "express" | "hono"
+type Database = "sqlite" | "postgresql" | "mysql"
+type PackageManager = "npm" | "pnpm" | "bun"
+
+interface ProjectConfig {
+  name: string
+  template: Template
+  database: Database
+  withAuth: boolean
+  packageManager: PackageManager
+  install: boolean
+}
+
+// -----------------------------------------------------------------------------
+// CLI Help
+// -----------------------------------------------------------------------------
+
+const HELP = `
+  ⚡ create-nevr - Scaffold a new NEVR project
+
+  Usage:
+    npm create nevr@latest [project-name] [options]
+
+  Options:
+    -t, --template <name>    Template to use (express, hono)
+    -d, --database <db>      Database (sqlite, postgresql, mysql)
+    --auth                   Include auth plugin
+    --no-auth                Skip auth plugin
+    -p, --pm <manager>       Package manager (npm, pnpm, bun)
+    --no-install             Skip installing dependencies
+    --no-interactive         Use defaults, no prompts
+    -h, --help               Show this help message
+    -v, --version            Show version
+
+  Examples:
+    npm create nevr@latest
+    npm create nevr@latest my-api
+    npm create nevr@latest my-api --template hono
+    npm create nevr@latest my-api -t express -d postgresql --auth
+    npm create nevr@latest my-api --no-interactive
+`
+
+const VERSION = "0.2.2"
+
+// -----------------------------------------------------------------------------
+// Parse CLI Arguments
+// -----------------------------------------------------------------------------
+
+function parseCliArgs(): {
+  projectName?: string
+  template?: Template
+  database?: Database
+  withAuth?: boolean
+  packageManager?: PackageManager
+  install?: boolean
+  noInteractive: boolean
+  help: boolean
+  version: boolean
+} {
+  try {
+    const { values, positionals } = parseArgs({
+      args: process.argv.slice(2),
+      options: {
+        template: { type: "string", short: "t" },
+        database: { type: "string", short: "d" },
+        auth: { type: "boolean" },
+        "no-auth": { type: "boolean" },
+        pm: { type: "string", short: "p" },
+        install: { type: "boolean" },
+        "no-install": { type: "boolean" },
+        "no-interactive": { type: "boolean" },
+        help: { type: "boolean", short: "h" },
+        version: { type: "boolean", short: "v" },
+      },
+      allowPositionals: true,
+    })
+
+    return {
+      projectName: positionals[0],
+      template: values.template as Template | undefined,
+      database: values.database as Database | undefined,
+      withAuth: values["no-auth"] ? false : values.auth,
+      packageManager: values.pm as PackageManager | undefined,
+      install: values["no-install"] ? false : values.install,
+      noInteractive: values["no-interactive"] ?? false,
+      help: values.help ?? false,
+      version: values.version ?? false,
+    }
+  } catch {
+    return { noInteractive: false, help: false, version: false }
   }
-}`,
+}
 
-  "tsconfig.json": () => `{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "esModuleInterop": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"],
-      "@entities/*": ["./src/entities/*"],
-      "@generated/*": ["./generated/*"]
-    }
+// -----------------------------------------------------------------------------
+// Template Mapping
+// -----------------------------------------------------------------------------
+
+const templateConfig = {
+  express: {
+    name: "Express",
+    description: "Classic Node.js framework, battle-tested",
+    templates: expressTemplates,
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "generated"]
-}`,
-
-  ".env": (db: string) => {
-    const authSecret = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2)
-    if (db === "postgresql") {
-      return `DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
-PORT=3000
-
-# Auth Plugin (Better Auth)
-BETTER_AUTH_SECRET="${authSecret}"
-BETTER_AUTH_URL="http://localhost:3000"
-
-# OAuth Providers (optional)
-# GOOGLE_CLIENT_ID=""
-# GOOGLE_CLIENT_SECRET=""
-# GITHUB_CLIENT_ID=""
-# GITHUB_CLIENT_SECRET=""`
-    }
-    if (db === "mysql") {
-      return `DATABASE_URL="mysql://user:password@localhost:3306/mydb"
-PORT=3000
-
-# Auth Plugin (Better Auth)
-BETTER_AUTH_SECRET="${authSecret}"
-BETTER_AUTH_URL="http://localhost:3000"
-
-# OAuth Providers (optional)
-# GOOGLE_CLIENT_ID=""
-# GOOGLE_CLIENT_SECRET=""
-# GITHUB_CLIENT_ID=""
-# GITHUB_CLIENT_SECRET=""`
-    }
-    return `DATABASE_URL="file:./dev.db"
-PORT=3000
-
-# Auth Plugin (Better Auth)
-BETTER_AUTH_SECRET="${authSecret}"
-BETTER_AUTH_URL="http://localhost:3000"
-
-# OAuth Providers (optional)
-# GOOGLE_CLIENT_ID=""
-# GOOGLE_CLIENT_SECRET=""
-# GITHUB_CLIENT_ID=""
-# GITHUB_CLIENT_SECRET=""`
+  hono: {
+    name: "Hono",
+    description: "Ultrafast, lightweight, edge-ready",
+    templates: honoTemplates,
   },
-
-  ".gitignore": () => `# Dependencies
-node_modules
-
-# Build
-dist
-
-# Environment
-.env
-.env.local
-
-# Database
-*.db
-*.db-journal
-
-# Generated (can be regenerated)
-generated
-
-# IDE
-.vscode
-.idea
-
-# OS
-.DS_Store`,
-
-  // ==========================================================================
-  // src/entities/
-  // ==========================================================================
-
-  "src/entities/index.ts": () => `// =============================================================================
-// ENTITY EXPORTS
-// Add your entities here after creating them
-// =============================================================================
-
-// Example: Create src/entities/post.ts and export it here
-// export { post } from "./post.js"
-`,
-
-  "src/entities/.gitkeep": () => `# Your custom entities go here
-# Example: post.ts
-
-# import { entity, string, text, bool, belongsTo } from "nevr"
-#
-# export const post = entity("post", {
-#   title: string.min(1).max(200),
-#   body: text,
-#   published: bool.default(false),
-# })
-`,
-
-  // ==========================================================================
-  // src/hooks/ (example)
-  // ==========================================================================
-
-  "src/hooks/.gitkeep": () => `# Custom lifecycle hooks go here
-# Example: post.hooks.ts
-
-# import type { Plugin } from "nevr"
-#
-# export const postHooks: Plugin = {
-#   name: "post-hooks",
-#   hooks: {
-#     beforeCreate: async (ctx) => {
-#       if (ctx.entity === "post") {
-#         // Generate slug from title
-#         const title = ctx.input.title as string
-#         ctx.setInput({ slug: title.toLowerCase().replace(/\\s+/g, "-") })
-#       }
-#     }
-#   }
-# }
-`,
-
-  // ==========================================================================
-  // src/plugins/ 
-  // ==========================================================================
-
-  "src/plugins/auth.ts": () => `// =============================================================================
-// AUTH PLUGIN CONFIGURATION
-// Powered by Better Auth
-// =============================================================================
-
-import { auth } from "nevr/plugins/auth"
-
-/**
- * Auth plugin configuration
- * 
- * This plugin provides:
- * - Email/password authentication
- * - Session management (cookies)
- * - OAuth providers (Google, GitHub, Discord, Apple)
- * - JWT tokens for API authentication
- * 
- * Routes (auto-mounted at /api/auth/*):
- * - POST /api/auth/sign-up      Create account
- * - POST /api/auth/sign-in      Sign in  
- * - POST /api/auth/sign-out     Sign out
- * - GET  /api/auth/session      Get current session
- */
-export const authPlugin = auth({
-  // Secret is loaded from BETTER_AUTH_SECRET env variable
-  // You can also set it explicitly: secret: "your-secret-here"
-  
-  // Auth mode: "session" (cookies) | "bearer" (API tokens) | "jwt" (JWT tokens)
-  mode: "session",
-  
-  // Enable email/password authentication
-  emailAndPassword: true,
-  
-  // OAuth providers (uncomment and configure in .env)
-  // providers: {
-  //   google: {
-  //     clientId: process.env.GOOGLE_CLIENT_ID!,
-  //     clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-  //   },
-  //   github: {
-  //     clientId: process.env.GITHUB_CLIENT_ID!,
-  //     clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-  //   },
-  // },
-})
-`,
-
-  "src/plugins/index.ts": () => `// =============================================================================
-// PLUGIN EXPORTS
-// Export all plugins from here
-// =============================================================================
-
-export { authPlugin } from "./auth.js"
-`,
-
-  // ==========================================================================
-  // src/routes/ (example)
-  // ==========================================================================
-
-  "src/routes/.gitkeep": () => `# Custom routes go here (non-CRUD endpoints)
-# Example: auth.ts
-
-# import type { Route } from "nevr"
-#
-# export const authRoutes: Route[] = [
-#   {
-#     method: "POST",
-#     path: "/auth/login",
-#     handler: async (req, zapi) => {
-#       // Your login logic here
-#       return { status: 200, body: { token: "..." } }
-#     }
-#   },
-#   {
-#     method: "POST",
-#     path: "/auth/logout",
-#     handler: async (req, zapi) => {
-#       return { status: 200, body: { success: true } }
-#     }
-#   }
-# ]
-`,
-
-  // ==========================================================================
-  // src/middleware/ (example)
-  // ==========================================================================
-
-  "src/middleware/.gitkeep": () => `# Custom middleware go here
-# Example: rate-limit.ts
-
-# import type { Middleware } from "nevr"
-#
-# export const rateLimitMiddleware: Middleware = {
-#   name: "rate-limit",
-#   handler: async (ctx, next) => {
-#     // Your rate limiting logic here
-#     await next()
-#   }
-# }
-`,
-
-  // ==========================================================================
-  // src/utils/ (example)
-  // ==========================================================================
-
-  "src/utils/.gitkeep": () => `# Utility functions go here
-# Example: email.ts, validation.ts, etc.
-`,
-
-  // ==========================================================================
-  // src/config.ts
-  // ==========================================================================
-
-  "src/config.ts": (db: string) => `// =============================================================================
-// NEVR CONFIGURATION
-// =============================================================================
-
-// Import entities (add your entities here)
-import * as entities from "./entities/index.js"
-
-// Import plugins
-import { authPlugin } from "./plugins/index.js"
-
-// Convert entity exports to array
-const entityArray = Object.values(entities).filter(e => e && typeof e === "object")
-
-export const config = {
-  // Database provider
-  database: "${db}" as const,
-
-  // Your custom entities (defined in src/entities/)
-  entities: entityArray,
-
-  // Plugins
-  plugins: [
-    // Auth plugin - provides user authentication
-    // See src/plugins/auth.ts for configuration
-    authPlugin,
-  ],
-}
-
-export default config
-`,
-
-  // ==========================================================================
-  // src/generate.ts
-  // ==========================================================================
-
-  "src/generate.ts": (db: string) => `// =============================================================================
-// GENERATOR SCRIPT
-// Run: npm run generate
-// =============================================================================
-
-import "dotenv/config"
-import { generate } from "@nevr/generator"
-import { config } from "./config.js"
-
-// Get entities from plugins (auth plugin adds user, session, account, verification)
-const pluginEntities = config.plugins
-  .filter(p => p && typeof p === "object" && "entities" in p)
-  .flatMap((p: any) => p.entities || [])
-
-// Combine custom entities + plugin entities
-const allEntities = [...config.entities, ...pluginEntities]
-
-// Check for name collisions
-const entityNames = allEntities.map((e: any) => e.name || e._name)
-const duplicates = entityNames.filter((name: string, i: number) => entityNames.indexOf(name) !== i)
-if (duplicates.length > 0) {
-  console.error(\`❌ Entity name collision detected: \${duplicates.join(", ")}\`)
-  console.error("Plugin entities cannot have the same name as your custom entities.")
-  process.exit(1)
-}
-
-console.log("📦 Generating schema for entities:")
-entityNames.forEach((name: string) => console.log(\`   - \${name}\`))
-
-generate(allEntities, {
-  outDir: "./generated",
-  prismaProvider: "${db}",
-})
-`,
-
-  // ==========================================================================
-  // src/index.ts
-  // ==========================================================================
-
-  "src/index.ts": () => `// =============================================================================
-// NEVR SERVER
-// =============================================================================
-
-// Load environment variables FIRST
-import "dotenv/config"
-
-import express from "express"
-import { PrismaClient } from "@prisma/client"
-import { zapi } from "nevr"
-import { prisma } from "nevr/drivers/prisma"
-import { expressAdapter } from "nevr/adapters/express"
-import { config } from "./config.js"
-
-// -----------------------------------------------------------------------------
-// Initialize
-// -----------------------------------------------------------------------------
-
-const db = new PrismaClient()
-
-const api = zapi({
-  entities: config.entities,
-  driver: prisma(db),
-  plugins: config.plugins,
-})
-
-// -----------------------------------------------------------------------------
-// Express App
-// -----------------------------------------------------------------------------
-
-const app = express()
-app.use(express.json())
-
-// Health check (outside zapi)
-app.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() })
-})
-
-// Mount zapi API
-// The auth plugin automatically handles user extraction from sessions
-app.use("/api", expressAdapter(api, {
-  cors: true,
-  debugLogs: process.env.NODE_ENV !== "production",
-}))
-
-// -----------------------------------------------------------------------------
-// Start Server
-// -----------------------------------------------------------------------------
-
-const port = parseInt(process.env.PORT || "3000")
-
-app.listen(port, () => {
-  console.log(\`
-╔════════════════════════════════════════════════════════════════╗
-║                                                                ║
-║   🚀 nevr server running!                                      ║
-║                                                                ║
-║   Local:      http://localhost:\${port}                           ║
-║   API:        http://localhost:\${port}/api                       ║
-║   Health:     http://localhost:\${port}/health                    ║
-║                                                                ║
-╠════════════════════════════════════════════════════════════════╣
-║                                                                ║
-║   Auth Endpoints (from auth plugin):                           ║
-║   ────────────────────────────────────────────────────────     ║
-║   POST    /api/auth/sign-up       Create account               ║
-║   POST    /api/auth/sign-in       Sign in                      ║
-║   POST    /api/auth/sign-out      Sign out                     ║
-║   GET     /api/auth/session       Get current session          ║
-║                                                                ║
-╠════════════════════════════════════════════════════════════════╣
-║                                                                ║
-║   CRUD Endpoints:                                              ║
-║   ────────────────────────────────────────────────────────     ║
-║   Your custom entities will have auto-generated CRUD routes.   ║
-║   Create entities in src/entities/ and run npm run generate.   ║
-║                                                                ║
-╠════════════════════════════════════════════════════════════════╣
-║                                                                ║
-║   Query Parameters:                                            ║
-║   ────────────────────────────────────────────────────────     ║
-║   ?filter[field]=value      Filter by field                    ║
-║   ?sort=field               Sort ascending                     ║
-║   ?sort=-field              Sort descending                    ║
-║   ?limit=20&offset=0        Pagination                         ║
-║   ?include=relation         Include relations                  ║
-║                                                                ║
-╚════════════════════════════════════════════════════════════════╝
-\`)
-})
-
-// Graceful shutdown
-process.on("SIGINT", async () => {
-  await db.$disconnect()
-  process.exit(0)
-})
-`,
-
-  // ==========================================================================
-  // README.md
-  // ==========================================================================
-
-  "README.md": (name: string) => `# ${name}
-
-A REST API powered by [nevr](https://github.com/nevr-ts/nevr).
-
-## Quick Start
-
-\`\`\`bash
-# Install dependencies
-npm install
-
-# Generate Prisma schema, types, and API client
-npm run generate
-
-# Create database tables
-npm run db:push
-
-# Start development server
-npm run dev
-\`\`\`
-
-Your API is running at \`http://localhost:3000/api\` 🚀
-
-## Project Structure
-
-\`\`\`
-${name}/
-├── src/
-│   ├── entities/           # Entity definitions
-│   │   ├── user.ts
-│   │   ├── post.ts
-│   │   ├── comment.ts
-│   │   └── index.ts
-│   │
-│   ├── hooks/              # Custom lifecycle hooks
-│   ├── plugins/            # Custom plugins
-│   ├── routes/             # Custom routes (non-CRUD)
-│   ├── middleware/         # Custom middleware
-│   ├── utils/              # Utility functions
-│   │
-│   ├── config.ts           # Nevr configuration
-│   ├── generate.ts         # Generator script
-│   └── index.ts            # Server entry point
-│
-├── generated/              # Auto-generated (don't edit)
-│   ├── prisma/
-│   │   └── schema.prisma   # Database schema
-│   ├── types.ts            # TypeScript types
-│   └── client.ts           # API client for frontend
-│
-└── package.json
-\`\`\`
-
-## Adding a New Entity
-
-1. Create \`src/entities/product.ts\`:
-
-\`\`\`typescript
-import { entity, string, int, float, belongsTo } from "nevr"
-import { user } from "./user.js"
-
-export const product = entity("product", {
-  name: string.min(1).max(200),
-  description: string.optional(),
-  price: float.min(0),
-  stock: int.default(0),
-  seller: belongsTo(() => user),
-}).ownedBy("seller")
-\`\`\`
-
-2. Export from \`src/entities/index.ts\`:
-
-\`\`\`typescript
-export { product } from "./product.js"
-\`\`\`
-
-3. Add to \`src/config.ts\`:
-
-\`\`\`typescript
-import { user, post, comment, product } from "./entities/index.js"
-
-export const config = {
-  entities: [user, post, comment, product],
-  // ...
-}
-\`\`\`
-
-4. Regenerate and update database:
-
-\`\`\`bash
-npm run generate
-npm run db:push
-\`\`\`
-
-## Test with curl
-
-\`\`\`bash
-# Health check
-curl http://localhost:3000/health
-
-# Create a user
-curl -X POST http://localhost:3000/api/users \\
-  -H "Content-Type: application/json" \\
-  -d '{"email": "john@example.com", "name": "John"}'
-
-# List users
-curl http://localhost:3000/api/users
-
-# Create a post (requires auth)
-curl -X POST http://localhost:3000/api/posts \\
-  -H "Content-Type: application/json" \\
-  -H "X-User-Id: <user-id>" \\
-  -d '{"title": "Hello World", "body": "My first post"}'
-
-# List posts with filters
-curl "http://localhost:3000/api/posts?filter[published]=true&sort=-createdAt&limit=10"
-
-# Get post with author included
-curl "http://localhost:3000/api/posts/<post-id>?include=author"
-
-# Update post (owner only)
-curl -X PUT http://localhost:3000/api/posts/<post-id> \\
-  -H "Content-Type: application/json" \\
-  -H "X-User-Id: <user-id>" \\
-  -d '{"published": true}'
-
-# Delete post (owner only)
-curl -X DELETE http://localhost:3000/api/posts/<post-id> \\
-  -H "X-User-Id: <user-id>"
-\`\`\`
-
-## Using the Generated Client
-
-The generated \`client.ts\` provides a typed API client for your frontend:
-
-\`\`\`typescript
-import { createClient } from "./generated/client"
-
-const api = createClient({
-  baseUrl: "http://localhost:3000/api",
-  headers: { "X-User-Id": "user-123" }
-})
-
-// Fully typed!
-const posts = await api.posts.list({
-  filter: { published: true },
-  sort: "-createdAt",
-  limit: 10
-})
-
-const post = await api.posts.create({
-  title: "Hello",
-  body: "World"
-})
-\`\`\`
-
-## Scripts
-
-| Script | Description |
-|--------|-------------|
-| \`npm run dev\` | Start development server with hot reload |
-| \`npm run generate\` | Generate Prisma schema, types, and client |
-| \`npm run db:push\` | Push schema to database (dev) |
-| \`npm run db:migrate\` | Create migration (prod) |
-| \`npm run db:studio\` | Open Prisma Studio |
-| \`npm run build\` | Build for production |
-| \`npm start\` | Start production server |
-
-## Learn More
-
-- [nevr Documentation](https://github.com/nevr-ts/nevr)
-- [Prisma Documentation](https://www.prisma.io/docs)
-`,
 }
 
 // -----------------------------------------------------------------------------
-// Main
+// Project Generator
 // -----------------------------------------------------------------------------
 
-async function main() {
-  console.log(`
-╔════════════════════════════════════════════════════════════╗
-║                                                            ║
-║   ⚡ create-nevr                                            ║
-║   Nevr write boilerplate again                             ║
-║                                                            ║
-╚════════════════════════════════════════════════════════════╝
-`)
-
-  const response = await prompts([
-    {
-      type: "text",
-      name: "name",
-      message: "Project name:",
-      initial: "my-api",
-      validate: (v) =>
-        /^[a-z0-9-]+$/.test(v) || "Use lowercase letters, numbers, and hyphens",
-    },
-    {
-      type: "select",
-      name: "database",
-      message: "Database:",
-      choices: [
-        { title: "SQLite (default, easy start)", value: "sqlite" },
-        { title: "PostgreSQL", value: "postgresql" },
-        { title: "MySQL", value: "mysql" },
-      ],
-    },
-    {
-      type: "select",
-      name: "pm",
-      message: "Package manager:",
-      choices: [
-        { title: "npm", value: "npm" },
-        { title: "pnpm", value: "pnpm" },
-        { title: "bun", value: "bun" },
-      ],
-    },
-    {
-      type: "confirm",
-      name: "install",
-      message: "Install dependencies?",
-      initial: true,
-    },
-  ])
-
-  if (!response.name) {
-    console.log("Cancelled")
-    process.exit(0)
-  }
-
-  const { name, database, pm, install } = response
+function generateProject(config: ProjectConfig): void {
+  const { name, template, database, withAuth, packageManager } = config
   const dir = join(process.cwd(), name)
 
-  // Check if directory exists
   if (existsSync(dir)) {
-    console.error(`❌ Directory "${name}" already exists`)
+    console.error(`\n❌ Directory "${name}" already exists\n`)
     process.exit(1)
   }
 
@@ -721,59 +149,61 @@ async function main() {
     "src",
     "src/entities",
     "src/hooks",
-    "src/plugins",
     "src/routes",
     "src/middleware",
     "src/utils",
-    "generated",
+    "prisma",
   ]
+
+  if (withAuth) {
+    directories.push("src/plugins")
+  }
 
   for (const d of directories) {
     mkdirSync(join(dir, d), { recursive: true })
   }
 
-  // Write files
-  const files: [string, string][] = [
-    // Root files
-    ["package.json", templates["package.json"](name, database)],
-    ["tsconfig.json", templates["tsconfig.json"]()],
-    [".env", templates[".env"](database)],
-    [".gitignore", templates[".gitignore"]()],
-    ["README.md", templates["README.md"](name)],
+  // Get templates
+  const frameworkTemplates = templateConfig[template].templates
+  const files: [string, string][] = []
 
-    // src/ files
-    ["src/config.ts", (templates as any)["src/config.ts"](database)],
-    ["src/generate.ts", (templates as any)["src/generate.ts"](database)],
-    ["src/index.ts", templates["src/index.ts"]()],
+  // Add base templates
+  files.push(["tsconfig.json", baseTemplates["tsconfig.json"]()])
+  files.push([".gitignore", baseTemplates[".gitignore"]()])
+  files.push([".env", baseTemplates[".env"](database, withAuth)])
+  files.push(["src/entities/index.ts", baseTemplates["src/entities/index.ts"]()])
+  files.push(["src/entities/.gitkeep", baseTemplates["src/entities/.gitkeep"]()])
+  files.push(["src/hooks/.gitkeep", baseTemplates["src/hooks/.gitkeep"]()])
+  files.push(["src/routes/.gitkeep", baseTemplates["src/routes/.gitkeep"]()])
+  files.push(["src/middleware/.gitkeep", baseTemplates["src/middleware/.gitkeep"]()])
+  files.push(["src/utils/.gitkeep", baseTemplates["src/utils/.gitkeep"]()])
+  files.push(["src/nevr.config.ts", baseTemplates["src/nevr.config.ts"](database, withAuth)])
+  files.push(["src/generate.ts", baseTemplates["src/generate.ts"](database)])
 
-    // src/entities/ (empty - user creates their own)
-    ["src/entities/index.ts", (templates as any)["src/entities/index.ts"]()],
-    ["src/entities/.gitkeep", (templates as any)["src/entities/.gitkeep"]()],
+  // Add auth plugin if enabled
+  if (withAuth) {
+    files.push(["src/plugins/auth.ts", baseTemplates["src/plugins/auth.ts"]()])
+    files.push(["src/plugins/index.ts", baseTemplates["src/plugins/index.ts"]()])
+  }
 
-    // src/plugins/ (with auth plugin)
-    ["src/plugins/auth.ts", (templates as any)["src/plugins/auth.ts"]()],
-    ["src/plugins/index.ts", (templates as any)["src/plugins/index.ts"]()],
+  // Add framework-specific templates
+  files.push(["package.json", frameworkTemplates["package.json"](name, database, withAuth)])
+  files.push(["src/server.ts", frameworkTemplates["src/server.ts"](withAuth)])
+  files.push(["README.md", frameworkTemplates["README.md"](name)])
 
-    // Placeholder files with examples
-    ["src/hooks/.gitkeep", (templates as any)["src/hooks/.gitkeep"]()],
-    ["src/routes/.gitkeep", (templates as any)["src/routes/.gitkeep"]()],
-    ["src/middleware/.gitkeep", (templates as any)["src/middleware/.gitkeep"]()],
-    ["src/utils/.gitkeep", (templates as any)["src/utils/.gitkeep"]()],
-  ]
-
+  // Write all files
   for (const [path, content] of files) {
     writeFileSync(join(dir, path), content)
     console.log(`   ✅ ${path}`)
   }
 
   // Install dependencies
-  if (install) {
-    console.log(`\n📦 Installing dependencies with ${pm}...\n`)
+  if (config.install) {
+    console.log(`\n📦 Installing dependencies with ${packageManager}...\n`)
 
-    const installCmd =
-      pm === "npm"
-        ? "npm install"
-        : pm === "pnpm"
+    const installCmd = packageManager === "npm"
+      ? "npm install"
+      : packageManager === "pnpm"
         ? "pnpm install"
         : "bun install"
 
@@ -785,22 +215,147 @@ async function main() {
     }
   }
 
+  // Success message
   const padName = name.padEnd(48)
-
   console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║                                                            ║
 ║   ✅ Project created!                                      ║
 ║                                                            ║
+║   Template: ${templateConfig[template].name.padEnd(43)}║
+║                                                            ║
 ║   Next steps:                                              ║
 ║                                                            ║
 ║   cd ${padName}║
-║   npm run generate     # Generate Prisma schema            ║
+║   ${config.install ? "" : `${packageManager} install`.padEnd(52)}${config.install ? "" : "║\n║   "}npm run generate     # Generate Prisma schema           ║
 ║   npm run db:push      # Create database                   ║
 ║   npm run dev          # Start server                      ║
 ║                                                            ║
 ╚════════════════════════════════════════════════════════════╝
 `)
+}
+
+// -----------------------------------------------------------------------------
+// Main
+// -----------------------------------------------------------------------------
+
+async function main() {
+  const args = parseCliArgs()
+
+  // Handle --help
+  if (args.help) {
+    console.log(HELP)
+    process.exit(0)
+  }
+
+  // Handle --version
+  if (args.version) {
+    console.log(`create-nevr v${VERSION}`)
+    process.exit(0)
+  }
+
+  // Banner
+  console.log(`
+╔════════════════════════════════════════════════════════════╗
+║                                                            ║
+║   ⚡ create-nevr                                           ║
+║   Nevr write boilerplate again                             ║
+║                                                            ║
+╚════════════════════════════════════════════════════════════╝
+`)
+
+  // Non-interactive mode with defaults
+  if (args.noInteractive) {
+    const config: ProjectConfig = {
+      name: args.projectName || "my-api",
+      template: args.template || "express",
+      database: args.database || "sqlite",
+      withAuth: args.withAuth ?? false,
+      packageManager: args.packageManager || "npm",
+      install: args.install ?? true,
+    }
+
+    if (!isValidName(config.name)) {
+      console.error("❌ Invalid project name. Use lowercase letters, numbers, and hyphens.")
+      process.exit(1)
+    }
+
+    generateProject(config)
+    return
+  }
+
+  // Interactive mode
+  const response = await prompts([
+    {
+      type: args.projectName ? null : "text",
+      name: "name",
+      message: "Project name:",
+      initial: "my-api",
+      validate: (v) => isValidName(v) || "Use lowercase letters, numbers, and hyphens",
+    },
+    {
+      type: args.template ? null : "select",
+      name: "template",
+      message: "Framework:",
+      choices: [
+        { title: "Express (Recommended)", description: "Classic Node.js framework", value: "express" },
+        { title: "Hono", description: "Ultrafast, edge-ready", value: "hono" },
+      ],
+    },
+    {
+      type: args.database ? null : "select",
+      name: "database",
+      message: "Database:",
+      choices: [
+        { title: "SQLite (Easy start)", value: "sqlite" },
+        { title: "PostgreSQL", value: "postgresql" },
+        { title: "MySQL", value: "mysql" },
+      ],
+    },
+    {
+      type: args.withAuth !== undefined ? null : "confirm",
+      name: "withAuth",
+      message: "Include auth plugin?",
+      initial: false,
+    },
+    {
+      type: args.packageManager ? null : "select",
+      name: "pm",
+      message: "Package manager:",
+      choices: [
+        { title: "npm", value: "npm" },
+        { title: "pnpm", value: "pnpm" },
+        { title: "bun", value: "bun" },
+      ],
+    },
+    {
+      type: args.install !== undefined ? null : "confirm",
+      name: "install",
+      message: "Install dependencies?",
+      initial: true,
+    },
+  ])
+
+  // Merge CLI args with prompts
+  const config: ProjectConfig = {
+    name: args.projectName || response.name,
+    template: args.template || response.template || "express",
+    database: args.database || response.database || "sqlite",
+    withAuth: args.withAuth ?? response.withAuth ?? false,
+    packageManager: args.packageManager || response.pm || "npm",
+    install: args.install ?? response.install ?? true,
+  }
+
+  if (!config.name) {
+    console.log("\nCancelled")
+    process.exit(0)
+  }
+
+  generateProject(config)
+}
+
+function isValidName(name: string): boolean {
+  return /^[a-z0-9-]+$/.test(name)
 }
 
 main().catch(console.error)

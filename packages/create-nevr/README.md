@@ -1,6 +1,8 @@
-# create-nevr
+<h1 align="center">⚡ create-nevr</h1>
 
-> Scaffold a new [Nevr](https://github.com/nevr-ts/nevr) project in seconds — Nevr write boilerplate again
+<p align="center">
+  <strong>Scaffold a production-ready Nevr project in seconds</strong>
+</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/create-nevr"><img src="https://img.shields.io/npm/v/create-nevr.svg?style=flat-square&color=blue" alt="npm version"></a>
@@ -10,254 +12,153 @@
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Create Your Project
 
 ```bash
 npm create nevr@latest
 ```
 
-Or use your preferred package manager:
+That's it. The wizard guides you through setup.
+
+---
+
+## ⚡ One-Liner (Non-Interactive)
 
 ```bash
-# npm
-npm create nevr@latest
-
-# pnpm
-pnpm create nevr
-
-# yarn
-yarn create nevr
-
-# bun
-bun create nevr
+npm create nevr@latest my-api -t express -d postgresql --auth --no-interactive
 ```
 
-## ✨ Interactive Setup
+---
 
-The scaffolder guides you through project setup:
+## 🎯 CLI Options
 
-```
-┌  Create Nevr Project
-│
-◆  Project name?
-│  my-api
-│
-◆  Which database?
-│  ○ SQLite (default, no setup needed)
-│  ○ PostgreSQL
-│  ○ MySQL
-│
-◆  Package manager?
-│  ○ npm
-│  ○ pnpm
-│  ○ bun
-│
-◆  Install dependencies?
-│  ○ Yes
-│  ○ No
-│
-└  Done! 🎉
-```
+| Option | Alias | Description |
+|--------|-------|-------------|
+| `--template <name>` | `-t` | `express` or `hono` |
+| `--database <db>` | `-d` | `sqlite`, `postgresql`, `mysql` |
+| `--auth` | | Include authentication |
+| `--no-auth` | | Skip authentication |
+| `--pm <manager>` | `-p` | `npm`, `pnpm`, or `bun` |
+| `--no-install` | | Skip dependency installation |
+| `--no-interactive` | | Use defaults, no prompts |
 
-## 📁 Project Structure
+---
 
-Creates a production-ready project structure:
+## 📁 What You Get
 
 ```
 my-api/
 ├── src/
-│   ├── entities/           # Your entity definitions
-│   │   └── index.ts        # Export your entities here
-│   │
-│   ├── hooks/              # Custom lifecycle hooks
-│   ├── plugins/            # Plugin configurations
-│   │   ├── auth.ts         # Better Auth setup
-│   │   └── index.ts
-│   ├── routes/             # Custom routes (non-CRUD)
-│   ├── middleware/         # Custom middleware
-│   ├── utils/              # Utility functions
-│   │
-│   ├── config.ts           # Nevr configuration
-│   ├── generate.ts         # Generator script
-│   └── index.ts            # Server entry point
-│
-├── generated/              # Auto-generated (don't edit)
-│   ├── prisma/
-│   │   └── schema.prisma
-│   ├── types.ts
-│   └── client.ts
-│
+│   ├── entities/          # Your domain models
+│   ├── plugins/           # Plugin configurations
+│   ├── hooks/             # Lifecycle hooks
+│   ├── routes/            # Custom endpoints
+│   ├── nevr.config.ts     # Main configuration
+│   └── server.ts          # Entry point
+├── prisma/                # Database schema
 ├── package.json
 ├── tsconfig.json
-├── .env                    # Environment variables
-├── .gitignore
-└── README.md
+└── .env
 ```
 
-## 🎯 After Scaffolding
+---
+
+## 🎬 After Creation
 
 ```bash
 cd my-api
 
-# 1. Generate Prisma schema from your entities
+# Generate Prisma schema
 npm run generate
 
-# 2. Create database tables
+# Create database tables
 npm run db:push
 
-# 3. Start development server
+# Start development
 npm run dev
 ```
 
-Your API is now running at **http://localhost:3000/api** 🚀
+**Your API is live at http://localhost:3000/api** 🎉
 
-## 📖 Available Scripts
+---
+
+## 📜 Available Scripts
 
 | Script | Description |
 |--------|-------------|
-| `npm run dev` | Start development server with hot reload |
-| `npm run build` | Build for production |
-| `npm run start` | Run production server |
-| `npm run generate` | Generate Prisma schema & types |
+| `npm run dev` | Start with hot reload |
+| `npm run build` | Production build |
+| `npm run generate` | Generate schema & types |
 | `npm run db:push` | Push schema to database |
 | `npm run db:migrate` | Create migration |
 | `npm run db:studio` | Open Prisma Studio |
 
-## 🔐 Authentication
+---
 
-The scaffolded project includes [Better Auth](https://better-auth.com) pre-configured:
+## 🔐 Authentication (Optional)
+
+When `--auth` is enabled, you get:
 
 ```typescript
-// src/plugins/auth.ts
-import { auth } from "nevr/plugins/auth"
+// Endpoints auto-mounted at /api/auth/*
+POST /api/auth/sign-up
+POST /api/auth/sign-in
+POST /api/auth/sign-out
+GET  /api/auth/session
+```
 
-export const authPlugin = auth({
-  mode: "session",
+Configure OAuth in `src/plugins/auth.ts`:
+
+```typescript
+auth({
   emailAndPassword: true,
-  // Uncomment for OAuth:
-  // providers: {
-  //   google: { clientId: "...", clientSecret: "..." },
-  //   github: { clientId: "...", clientSecret: "..." },
-  // },
+  socialProviders: {
+    google: { clientId: "...", clientSecret: "..." },
+    github: { clientId: "...", clientSecret: "..." },
+  },
 })
 ```
 
-**Auth endpoints (auto-mounted):**
-- `POST /api/auth/sign-up` — Create account
-- `POST /api/auth/sign-in` — Sign in
-- `POST /api/auth/sign-out` — Sign out
-- `GET /api/auth/session` — Get current session
+---
 
-## ➕ Adding Entities
+## 🌐 Templates
 
-Create your entities in `src/entities/`:
+### Express (Recommended)
 
-```typescript
-// src/entities/post.ts
-import { entity, string, text, bool, belongsTo } from "nevr"
-import { authUser } from "nevr/plugins/auth"
+Battle-tested Node.js framework. Great for most projects.
 
-export const post = entity("post", {
-  title: string.min(1).max(200),
-  content: text,
-  published: bool.default(false),
-  author: belongsTo(authUser),  // Reference auth plugin's user
-})
-  .ownedBy("author")
-  .rules({
-    create: ["authenticated"],
-    read: ["everyone"],
-    update: ["owner"],
-    delete: ["owner", "admin"],
-  })
-  .build()
-```
+### Hono
 
-Then export it:
+Ultrafast, edge-ready. Perfect for Cloudflare Workers, Vercel Edge.
 
-```typescript
-// src/entities/index.ts
-export { post } from "./post.js"
-```
+---
 
-And add to config:
+## 📊 Databases
 
-```typescript
-// src/config.ts
-import { post } from "./entities/index.js"
+| Database | When to use |
+|----------|-------------|
+| **SQLite** | Development, small projects, embedded |
+| **PostgreSQL** | Production, complex queries, scale |
+| **MySQL** | Production, existing MySQL infrastructure |
 
-export default {
-  entities: [post],
-  // ...
-}
-```
+---
 
-Regenerate and push:
-
-```bash
-npm run generate
-npm run db:push
-```
-
-## 🔍 Query API
-
-All entity endpoints support powerful querying:
-
-```bash
-# Filtering
-GET /api/posts?filter[published]=true
-
-# Sorting
-GET /api/posts?sort=-createdAt     # Descending
-
-# Pagination
-GET /api/posts?limit=20&offset=0
-
-# Include relations
-GET /api/posts?include=author
-```
-
-## 🌐 Environment Variables
-
-Configure in `.env`:
-
-```env
-# Database
-DATABASE_URL="file:./dev.db"       # SQLite
-# DATABASE_URL="postgresql://..."   # PostgreSQL
-# DATABASE_URL="mysql://..."        # MySQL
-
-# Server
-PORT=3000
-
-# Auth (Better Auth)
-BETTER_AUTH_SECRET="your-secret-here"
-BETTER_AUTH_URL="http://localhost:3000"
-
-# OAuth (optional)
-# GOOGLE_CLIENT_ID=""
-# GOOGLE_CLIENT_SECRET=""
-# GITHUB_CLIENT_ID=""
-# GITHUB_CLIENT_SECRET=""
-```
-
-## 📚 Related Packages
+## 📚 Related
 
 | Package | Description |
 |---------|-------------|
-| [`nevr`](https://www.npmjs.com/package/nevr) | Core framework |
-| [`@nevr/cli`](https://www.npmjs.com/package/@nevr/cli) | CLI for schema generation |
-| [`@nevr/generator`](https://www.npmjs.com/package/@nevr/generator) | Generator library |
+| [`nevr`](https://npmjs.com/package/nevr) | Core framework |
+| [`@nevr/cli`](https://npmjs.com/package/@nevr/cli) | CLI commands |
+| [`@nevr/generator`](https://npmjs.com/package/@nevr/generator) | Code generator |
 
-## 🤝 Contributing
-
-We welcome contributions! See our [Contributing Guide](https://github.com/nevr-ts/nevr/blob/main/CONTRIBUTING.md).
+---
 
 ## 📄 License
 
 [MIT](https://github.com/nevr-ts/nevr/blob/main/LICENSE) © Nevr Contributors
-- [Prisma Documentation](https://prisma.io/docs)
 
-## License
+---
 
-MIT
+<p align="center">
+  <strong>Nevr write boilerplate again.</strong>
+</p>
