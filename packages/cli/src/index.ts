@@ -36,20 +36,29 @@ program
 
 program
   .command("generate")
-  .description("Generate Prisma schema, types, and client from entities")
+  .description("Generate Prisma schema from entities")
   .option("-c, --config <path>", "Path to nevr config file", "./nevr.config.ts")
-  .option("-o, --out <dir>", "Output directory", "./generated")
+  .option("-o, --out <dir>", "Output directory for schema", "./prisma")
   .option("-p, --provider <provider>", "Database provider (sqlite, postgresql, mysql)", "sqlite")
+  .option("-f, --force", "Force full regeneration, ignoring cache", false)
+  .option("--no-cache", "Disable incremental caching")
+  .addHelpText('after', `
+Examples:
+  $ nevr generate                              # Use defaults
+  $ nevr generate -c ./src/nevr.config.ts      # Custom config file
+  $ nevr generate -p postgresql                # Use PostgreSQL
+  $ nevr generate -o ./db --force              # Custom output, force rebuild
+`)
   .action(async (options) => {
     try {
       console.log("\n⚡ nevr generate\n")
-      
+
       const configPath = resolve(process.cwd(), options.config)
 
       // Check for config file (ts, js, mjs)
       const extensions = [".ts", ".js", ".mjs"]
       let foundPath: string | null = null
-      
+
       for (const ext of extensions) {
         const testPath = configPath.endsWith(ext) ? configPath : configPath.replace(/\.[^.]+$/, ext)
         if (existsSync(testPath)) {
@@ -57,7 +66,7 @@ program
           break
         }
       }
-      
+
       // Also try without extension replacement
       if (!foundPath && existsSync(configPath)) {
         foundPath = configPath
@@ -121,17 +130,167 @@ Create a nevr.config.ts file with your entities:
       generate(entities, {
         outDir: options.out,
         prismaProvider: options.provider,
+        force: options.force,
+        incremental: options.cache !== false,
       })
 
       console.log(`
 ✅ Generation complete!
 
 Next steps:
-  1. Run: npx prisma db push --schema=${options.out}/prisma/schema.prisma
+  1. Run: npx prisma db push --schema=${options.out}/schema.prisma
   2. Import your entities and start the server
 `)
     } catch (error) {
       console.error("❌ Generation failed:", error)
+      process.exit(1)
+    }
+  })
+
+// -----------------------------------------------------------------------------
+// DB Push Command
+// -----------------------------------------------------------------------------
+
+program
+  .command("db:push")
+  .description("Push schema to database (creates tables)")
+  .option("-s, --schema <path>", "Path to Prisma schema", "./prisma/schema.prisma")
+  .option("--accept-data-loss", "Accept data loss for schema changes")
+  .addHelpText('after', `
+Examples:
+  $ nevr db:push                               # Push with default schema
+  $ nevr db:push -s ./db/schema.prisma         # Custom schema path
+  $ nevr db:push --accept-data-loss            # Accept breaking changes
+`)
+  .action(async (options) => {
+    const { execSync } = await import("child_process")
+    try {
+      console.log("\n⚡ nevr db:push\n")
+      const flags = options.acceptDataLoss ? "--accept-data-loss" : ""
+      execSync(`npx prisma db push --schema=${options.schema} ${flags}`, {
+        stdio: "inherit",
+        cwd: process.cwd(),
+      })
+    } catch {
+      process.exit(1)
+    }
+  })
+
+// -----------------------------------------------------------------------------
+// DB Migrate Command
+// -----------------------------------------------------------------------------
+
+program
+  .command("db:migrate")
+  .description("Create a migration (production-ready)")
+  .option("-s, --schema <path>", "Path to Prisma schema", "./prisma/schema.prisma")
+  .option("-n, --name <name>", "Migration name")
+  .addHelpText('after', `
+Examples:
+  $ nevr db:migrate                            # Interactive migration
+  $ nevr db:migrate -n add_user_role           # Named migration
+  $ nevr db:migrate -s ./db/schema.prisma      # Custom schema
+`)
+  .action(async (options) => {
+    const { execSync } = await import("child_process")
+    try {
+      console.log("\n⚡ nevr db:migrate\n")
+      const nameFlag = options.name ? `--name ${options.name}` : ""
+      execSync(`npx prisma migrate dev --schema=${options.schema} ${nameFlag}`, {
+        stdio: "inherit",
+        cwd: process.cwd(),
+      })
+    } catch {
+      process.exit(1)
+    }
+  })
+
+// -----------------------------------------------------------------------------
+// DB Studio Command
+// -----------------------------------------------------------------------------
+
+program
+  .command("db:studio")
+  .description("Open Prisma Studio to view/edit data")
+  .option("-s, --schema <path>", "Path to Prisma schema", "./prisma/schema.prisma")
+  .option("-p, --port <port>", "Port for Prisma Studio", "5555")
+  .addHelpText('after', `
+Examples:
+  $ nevr db:studio                             # Open on default port 5555
+  $ nevr db:studio -p 3333                     # Custom port
+`)
+  .action(async (options) => {
+    const { execSync } = await import("child_process")
+    try {
+      console.log("\n⚡ nevr db:studio\n")
+      console.log(`   Opening Prisma Studio on port ${options.port}...\n`)
+      execSync(`npx prisma studio --schema=${options.schema} --port=${options.port}`, {
+        stdio: "inherit",
+        cwd: process.cwd(),
+      })
+    } catch {
+      process.exit(1)
+    }
+  })
+
+// -----------------------------------------------------------------------------
+// DB Reset Command
+// -----------------------------------------------------------------------------
+
+program
+  .command("db:reset")
+  .description("Reset database (drop all data and recreate)")
+  .option("-s, --schema <path>", "Path to Prisma schema", "./prisma/schema.prisma")
+  .option("-f, --force", "Skip confirmation prompt")
+  .addHelpText('after', `
+Examples:
+  $ nevr db:reset                              # Reset with confirmation
+  $ nevr db:reset -f                           # Force reset (no prompt)
+`)
+  .action(async (options) => {
+    const { execSync } = await import("child_process")
+    try {
+      console.log("\n⚡ nevr db:reset\n")
+      const forceFlag = options.force ? "--force" : ""
+      execSync(`npx prisma migrate reset --schema=${options.schema} ${forceFlag}`, {
+        stdio: "inherit",
+        cwd: process.cwd(),
+      })
+    } catch {
+      process.exit(1)
+    }
+  })
+
+// -----------------------------------------------------------------------------
+// Dev Command (shortcut)
+// -----------------------------------------------------------------------------
+
+program
+  .command("dev")
+  .description("Start development workflow (generate + push + dev server)")
+  .option("-c, --config <path>", "Path to nevr config file", "./src/nevr.config.ts")
+  .addHelpText('after', `
+Examples:
+  $ nevr dev                                   # Full workflow with defaults
+  $ nevr dev -c ./config/entities.ts           # Custom config location
+`)
+  .action(async (options) => {
+    const { execSync } = await import("child_process")
+    try {
+      console.log("\n⚡ nevr dev - Starting development workflow\n")
+
+      // 1. Generate schema
+      console.log("1️⃣  Generating schema...")
+      execSync(`npx nevr generate -c ${options.config}`, { stdio: "inherit", cwd: process.cwd() })
+
+      // 2. Push to database
+      console.log("\n2️⃣  Pushing to database...")
+      execSync("npx prisma db push", { stdio: "inherit", cwd: process.cwd() })
+
+      // 3. Start dev server
+      console.log("\n3️⃣  Starting dev server...")
+      execSync("npm run dev", { stdio: "inherit", cwd: process.cwd() })
+    } catch {
       process.exit(1)
     }
   })
@@ -152,11 +311,19 @@ program
 Or manually:
 
    1. Create nevr.config.ts with your entities
-   2. Run: npx @nevr/cli generate
-   3. Run: npx prisma db push --schema=./generated/prisma/schema.prisma
-   4. Create your server file and run it
+   2. Run: npx nevr generate
+   3. Run: npx nevr db:push
+   4. Run: npm run dev
 
 Documentation: https://github.com/nevr-ts/nevr
+
+Available commands:
+   nevr generate     Generate Prisma schema from entities
+   nevr db:push      Push schema to database
+   nevr db:migrate   Create a migration
+   nevr db:studio    Open Prisma Studio
+   nevr db:reset     Reset database
+   nevr dev          Full development workflow
 `)
   })
 
