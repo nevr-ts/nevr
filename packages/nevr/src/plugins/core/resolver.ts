@@ -4,11 +4,13 @@
 // =============================================================================
 
 import type { Entity, FieldDef, Route, Middleware } from "../../types.js"
+import { getLogger } from "../../logger.js"
 import type {
-  ZapiPlugin,
+  NevrPlugin,
   PluginSchema,
   PluginExtension,
   PluginFieldDef,
+  PluginFieldDefObject,
   PluginEntityDef,
   PluginExtensionEntityDef,
   ResolvedPlugin,
@@ -16,45 +18,100 @@ import type {
   PluginLifecycleHooks,
   EntityRoutesConfig,
 } from "./contract.js"
+import { FieldBuilder, RelationBuilder, SelfRefBuilder } from "../../fields.js"
 
 // Re-export types for convenience
 export type { ResolvedEntityMeta, ResolvedPlugin } from "./contract.js"
 
 // -----------------------------------------------------------------------------
-// Convert Plugin Field to Zapi Field
+// Resolve PluginFieldDef to Plain Object
+// Converts FieldBuilder instances to PluginFieldDefObject for processing
 // -----------------------------------------------------------------------------
 
-function toZapiField(field: PluginFieldDef): FieldDef {
+export function resolvePluginFieldDef(field: PluginFieldDef): PluginFieldDefObject {
+  // If it's a FieldBuilder, build it to get the FieldDef
+  if (field instanceof FieldBuilder) {
+    const built = field._build()
+    return {
+      type: built.type as PluginFieldDefObject["type"],
+      required: !built.optional,
+      unique: built.unique,
+      default: built.default,
+      // Map security.omit to returned: false
+      input: built.security?.omit ? false : undefined,
+      returned: built.security?.omit ? false : undefined,
+    }
+  }
+
+  // If it's a RelationBuilder, build it
+  if (field instanceof RelationBuilder) {
+    const built = (field as any)._build("relation")
+    return {
+      type: "string",
+      required: !built.optional,
+      unique: built.unique,
+      references: built.relation ? {
+        entity: typeof built.relation.entity === "function"
+          ? built.relation.entity()?.name || "unknown"
+          : "unknown",
+        field: built.relation.references || "id",
+      } : undefined,
+    }
+  }
+
+  // If it's a SelfRefBuilder, build it
+  if (field instanceof SelfRefBuilder) {
+    const built = (field as any)._build("selfRef")
+    return {
+      type: "string",
+      required: !built.optional,
+      unique: built.unique,
+    }
+  }
+
+  // It's already a plain object
+  return field as PluginFieldDefObject
+}
+
+// -----------------------------------------------------------------------------
+// Convert Plugin Field to Nevr Field
+// -----------------------------------------------------------------------------
+
+function toNevrField(field: PluginFieldDef): FieldDef {
+  const resolved = resolvePluginFieldDef(field)
   return {
-    type: field.type,
-    optional: !field.required,
-    unique: field.unique || false,
-    default: field.default,
-    relation: field.references ? {
+    type: resolved.type,
+    optional: !resolved.required,
+    unique: resolved.unique || false,
+    default: resolved.default,
+    hasDefault: resolved.default !== undefined,
+    relation: resolved.references ? {
       type: "belongsTo",
-      entity: () => ({ name: field.references!.entity, config: { fields: {}, rules: {}, timestamps: false } }),
-      foreignKey: field.references.entity + "Id",
-      references: field.references.field || "id",
+      entity: () => ({ name: resolved.references!.entity, config: { fields: {}, rules: {}, timestamps: false } }),
+      foreignKey: resolved.references.entity + "Id",
+      references: resolved.references.field || "id",
     } : undefined,
   }
 }
 
 // -----------------------------------------------------------------------------
-// Convert Plugin Entity to Zapi Entity
+// Convert Plugin Entity to Nevr Entity
+// Entity-First: Plugin entities get the same capabilities as regular entities
 // -----------------------------------------------------------------------------
 
-function toZapiEntity(name: string, def: PluginEntityDef): Entity {
+function toNevrEntity(name: string, def: PluginEntityDef): Entity {
   const fields: Record<string, FieldDef> = {}
-  
+
   for (const [fieldName, fieldDef] of Object.entries(def.fields)) {
-    fields[fieldName] = toZapiField(fieldDef)
+    fields[fieldName] = toNevrField(fieldDef)
   }
-  
+
   return {
     name,
     config: {
       fields,
-      rules: {
+      // Use plugin entity rules OR internal entity rules
+      rules: def.rules || {
         // Internal entities have no public CRUD routes
         create: def.internal ? [] : undefined,
         read: def.internal ? [] : undefined,
@@ -63,6 +120,10 @@ function toZapiEntity(name: string, def: PluginEntityDef): Entity {
         list: def.internal ? [] : undefined,
       },
       timestamps: true,
+      // Entity-First: Carry over actions from plugin entity
+      actions: def.actions,
+      // Entity-First: Carry over validators from plugin entity
+      validators: def.validators,
     },
   }
 }
@@ -116,14 +177,14 @@ function applyExtension(
       const entity = result.entities[entityName]
 
       if (!entity) {
-        console.warn(`[${pluginId}] Cannot extend non-existent entity: ${entityName}`)
+        getLogger().warn(`[${pluginId}] Cannot extend non-existent entity: ${entityName}`)
         continue
       }
 
       // Remove entity if requested (and allowed)
       if (entityExt.remove) {
         if (entity.required) {
-          console.warn(`[${pluginId}] Cannot remove required entity: ${entityName}`)
+          getLogger().warn(`[${pluginId}] Cannot remove required entity: ${entityName}`)
         } else {
           delete result.entities[entityName]
           continue
@@ -188,14 +249,15 @@ function applyExtension(
 
           // Field operations require field to exist
           if (!field) {
-            console.warn(`[${pluginId}] Cannot modify non-existent field: ${targetName}.${fieldName}`)
+            getLogger().warn(`[${pluginId}] Cannot modify non-existent field: ${targetName}.${fieldName}`)
             continue
           }
 
           // Remove field (if not locked)
           if (fieldExt.remove) {
-            if (field.locked) {
-              console.warn(`[${pluginId}] Cannot remove locked field: ${targetName}.${fieldName}`)
+            const resolvedField = resolvePluginFieldDef(field)
+            if (resolvedField.locked) {
+              getLogger().warn(`[${pluginId}] Cannot remove locked field: ${targetName}.${fieldName}`)
             } else {
               delete targetEntity.fields[fieldName]
             }
@@ -260,11 +322,11 @@ function computeBasePath(meta: { id: string; basePath?: string | false }, extens
 
 // -----------------------------------------------------------------------------
 // Resolve Plugin
-// Applies extension and converts to Zapi-compatible format
+// Applies extension and converts to Nevr-compatible format
 // -----------------------------------------------------------------------------
 
-export function resolvePlugin(plugin: ZapiPlugin): ResolvedPlugin {
-  const { meta, schema, extension, routes, middleware, hooks, lifecycle } = plugin
+export function resolvePlugin(plugin: NevrPlugin): ResolvedPlugin {
+  const { meta, schema, extension, lifecycle } = plugin
 
   // Compute the base path for this plugin
   const basePath = computeBasePath(meta, extension)
@@ -279,13 +341,13 @@ export function resolvePlugin(plugin: ZapiPlugin): ResolvedPlugin {
     entityRenames = result.renames
   }
 
-  // Convert plugin entities to Zapi entities and build metadata
+  // Convert plugin entities to Nevr entities and build metadata
   const entities: Entity[] = []
   const entityMeta = new Map<string, ResolvedEntityMeta>()
 
   if (resolvedSchema.entities) {
     for (const [name, def] of Object.entries(resolvedSchema.entities)) {
-      const entity = toZapiEntity(name, def)
+      const entity = toNevrEntity(name, def)
 
       // Build entity metadata
       const renameInfo = entityRenames.get(name)
@@ -317,11 +379,11 @@ export function resolvePlugin(plugin: ZapiPlugin): ResolvedPlugin {
 
   // Resolve routes (can be array or factory)
   const resolvedRoutes: Route[] = []
-  // Routes are resolved later when ZapiInstance is available
+  // Routes are resolved later when NevrInstance is available
 
   // Resolve middleware (can be array or factory)
   const resolvedMiddleware: Middleware[] = []
-  // Middleware is resolved later when ZapiInstance is available
+  // Middleware is resolved later when NevrInstance is available
 
   return {
     meta,
@@ -330,7 +392,7 @@ export function resolvePlugin(plugin: ZapiPlugin): ResolvedPlugin {
     entityMeta,
     routes: resolvedRoutes,
     middleware: resolvedMiddleware,
-    hooks: hooks || {},
+    hooks: {},
     lifecycle: lifecycle || {},
     routeOverrides: extension?.routes,
     entityRoutes: extension?.entityRoutes,
@@ -343,23 +405,23 @@ export function resolvePlugin(plugin: ZapiPlugin): ResolvedPlugin {
 // -----------------------------------------------------------------------------
 
 export function getPluginFieldExtensions(
-  plugin: ZapiPlugin
+  plugin: NevrPlugin
 ): Map<string, Record<string, FieldDef>> {
   const extensions = new Map<string, Record<string, FieldDef>>()
-  
+
   const schema = plugin.schema
   if (!schema?.extend) return extensions
-  
+
   for (const [entityName, fields] of Object.entries(schema.extend)) {
-    const zapiFields: Record<string, FieldDef> = {}
-    
+    const nevrFields: Record<string, FieldDef> = {}
+
     for (const [fieldName, fieldDef] of Object.entries(fields)) {
-      zapiFields[fieldName] = toZapiField(fieldDef)
+      nevrFields[fieldName] = toNevrField(fieldDef)
     }
-    
-    extensions.set(entityName, zapiFields)
+
+    extensions.set(entityName, nevrFields)
   }
-  
+
   return extensions
 }
 
@@ -452,7 +514,7 @@ export function getEntityRouteHandler(
   entityName: string,
   operation: "list" | "create" | "read" | "update" | "delete",
   entityMeta: Map<string, ResolvedEntityMeta>
-): ((req: any, zapi: any) => Promise<any>) | undefined {
+): ((req: any, nevr: any) => Promise<any>) | undefined {
   const meta = entityMeta.get(entityName)
 
   if (!meta) return undefined

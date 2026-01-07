@@ -33,24 +33,24 @@ export function plugin(pluginId: string): PluginEntityRef {
     get(_, entityName: string) {
       return () => {
         const cacheKey = `${pluginId}.${entityName}`
-        
+
         // Check cache first
         if (entityCache.has(cacheKey)) {
           return entityCache.get(cacheKey)!
         }
-        
+
         // Get plugin instance
         const pluginInstance = getPluginInstance(pluginId)
         if (!pluginInstance) {
-          throw new Error(`[Zapi] Plugin "${pluginId}" not found. Make sure it's registered.`)
+          throw new Error(`[Nevr] Plugin "${pluginId}" not found. Make sure it's registered.`)
         }
-        
+
         // Find entity in plugin's schema
         const schema = pluginInstance.schema
         if (!schema?.entities?.[entityName]) {
-          throw new Error(`[Zapi] Entity "${entityName}" not found in plugin "${pluginId}"`)
+          throw new Error(`[Nevr] Entity "${entityName}" not found in plugin "${pluginId}"`)
         }
-        
+
         // Create a placeholder entity for relationship resolution
         const entity: Entity = {
           name: entityName,
@@ -60,7 +60,7 @@ export function plugin(pluginId: string): PluginEntityRef {
             timestamps: true,
           },
         }
-        
+
         entityCache.set(cacheKey, entity)
         return entity
       }
@@ -78,7 +78,7 @@ export function parseEntityRef(ref: string): { pluginId: string | null; entityNa
     const [pluginId, entityName] = ref.split(".")
     return { pluginId, entityName }
   }
-  
+
   return { pluginId: null, entityName: ref }
 }
 
@@ -88,23 +88,23 @@ export function parseEntityRef(ref: string): { pluginId: string | null; entityNa
  */
 export function resolveEntityRef(ref: string, localEntities: Map<string, Entity>): Entity | undefined {
   const { pluginId, entityName } = parseEntityRef(ref)
-  
+
   if (pluginId) {
     // Plugin entity reference
     const cacheKey = `${pluginId}.${entityName}`
     if (entityCache.has(cacheKey)) {
       return entityCache.get(cacheKey)
     }
-    
+
     const pluginInstance = getPluginInstance(pluginId)
     if (!pluginInstance?.schema?.entities?.[entityName]) {
       return undefined
     }
-    
+
     // Return placeholder - actual entity will be resolved during initialization
     return { name: entityName, config: { fields: {}, rules: {}, timestamps: true } }
   }
-  
+
   // Local entity reference
   return localEntities.get(entityName)
 }
@@ -132,24 +132,24 @@ export function clearEntityCache(): void {
 export function getPluginEntityFn(pluginId: string, entityName: string): () => Entity {
   return () => {
     const cacheKey = `${pluginId}.${entityName}`
-    
+
     // Check cache first
     if (entityCache.has(cacheKey)) {
       return entityCache.get(cacheKey)!
     }
-    
+
     // Get plugin instance
     const pluginInstance = getPluginInstance(pluginId)
     if (!pluginInstance) {
-      throw new Error(`[Zapi] Plugin "${pluginId}" not found. Make sure it's registered.`)
+      throw new Error(`[Nevr] Plugin "${pluginId}" not found. Make sure it's registered.`)
     }
-    
+
     // Find entity in plugin's schema
     const schema = pluginInstance.schema
     if (!schema?.entities?.[entityName]) {
-      throw new Error(`[Zapi] Entity "${entityName}" not found in plugin "${pluginId}"`)
+      throw new Error(`[Nevr] Entity "${entityName}" not found in plugin "${pluginId}"`)
     }
-    
+
     // Create a placeholder entity for relationship resolution
     const entity: Entity = {
       name: entityName,
@@ -159,7 +159,7 @@ export function getPluginEntityFn(pluginId: string, entityName: string): () => E
         timestamps: true,
       },
     }
-    
+
     entityCache.set(cacheKey, entity)
     return entity
   }

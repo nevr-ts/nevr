@@ -3,7 +3,8 @@
 // The core interface and types that ALL Nevr plugins must follow
 // =============================================================================
 
-import type { Entity, FieldDef, Route, Middleware, ZapiInstance, ZapiRequest, Hooks, ZapiResponse, Operation } from "../../types.js"
+import type { Entity, FieldDef, NevrInstance, NevrRequest, NevrResponse, Operation, User, Route, Middleware, Hooks } from "../../types.js"
+import type { RequestHooks, DatabaseHooks, PluginInitReturn, NevrContext, NevrMiddleware, HookEndpointContext } from "./api.js"
 
 // -----------------------------------------------------------------------------
 // Plugin Metadata
@@ -28,8 +29,8 @@ export interface PluginMeta {
   /** Plugin homepage or documentation URL */
   homepage?: string
 
-  /** Required Zapi version (semver range) */
-  zapiVersion?: string
+  /** Required Nevr version (semver range) */
+  nevrVersion?: string
 
   /** Plugin dependencies (other plugin IDs) */
   dependencies?: string[]
@@ -47,7 +48,7 @@ export interface PluginMeta {
 // Defines the tables/entities a plugin provides
 // -----------------------------------------------------------------------------
 
-export interface PluginFieldDef {
+export interface PluginFieldDefObject {
   type: "string" | "text" | "int" | "float" | "boolean" | "datetime" | "json"
   required?: boolean
   unique?: boolean
@@ -61,11 +62,103 @@ export interface PluginFieldDef {
     entity: string
     field?: string  // defaults to "id"
   }
+
+  // -------------------------------------------------------------------------
+  // Safety Attributes
+  // -------------------------------------------------------------------------
+
+  /**
+   * If false, this field cannot be set by client requests.
+   * Protected fields can only be set by server-side code/plugins.
+   * @default true
+   *
+   * @example
+   * role: { type: "string", input: false } // Can't be set by client
+   * stripeCustomerId: { type: "string", input: false } // Protected
+   */
+  input?: boolean
+
+  /**
+   * If false, this field is not returned in API responses.
+   * Use for sensitive data like passwords.
+   * @default true
+   *
+   * @example
+   * password: { type: "string", returned: false } // Never sent to client
+   */
+  returned?: boolean
+
+  /**
+   * Transform functions for input/output
+   * Applied automatically by the framework
+   */
+  transform?: {
+    /** Transform value before saving to database */
+    input?: (value: unknown) => unknown | Promise<unknown>
+    /** Transform value before sending to client */
+    output?: (value: unknown) => unknown | Promise<unknown>
+  }
+
+  /**
+   * Called when the entity is updated
+   * Useful for auto-updating timestamps
+   */
+  onUpdate?: () => unknown
+
+  /**
+   * Whether this field is sortable in queries
+   * @default false
+   */
+  sortable?: boolean
+
+  /**
+   * Whether to create an index on this field
+   * @default false
+   */
+  index?: boolean
 }
+
+// Import FieldBuilder family for Entity-First support
+import { FieldBuilder, RelationBuilder, SelfRefBuilder } from "../../fields.js"
+
+/**
+ * Plugin field definition - supports both plain objects AND FieldBuilder
+ * This enables Entity-First plugin development using Nevr's rich field DSL
+ * 
+ * @example
+ * ```typescript
+ * // Plain object (backward compatible)
+ * password: { type: "string", input: false, returned: false }
+ * 
+ * // FieldBuilder (Entity-First, recommended)
+ * password: string.password().omit()
+ * email: string.email().trim().lower()
+ * ```
+ */
+export type PluginFieldDef = PluginFieldDefObject | FieldBuilder | RelationBuilder | SelfRefBuilder
 
 export interface PluginEntityDef {
   /** Entity fields */
   fields: Record<string, PluginFieldDef>
+
+  /**
+   * Entity actions (custom operations and workflows)
+   * These become routes: POST /plugin/entities/:id/action-name
+   * Uses the same system as regular entity actions
+   */
+  actions?: Record<string, import("../../types.js").EntityAction>
+
+  /**
+   * Authorization rules for CRUD operations
+   * Same as regular entity rules
+   */
+  rules?: Partial<Record<import("../../types.js").Operation, import("../../types.js").RuleDef[]>>
+
+  /**
+   * Cross-field validators
+   * Same as regular entity validators
+   */
+  validators?: import("../../types.js").EntityValidator[]
 
   /** If true, developer cannot remove this entity */
   required?: boolean
@@ -90,7 +183,7 @@ export interface PluginSchema {
    * Key is entity name (e.g., "session", "account")
    */
   entities?: Record<string, PluginEntityDef>
-  
+
   /**
    * Fields to add to existing entities
    * Key is target entity name (e.g., "user")
@@ -107,13 +200,13 @@ export interface PluginSchema {
 export interface PluginExtensionFieldDef {
   /** Add a new field */
   add?: PluginFieldDef
-  
+
   /** Rename the field (original name -> new name) */
   rename?: string
-  
+
   /** Override field properties */
   override?: Partial<PluginFieldDef>
-  
+
   /** Remove the field (only if not locked) */
   remove?: boolean
 }
@@ -139,7 +232,7 @@ export interface PluginExtensionEntityDef {
 }
 
 /** Route handler type for custom route implementations */
-export type RouteHandler = (req: ZapiRequest, zapi: ZapiInstance) => Promise<ZapiResponse>
+export type RouteHandler = (req: NevrRequest, nevr: NevrInstance) => Promise<NevrResponse>
 
 /** Route configuration for overriding default CRUD routes */
 export interface EntityRouteConfig {
@@ -200,49 +293,227 @@ export interface PluginExtension {
 
 export interface PluginLifecycleHooks {
   /** Called when plugin is registered */
-  onRegister?: (zapi: ZapiInstance) => void | Promise<void>
-  
-  /** Called when Zapi instance is fully initialized */
-  onInit?: (zapi: ZapiInstance) => void | Promise<void>
-  
+  onRegister?: (nevr: NevrInstance) => void | Promise<void>
+
+  /** Called when Nevr instance is fully initialized */
+  onInit?: (nevr: NevrInstance) => void | Promise<void>
+
   /** Called before each request (after middleware) */
-  onRequest?: (req: ZapiRequest, zapi: ZapiInstance) => void | Promise<void>
-  
+  onRequest?: (req: NevrRequest, nevr: NevrInstance) => void | Promise<void>
+
   /** Called when an error occurs */
-  onError?: (error: Error, req: ZapiRequest, zapi: ZapiInstance) => void | Promise<void>
-  
+  onError?: (error: Error, req: NevrRequest, nevr: NevrInstance) => void | Promise<void>
+
   /** Called when plugin is being shut down */
-  onShutdown?: (zapi: ZapiInstance) => void | Promise<void>
+  onShutdown?: (nevr: NevrInstance) => void | Promise<void>
+}
+
+// -----------------------------------------------------------------------------
+// Migration Types
+// -----------------------------------------------------------------------------
+
+export interface PluginMigration {
+  /** Migration identifier (e.g., "001_initial", "002_add_username") */
+  id: string
+  /** Human-readable description */
+  description?: string
+  /** Migration version for ordering */
+  version: number
+  /** SQL or driver-agnostic migration up */
+  up: (driver: any) => Promise<void>
+  /** SQL or driver-agnostic migration down */
+  down?: (driver: any) => Promise<void>
+}
+
+// -----------------------------------------------------------------------------
+// OpenAPI Metadata Types
+// -----------------------------------------------------------------------------
+
+export interface OpenAPIParameter {
+  name: string
+  in: "query" | "path" | "header" | "cookie"
+  required?: boolean
+  description?: string
+  schema?: {
+    type: "string" | "number" | "integer" | "boolean" | "array" | "object"
+    format?: string
+    enum?: string[]
+    items?: { type: string }
+  }
+}
+
+export interface OpenAPIRequestBody {
+  description?: string
+  required?: boolean
+  content?: {
+    [contentType: string]: {
+      schema: Record<string, any>
+      example?: any
+    }
+  }
+}
+
+export interface OpenAPIResponse {
+  description: string
+  content?: {
+    [contentType: string]: {
+      schema: Record<string, any>
+      example?: any
+    }
+  }
+}
+
+export interface OpenAPIMetadata {
+  /** Operation ID for code generation */
+  operationId?: string
+  /** Short summary */
+  summary?: string
+  /** Detailed description */
+  description?: string
+  /** Tags for grouping */
+  tags?: string[]
+  /** Whether authentication is required */
+  requiresAuth?: boolean
+  /** Security schemes */
+  security?: Array<Record<string, string[]>>
+  /** Parameters */
+  parameters?: OpenAPIParameter[]
+  /** Request body */
+  requestBody?: OpenAPIRequestBody
+  /** Responses */
+  responses?: Record<string, OpenAPIResponse>
+  /** Deprecation status */
+  deprecated?: boolean
+}
+
+// -----------------------------------------------------------------------------
+// Endpoint Types (for type-safe API)
+// -----------------------------------------------------------------------------
+
+export interface EndpointInput {
+  body?: Record<string, any>
+  query?: Record<string, any>
+  params?: Record<string, any>
+}
+
+export interface EndpointOutput {
+  status: number
+  body?: any
+}
+
+export interface EndpointDefinition<
+  TInput extends EndpointInput = EndpointInput,
+  TOutput = any
+> {
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
+  path: string
+  input?: TInput
+  output?: TOutput
+  handler: (ctx: any) => Promise<TOutput>
+  /** Middleware to apply to this endpoint */
+  use?: NevrMiddleware[]
+  /** OpenAPI metadata for documentation */
+  metadata?: OpenAPIMetadata
+}
+
+// -----------------------------------------------------------------------------
+// Request Hook Types (Before/After with Matchers)
+// Request hooks allow intercepting endpoints before and after execution
+// HookEndpointContext is imported from api.ts to avoid duplication
+// -----------------------------------------------------------------------------
+
+export interface PluginRequestHook {
+  /** Matcher function to determine if hook applies */
+  matcher: (context: HookEndpointContext) => boolean
+  /** Handler middleware to execute */
+  handler: NevrMiddleware
+}
+
+export interface PluginRequestHooks {
+  /** Hooks run before endpoint handler */
+  before?: PluginRequestHook[]
+  /** Hooks run after endpoint handler */
+  after?: PluginRequestHook[]
 }
 
 // -----------------------------------------------------------------------------
 // Full Plugin Contract
 // -----------------------------------------------------------------------------
 
-export interface ZapiPlugin<TOptions = any, TExtension = PluginExtension> {
+export interface NevrPlugin<TOptions = any, TExtension = PluginExtension> {
   /** Plugin metadata */
   meta: PluginMeta
-  
+
   /** Plugin schema (entities and field extensions) */
   schema?: PluginSchema
-  
-  /** Routes the plugin provides */
-  routes?: Route[] | ((zapi: ZapiInstance) => Route[])
-  
-  /** Middleware the plugin provides */
-  middleware?: Middleware[] | ((zapi: ZapiInstance) => Middleware[])
-  
-  /** Entity-level hooks (beforeCreate, afterUpdate, etc.) */
-  hooks?: Hooks
-  
+
+  /**
+   * Database migrations for this plugin
+   * Migrations are run in order based on version number
+   */
+  migrations?: PluginMigration[]
+
+  /**
+   * Request-level hooks with matchers
+   * Allows intercepting specific endpoints
+   */
+  requestHooks?: PluginRequestHooks
+
   /** Lifecycle hooks */
   lifecycle?: PluginLifecycleHooks
-  
+
+  /**
+   * Init function called during plugin initialization
+   * Can return context modifications, options overrides, and database hooks
+   * Can return context modifications, options overrides, and database hooks
+   */
+  init?: (ctx: NevrContext) => Promise<PluginInitReturn | void> | PluginInitReturn | void
+
+  /**
+   * Database hooks for entity operations
+   * Database hooks for entity operations
+   */
+  databaseHooks?: DatabaseHooks
+
   /** Options passed to plugin factory */
   options?: TOptions
-  
+
   /** Extension applied by developer */
   extension?: TExtension
+
+  /**
+   * Typed endpoints for client type inference
+   * This is the key to the dual-plugin system
+   */
+  endpoints?: Record<string, EndpointDefinition>
+
+  /**
+   * Types to be inferred by the client
+   * Used for schema inference
+   */
+  $Infer?: Record<string, any>
+
+  /**
+   * Error codes returned by this plugin
+   */
+  $ERROR_CODES?: Record<string, string>
+
+  /**
+   * Rate limit rules for this plugin
+   */
+  rateLimit?: {
+    window: number
+    max: number
+    pathMatcher: (path: string) => boolean
+  }[]
+
+  /**
+   * Custom adapter methods for database operations
+   * Custom adapter methods for database operations
+   */
+  adapter?: {
+    [key: string]: (...args: any[]) => Promise<any>
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -252,7 +523,7 @@ export interface ZapiPlugin<TOptions = any, TExtension = PluginExtension> {
 
 export type PluginFactory<TOptions = any> = (
   options?: TOptions & { extend?: PluginExtension }
-) => ZapiPlugin<TOptions>
+) => NevrPlugin<TOptions>
 
 // -----------------------------------------------------------------------------
 // Plugin Registry Entry
@@ -260,7 +531,7 @@ export type PluginFactory<TOptions = any> = (
 // -----------------------------------------------------------------------------
 
 export interface PluginRegistryEntry {
-  plugin: ZapiPlugin
+  plugin: NevrPlugin
   initialized: boolean
   error?: Error
 }
