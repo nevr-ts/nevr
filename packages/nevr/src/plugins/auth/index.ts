@@ -35,7 +35,7 @@ import { oauthCallback } from "./api/routes/callback.js"
 // Types
 export * from "./types.js"
 export * from "./error-codes.js"
-export { getAuthSchema } from "./schema.js"
+export { getAuthSchema, userEntity, sessionEntity, accountEntity, verificationEntity } from "./schema.js"
 
 // Crypto module
 export * from "./crypto/index.js"

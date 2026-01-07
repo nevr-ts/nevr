@@ -1,6 +1,6 @@
 {
   "name": "nevr-monorepo",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "description": "The Entity-First Full Stack Framework for TypeScript. Define your entities, never write boilerplate again.",
   "scripts": {

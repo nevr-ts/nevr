@@ -1,6 +1,6 @@
 {
   "name": "@nevr/cli",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "CLI for Nevr - Nevr write boilerplate again",
   "type": "module",
   "bin": {

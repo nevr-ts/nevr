@@ -95,7 +95,10 @@ prisma/migrations
 // AUTH PLUGIN CONFIGURATION
 // =============================================================================
 
-import { auth } from "nevr/plugins/auth"
+import { auth, userEntity, sessionEntity, accountEntity, verificationEntity } from "nevr/plugins/auth"
+
+// Export auth entities for Prisma schema generation
+export const authEntities = [userEntity, sessionEntity, accountEntity, verificationEntity]
 
 export const authPlugin = auth({
   // Secret for signing session tokens (from .env)
@@ -132,7 +135,7 @@ export const authPlugin = auth({
 // PLUGIN EXPORTS
 // =============================================================================
 
-export { authPlugin } from "./auth.js"
+export { authPlugin, authEntities } from "./auth.js"
 `,
 
   "src/nevr.config.ts": (db: string, withAuth: boolean) => `// =============================================================================
@@ -140,13 +143,17 @@ export { authPlugin } from "./auth.js"
 // =============================================================================
 
 import * as entities from "./entities/index.js"
-${withAuth ? `import { authPlugin } from "./plugins/index.js"\n` : ""}
+${withAuth ? `import { authPlugin, authEntities } from "./plugins/index.js"\n` : ""}
 const entityArray = Object.values(entities).filter(e => e && typeof e === "object")
 
 export const config = {
   database: "${db}" as const,
-  entities: entityArray,
-  plugins: [${withAuth ? `\n    authPlugin,` : ""}
+  entities: [
+    ...entityArray,${withAuth ? `
+    ...authEntities, // User, Session, Account, Verification` : ""}
+  ],
+  plugins: [${withAuth ? `
+    authPlugin,` : ""}
   ],
 }
 
