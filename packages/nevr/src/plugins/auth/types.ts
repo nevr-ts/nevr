@@ -1,204 +1,336 @@
 // =============================================================================
 // AUTH PLUGIN TYPES
+// Type definitions aligned with Entity-First architecture
 // =============================================================================
 
-import type { Entity } from "../../types.js"
-import type { PluginExtension } from "../core/contract.js"
-
 // -----------------------------------------------------------------------------
-// OAuth Provider Configuration
+// Core Auth Types (matches entity schema)
 // -----------------------------------------------------------------------------
 
-export interface GoogleProvider {
-  clientId: string
-  clientSecret: string
-  scopes?: string[]
+/**
+ * User entity type
+ */
+export interface AuthUser {
+    id: string
+    email: string
+    name: string
+    image?: string | null
+    emailVerified: boolean
+    createdAt: Date
+    updatedAt: Date
 }
 
-export interface GitHubProvider {
-  clientId: string
-  clientSecret: string
-  scopes?: string[]
+/**
+ * Session entity type
+ */
+export interface AuthSession {
+    id: string
+    token: string
+    userId: string
+    expiresAt: Date
+    ipAddress?: string | null
+    userAgent?: string | null
+    createdAt: Date
+    updatedAt: Date
 }
 
-export interface DiscordProvider {
-  clientId: string
-  clientSecret: string
-  scopes?: string[]
+/**
+ * Account entity type (credential/OAuth)
+ */
+export interface AuthAccount {
+    id: string
+    userId: string
+    providerId: string
+    accountId: string
+    password?: string | null
+    accessToken?: string | null
+    refreshToken?: string | null
+    idToken?: string | null
+    scope?: string | null
+    expiresAt?: Date | null
+    accessTokenExpiresAt?: Date | null
+    refreshTokenExpiresAt?: Date | null
+    createdAt: Date
+    updatedAt: Date
 }
 
-export interface AppleProvider {
-  clientId: string
-  clientSecret: string
-  scopes?: string[]
-}
-
-export interface Providers {
-  google?: GoogleProvider
-  github?: GitHubProvider
-  discord?: DiscordProvider
-  apple?: AppleProvider
-}
-
-// -----------------------------------------------------------------------------
-// Email Configuration
-// -----------------------------------------------------------------------------
-
-export interface EmailConfig {
-  from: string
-  sendEmail: (params: {
-    to: string
-    subject: string
-    html: string
-    text?: string
-  }) => Promise<void>
-}
-
-// -----------------------------------------------------------------------------
-// Session Configuration
-// -----------------------------------------------------------------------------
-
-export interface SessionConfig {
-  /** Session expiry in seconds. Default: 7 days */
-  expiresIn?: number
-  /** Update session expiry on each request. Default: true */
-  updateAge?: number
-  /** Cookie name. Default: "better-auth.session_token" */
-  cookieName?: string
+/**
+ * Verification token type
+ */
+export interface AuthVerification {
+    id: string
+    identifier: string
+    value: string
+    expiresAt: Date
 }
 
 // -----------------------------------------------------------------------------
-// User Configuration
-// -----------------------------------------------------------------------------
-
-export interface UserConfig {
-  /** Model name in database (if different from 'user') */
-  modelName?: string
-  /** Map field names to different column names */
-  fields?: Partial<Record<"email" | "name" | "image" | "createdAt" | "updatedAt" | "emailVerified", string>>
-  /** Map OAuth profile to user fields */
-  mapProfileToUser?: (profile: Record<string, unknown>) => Record<string, unknown>
-}
-
-// -----------------------------------------------------------------------------
-// JWT Configuration
-// -----------------------------------------------------------------------------
-
-export interface JwtConfig {
-  /** JWT expiration time. Default: "15m" */
-  expirationTime?: string
-  /** JWT issuer. Default: baseURL */
-  issuer?: string
-  /** JWT audience. Default: baseURL */
-  audience?: string
-}
-
-// -----------------------------------------------------------------------------
-// Main Plugin Options
+// Plugin Options
 // -----------------------------------------------------------------------------
 
 export interface AuthPluginOptions {
-  /** 
-   * Better Auth secret. Required.
-   * Default: process.env.BETTER_AUTH_SECRET 
-   */
-  secret?: string
-  
-  /** 
-   * Base URL of your app.
-   * Default: process.env.BETTER_AUTH_URL 
-   */
-  baseURL?: string
-  
-  /**
-   * Authentication mode:
-   * - "session": Cookie-based sessions (default)
-   * - "bearer": Session tokens as Bearer tokens (for APIs)
-   * - "jwt": Full JWT mode with JWKS verification (for APIs + external services)
-   * Default: "session"
-   */
-  mode?: "session" | "bearer" | "jwt"
-  
-  /** 
-   * Enable Bearer token authentication (for APIs).
-   * Automatically enabled for "bearer" and "jwt" modes.
-   * Default: true
-   */
-  bearer?: boolean
-  
-  /**
-   * JWT configuration (only used in "jwt" mode)
-   */
-  jwt?: JwtConfig
-  
-  /**
-   * Enable email/password authentication.
-   * Default: true
-   */
-  emailAndPassword?: boolean
-  
-  /**
-   * OAuth providers configuration
-   */
-  providers?: Providers
-  
-  /**
-   * Email configuration for verification and password reset
-   */
-  email?: EmailConfig
-  
-  /**
-   * Session configuration
-   */
-  session?: SessionConfig
-  
-  /**
-   * User configuration
-   */
-  user?: UserConfig
-  
-  /**
-   * Trusted origins for CORS
-   */
-  trustedOrigins?: string[]
-  
-  /**
-   * Base path for auth routes.
-   * Default: "/auth"
-   */
-  basePath?: string
+    /**
+     * Enable email/password authentication
+     * @default { enabled: true }
+     */
+    emailAndPassword?: {
+        enabled?: boolean
+        minPasswordLength?: number
+        maxPasswordLength?: number
+        autoSignIn?: boolean
+        requireEmailVerification?: boolean
+        disableSignUp?: boolean
+        /**
+         * Token expiration time in seconds for password reset
+         * @default 3600 (1 hour)
+         */
+        resetPasswordTokenExpiresIn?: number
+        /**
+         * Callback to send password reset email
+         */
+        sendResetPassword?: (
+            data: { user: AuthUser; url: string; token: string },
+            request?: Request
+        ) => Promise<void>
+        /**
+         * Revoke all sessions when password is reset
+         * @default false
+         */
+        revokeSessionsOnPasswordReset?: boolean
+        /**
+         * Callback after password is reset
+         */
+        onPasswordReset?: (
+            data: { user: AuthUser },
+            request?: Request
+        ) => Promise<void> | void
+    }
 
-  /**
-   * Plugin extension for customizing entities, routes, and behavior
-   */
-  extend?: PluginExtension
+    /**
+     * Session configuration
+     */
+    session?: {
+        expiresIn?: number // seconds, default 7 days
+        updateAge?: number // seconds before expiry to refresh
+        freshAge?: number // seconds to consider session "fresh" for sensitive ops
+        cookieName?: string
+        cookie?: {
+            secure?: boolean
+            httpOnly?: boolean
+            sameSite?: "strict" | "lax" | "none"
+            path?: string
+            domain?: string
+        }
+    }
+
+    /**
+     * Password hashing (supports custom hash/verify functions)
+     */
+    password?: {
+        cost?: number // PBKDF2 cost factor
+        hash?: (password: string, cost?: number) => Promise<string>
+        verify?: (password: string, hash: string) => Promise<boolean>
+    }
+
+    /**
+     * Secret for signing tokens/cookies
+     */
+    secret?: string
+
+    /**
+     * Base URL for callbacks
+     */
+    baseURL?: string
+
+    /**
+     * Email verification settings
+     */
+    emailVerification?: {
+        enabled?: boolean
+        expiresIn?: number
+        sendOnSignUp?: boolean
+        autoSignInAfterVerification?: boolean
+        sendVerificationEmail?: (
+            data: { user: AuthUser; url: string; token: string },
+            request?: Request
+        ) => Promise<void>
+        onEmailVerification?: (user: AuthUser, request?: Request) => Promise<void>
+        afterEmailVerification?: (user: AuthUser, request?: Request) => Promise<void>
+    }
+
+    /**
+     * Additional user fields
+     */
+    user?: {
+        additionalFields?: Record<string, {
+            type: "string" | "number" | "boolean" | "date"
+            required?: boolean
+            input?: boolean
+            returned?: boolean
+        }>
+    }
+
+    /**
+     * Plugin extension
+     */
+    extend?: {
+        entities?: Record<string, any>
+        endpoints?: Record<string, any>
+    }
+
+    /**
+     * Social OAuth providers configuration
+     */
+    socialProviders?: {
+        google?: {
+            clientId: string
+            clientSecret?: string
+            scope?: string[]
+            accessType?: "offline" | "online"
+            hd?: string
+        }
+        github?: {
+            clientId: string
+            clientSecret?: string
+            scope?: string[]
+            allowSignup?: boolean
+        }
+        apple?: {
+            clientId: string
+            clientSecret?: string
+            scope?: string[]
+            appBundleIdentifier?: string
+        }
+        [key: string]: any
+    }
+
+    /**
+     * Account management settings
+     */
+    account?: {
+        accountLinking?: {
+            enabled?: boolean
+            trustedProviders?: string[]
+            allowDifferentEmails?: boolean
+        }
+    }
 }
 
 // -----------------------------------------------------------------------------
-// Auth User (from Better Auth)
+// Endpoint Input/Output Types
 // -----------------------------------------------------------------------------
 
-export interface AuthUser {
-  id: string
-  email: string
-  name: string
-  emailVerified: boolean
-  image?: string | null
-  createdAt: Date
-  updatedAt: Date
+export interface SignUpEmailInput {
+    name: string
+    email: string
+    password: string
+    image?: string
+    callbackURL?: string
+    rememberMe?: boolean
+}
+
+export interface SignUpEmailOutput {
+    token: string | null
+    user: AuthUser
+}
+
+export interface SignInEmailInput {
+    email: string
+    password: string
+    callbackURL?: string
+    rememberMe?: boolean
+}
+
+export interface SignInEmailOutput {
+    token: string
+    user: AuthUser
+    redirect: boolean
+    url?: string
+}
+
+export interface GetSessionOutput {
+    session: AuthSession
+    user: AuthUser
+}
+
+export interface SignOutOutput {
+    success: boolean
+}
+
+export interface ListSessionsOutput {
+    sessions: AuthSession[]
+}
+
+export interface RevokeSessionInput {
+    token: string
+}
+
+export interface RevokeSessionOutput {
+    status: boolean
 }
 
 // -----------------------------------------------------------------------------
-// Auth Session (from Better Auth)
+// Internal Adapter Types 
 // -----------------------------------------------------------------------------
 
-export interface AuthSession {
-  id: string
-  userId: string
-  token: string
-  expiresAt: Date
-  ipAddress?: string | null
-  userAgent?: string | null
-  createdAt: Date
-  updatedAt: Date
+export interface InternalAdapter {
+    findUserByEmail(email: string, options?: { includeAccounts?: boolean }): Promise<{
+        user: AuthUser
+        accounts: AuthAccount[]
+    } | null>
+
+    createUser(data: Omit<AuthUser, "id" | "createdAt" | "updatedAt">): Promise<AuthUser>
+
+    updateUser(id: string, data: Partial<AuthUser>): Promise<AuthUser | null>
+
+    linkAccount(data: Omit<AuthAccount, "id" | "createdAt" | "updatedAt">): Promise<AuthAccount>
+
+    findAccountByUserId(userId: string, providerId: string): Promise<AuthAccount | null>
+
+    findAccountByProviderId(providerId: string, accountId: string): Promise<AuthAccount | null>
+
+    createSession(userId: string, dontRemember?: boolean): Promise<AuthSession>
+
+    findSession(token: string): Promise<{ session: AuthSession; user: AuthUser } | null>
+
+    updateSession(token: string, data: Partial<AuthSession>): Promise<AuthSession | null>
+
+    deleteSession(token: string): Promise<void>
+
+    listSessions(userId: string): Promise<AuthSession[]>
+
+    deleteSessions(userId: string): Promise<void>
+
+    createVerification(data: Omit<AuthVerification, "id">): Promise<AuthVerification>
+
+    findVerification(identifier: string, value: string): Promise<AuthVerification | null>
+
+    deleteVerification(id: string): Promise<void>
+}
+
+// -----------------------------------------------------------------------------
+// Type Inference Helpers
+// -----------------------------------------------------------------------------
+
+/**
+ * Infer user type with additional fields from options
+ */
+export type InferUser<O extends AuthPluginOptions> = AuthUser & (
+    O["user"] extends { additionalFields: infer F }
+    ? F extends Record<string, any>
+    ? { [K in keyof F]?: F[K] extends { type: "string" } ? string
+        : F[K] extends { type: "number" } ? number
+        : F[K] extends { type: "boolean" } ? boolean
+        : F[K] extends { type: "date" } ? Date
+        : unknown }
+    : {}
+    : {}
+)
+
+/**
+ * Type for plugin $Infer export 
+ */
+export interface AuthPluginInfer<O extends AuthPluginOptions = AuthPluginOptions> {
+    user: InferUser<O>
+    session: AuthSession
 }
