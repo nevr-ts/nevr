@@ -6,6 +6,9 @@
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "nevr": "./dist/cli/index.js"
+  },
   "files": [
     "dist",
     "README.md"
@@ -14,6 +17,14 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./client": {
+      "import": "./dist/client/index.js",
+      "types": "./dist/client/index.d.ts"
+    },
+    "./client/react": {
+      "import": "./dist/client/react.js",
+      "types": "./dist/client/react.d.ts"
     },
     "./adapters": {
       "import": "./dist/adapters/index.js",
@@ -43,6 +54,14 @@
       "import": "./dist/plugins/auth/index.js",
       "types": "./dist/plugins/auth/index.d.ts"
     },
+    "./plugins/auth/client": {
+      "import": "./dist/plugins/auth/client.js",
+      "types": "./dist/plugins/auth/client.d.ts"
+    },
+    "./plugins/auth/username": {
+      "import": "./dist/plugins/auth/plugins/username.js",
+      "types": "./dist/plugins/auth/plugins/username.d.ts"
+    },
     "./plugins/timestamps": {
       "import": "./dist/plugins/timestamps.js",
       "types": "./dist/plugins/timestamps.d.ts"
@@ -56,34 +75,44 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
+  "dependencies": {
+    "nanostores": "^0.10.0",
+    "zod": "^4.3.4"
+  },
   "devDependencies": {
+    "@nanostores/react": "^0.7.0",
     "@prisma/client": "^5.22.0",
-    "@types/express": "^5.0.0",
+    "@types/express": "^4.17.21",
     "@types/node": "^22.0.0",
-    "better-auth": "^1.4.0",
-    "express": "^5.0.0",
+    "@types/react": "^18.0.0",
+    "express": "^4.18.2",
     "hono": "^4.11.0",
+    "react": "^18.0.0",
     "tsup": "^8.5.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   },
   "peerDependencies": {
+    "@nanostores/react": ">=0.7.0",
     "@prisma/client": ">=5.0.0",
-    "better-auth": ">=1.0.0",
-    "express": ">=4.0.0 || >=5.0.0",
-    "hono": ">=4.0.0"
+    "express": ">=4.0.0",
+    "hono": ">=4.0.0",
+    "react": ">=18.0.0"
   },
   "peerDependenciesMeta": {
-    "@prisma/client": {
+    "@nanostores/react": {
       "optional": true
     },
-    "better-auth": {
+    "@prisma/client": {
       "optional": true
     },
     "express": {
       "optional": true
     },
     "hono": {
+      "optional": true
+    },
+    "react": {
       "optional": true
     }
   },
@@ -94,13 +123,15 @@
     "type-safe",
     "crud-generator",
     "backend-automation",
+    "backend",
+    "framework",
     "typescript",
     "orm",
     "prisma",
     "express",
     "hono"
   ],
-  "author": "",
+  "author": "Yalelet Dessalegn",
   "license": "MIT",
   "repository": {
     "type": "git",

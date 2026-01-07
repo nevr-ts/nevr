@@ -1,52 +1,185 @@
 // =============================================================================
 // ERROR HANDLING
-// Consistent error responses
+// Consistent error responses with structured error hierarchy
 // =============================================================================
 
-import type { ZapiResponse, ZapiError, ErrorCode, ValidationError } from "./types.js"
+import type { NevrResponse, NevrError, ValidationError } from "./types.js"
+import { type ErrorCode, getHttpStatus, ErrorCodes } from "./error-codes.js"
+
+// Re-export for convenience
+export { ErrorCodes, getHttpStatus } from "./error-codes.js"
+export type { ErrorCode } from "./error-codes.js"
 
 // -----------------------------------------------------------------------------
-// Error Classes
+// Base Error Class
 // -----------------------------------------------------------------------------
 
+/**
+ * Base error class for all Nevr errors
+ * Provides consistent error structure with code, status, and optional details
+ */
 export class NevrErrorClass extends Error {
-  code: ErrorCode
-  status: number
-  details?: ValidationError[]
+  readonly code: ErrorCode
+  readonly status: number
+  readonly details?: ValidationError[]
+  readonly cause?: Error
 
-  constructor(code: ErrorCode, message: string, details?: ValidationError[]) {
+  constructor(
+    code: ErrorCode,
+    message: string,
+    options?: { details?: ValidationError[]; cause?: Error }
+  ) {
     super(message)
     this.name = "NevrError"
     this.code = code
     this.status = errorCodeToStatus(code)
-    this.details = details
+    this.details = options?.details
+    this.cause = options?.cause
+  }
+
+  /**
+   * Convert to NevrResponse for HTTP response
+   */
+  toResponse(): NevrResponse {
+    return createErrorResponse(this.code, this.message, this.details)
   }
 }
 
-// Alias for backward compatibility
-export { NevrErrorClass as ZapiErrorClass }
+// -----------------------------------------------------------------------------
+// Specialized Error Classes
+// -----------------------------------------------------------------------------
+
+/**
+ * Entity not found error (404)
+ * Use when a specific entity cannot be found by ID or query
+ */
+export class EntityNotFoundError extends NevrErrorClass {
+  readonly entityName: string
+  readonly entityId?: string
+
+  constructor(entityName: string, entityId?: string) {
+    const message = entityId
+      ? `${entityName} with id "${entityId}" not found`
+      : `${entityName} not found`
+    super("NOT_FOUND", message)
+    this.name = "EntityNotFoundError"
+    this.entityName = entityName
+    this.entityId = entityId
+  }
+}
+
+/**
+ * Validation error (400)
+ * Use when input validation fails
+ */
+export class ValidationFailedError extends NevrErrorClass {
+  constructor(errors: ValidationError[]) {
+    super("VALIDATION_ERROR", "Validation failed", { details: errors })
+    this.name = "ValidationFailedError"
+  }
+}
+
+/**
+ * Authentication error (401)
+ * Use when user is not authenticated
+ */
+export class AuthenticationError extends NevrErrorClass {
+  constructor(message: string = "Authentication required") {
+    super("UNAUTHORIZED", message)
+    this.name = "AuthenticationError"
+  }
+}
+
+/**
+ * Authorization error (403)
+ * Use when user lacks permission
+ */
+export class AuthorizationError extends NevrErrorClass {
+  readonly requiredRole?: string
+  readonly operation?: string
+
+  constructor(message: string = "Permission denied", options?: { requiredRole?: string; operation?: string }) {
+    super("FORBIDDEN", message)
+    this.name = "AuthorizationError"
+    this.requiredRole = options?.requiredRole
+    this.operation = options?.operation
+  }
+}
+
+/**
+ * Conflict error (409)
+ * Use when resource already exists or unique constraint is violated
+ */
+export class ConflictError extends NevrErrorClass {
+  readonly field?: string
+
+  constructor(message: string = "Resource already exists", field?: string) {
+    super("CONFLICT", message)
+    this.name = "ConflictError"
+    this.field = field
+  }
+}
+
+/**
+ * Plugin error
+ * Use when a plugin fails to initialize or execute
+ */
+export class PluginError extends NevrErrorClass {
+  readonly pluginId: string
+  readonly phase?: "register" | "initialize" | "execute" | "shutdown"
+
+  constructor(
+    pluginId: string,
+    message: string,
+    options?: { phase?: "register" | "initialize" | "execute" | "shutdown"; cause?: Error }
+  ) {
+    super(ErrorCodes.PLUGIN_ERROR, `[${pluginId}] ${message}`, { cause: options?.cause })
+    this.name = "PluginError"
+    this.pluginId = pluginId
+    this.phase = options?.phase
+  }
+}
+
+/**
+ * Configuration error
+ * Use when configuration is invalid or missing
+ */
+export class ConfigurationError extends NevrErrorClass {
+  readonly configKey?: string
+
+  constructor(message: string, configKey?: string) {
+    super(ErrorCodes.CONFIG_ERROR, message)
+    this.name = "ConfigurationError"
+    this.configKey = configKey
+  }
+}
+
+/**
+ * Database error
+ * Use when database operations fail
+ */
+export class DatabaseError extends NevrErrorClass {
+  readonly operation?: string
+  readonly entity?: string
+
+  constructor(
+    message: string,
+    options?: { operation?: string; entity?: string; cause?: Error }
+  ) {
+    super(ErrorCodes.DATABASE_ERROR, message, { cause: options?.cause })
+    this.name = "DatabaseError"
+    this.operation = options?.operation
+    this.entity = options?.entity
+  }
+}
 
 // -----------------------------------------------------------------------------
 // Status Code Mapping
 // -----------------------------------------------------------------------------
 
+// Use centralized getHttpStatus from error-codes.ts
 function errorCodeToStatus(code: ErrorCode): number {
-  switch (code) {
-    case "VALIDATION_ERROR":
-      return 400
-    case "UNAUTHORIZED":
-      return 401
-    case "FORBIDDEN":
-      return 403
-    case "NOT_FOUND":
-      return 404
-    case "CONFLICT":
-      return 409
-    case "INTERNAL_ERROR":
-      return 500
-    default:
-      return 500
-  }
+  return getHttpStatus(code)
 }
 
 // -----------------------------------------------------------------------------
@@ -57,8 +190,8 @@ export function createErrorResponse(
   code: ErrorCode,
   message: string,
   details?: ValidationError[]
-): ZapiResponse {
-  const error: ZapiError = { code, message }
+): NevrResponse {
+  const error: NevrError = { code, message }
 
   if (details && details.length > 0) {
     error.details = details
@@ -71,32 +204,32 @@ export function createErrorResponse(
 }
 
 /** Validation error (400) */
-export function validationError(errors: ValidationError[]): ZapiResponse {
+export function validationError(errors: ValidationError[]): NevrResponse {
   return createErrorResponse("VALIDATION_ERROR", "Validation failed", errors)
 }
 
 /** Unauthorized error (401) */
-export function unauthorizedError(message: string = "Authentication required"): ZapiResponse {
+export function unauthorizedError(message: string = "Authentication required"): NevrResponse {
   return createErrorResponse("UNAUTHORIZED", message)
 }
 
 /** Forbidden error (403) */
-export function forbiddenError(message: string = "Permission denied"): ZapiResponse {
+export function forbiddenError(message: string = "Permission denied"): NevrResponse {
   return createErrorResponse("FORBIDDEN", message)
 }
 
 /** Not found error (404) */
-export function notFoundError(message: string = "Not found"): ZapiResponse {
+export function notFoundError(message: string = "Not found"): NevrResponse {
   return createErrorResponse("NOT_FOUND", message)
 }
 
 /** Conflict error (409) */
-export function conflictError(message: string = "Resource already exists"): ZapiResponse {
+export function conflictError(message: string = "Resource already exists"): NevrResponse {
   return createErrorResponse("CONFLICT", message)
 }
 
 /** Internal error (500) */
-export function internalError(message: string = "Internal server error"): ZapiResponse {
+export function internalError(message: string = "Internal server error"): NevrResponse {
   return createErrorResponse("INTERNAL_ERROR", message)
 }
 
@@ -107,7 +240,7 @@ export function internalError(message: string = "Internal server error"): ZapiRe
 /**
  * Convert any error to a NevrResponse
  */
-export function handleError(error: unknown): ZapiResponse {
+export function handleError(error: unknown): NevrResponse {
   // Known Nevr error
   if (error instanceof NevrErrorClass) {
     return createErrorResponse(error.code, error.message, error.details)

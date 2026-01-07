@@ -3,12 +3,17 @@
 // Express adapter for nevr - uses Adapter Factory pattern
 // =============================================================================
 
-import type { Request, Response, Router, RequestHandler, NextFunction } from "express"
-import type { ZapiInstance, ZapiRequest, ZapiResponse, User } from "../types.js"
+import type { Request, Response, Router, RequestHandler, NextFunction, Application } from "express"
+import type { NevrInstance, NevrRequest, NevrResponse, User } from "../types.js"
+import { getLogger } from "../logger.js"
 
 // -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
+
+// Type for middleware that can be used with app.use(path, middleware)
+// Express IRouter.use() accepts this
+export type ExpressMiddleware = (req: Request, res: Response, next: NextFunction) => void | Promise<void>
 
 export interface ExpressAdapterOptions {
   /** Get user from Express request */
@@ -31,10 +36,10 @@ export interface ExpressAdapterOptions {
 // Request Converter
 // -----------------------------------------------------------------------------
 
-async function expressToZapi(
+async function expressToNevr(
   req: Request,
   getUser?: ExpressAdapterOptions["getUser"]
-): Promise<ZapiRequest> {
+): Promise<NevrRequest> {
   // Get user
   const user = getUser ? await getUser(req) : null
 
@@ -57,7 +62,7 @@ async function expressToZapi(
   }
 
   return {
-    method: req.method as ZapiRequest["method"],
+    method: req.method as NevrRequest["method"],
     path: req.path,
     params: req.params as Record<string, string>,
     query,
@@ -76,7 +81,7 @@ async function expressToZapi(
 // Response Sender
 // -----------------------------------------------------------------------------
 
-function sendResponse(res: Response, response: ZapiResponse): void {
+function sendResponse(res: Response, response: NevrResponse): void {
   // Set headers
   if (response.headers) {
     for (const [key, value] of Object.entries(response.headers)) {
@@ -94,12 +99,16 @@ function sendResponse(res: Response, response: ZapiResponse): void {
 
 // -----------------------------------------------------------------------------
 // CORS Handler
+// NOTE: This is a simple CORS handler for the adapter. For production apps,
+// consider using the 'cors' npm package before the adapter for more control.
+// When using external cors middleware, don't set the cors option here.
 // -----------------------------------------------------------------------------
 
 function getCorsHeaders(cors: string | string[] | boolean, origin?: string): Record<string, string> {
   const headers: Record<string, string> = {}
   
   if (cors === true) {
+    // Reflect the request origin (safe for credentials)
     headers["Access-Control-Allow-Origin"] = origin || "*"
   } else if (typeof cors === "string") {
     headers["Access-Control-Allow-Origin"] = cors
@@ -110,7 +119,10 @@ function getCorsHeaders(cors: string | string[] | boolean, origin?: string): Rec
   if (headers["Access-Control-Allow-Origin"]) {
     headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
     headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
-    headers["Access-Control-Allow-Credentials"] = "true"
+    // Only set credentials if not using wildcard origin
+    if (headers["Access-Control-Allow-Origin"] !== "*") {
+      headers["Access-Control-Allow-Credentials"] = "true"
+    }
     headers["Access-Control-Max-Age"] = "86400"
   }
   
@@ -144,9 +156,9 @@ function getCorsHeaders(cors: string | string[] | boolean, origin?: string): Rec
  * ```
  */
 export function expressAdapter(
-  zapi: ZapiInstance,
+  nevr: NevrInstance,
   options: ExpressAdapterOptions = {}
-): RequestHandler {
+): ExpressMiddleware {
   const { getUser, cors, debugLogs } = options
 
   // Return Express middleware
@@ -170,23 +182,23 @@ export function expressAdapter(
         }
       }
 
-      // Convert Express request to Zapi request
-      const zapiRequest = await expressToZapi(req, getUser)
+      // Convert Express request to Nevr request
+      const nevrRequest = await expressToNevr(req, getUser)
 
       if (debugLogs) {
-        console.log(`[nevr:express] ${req.method} ${req.path}`)
+        getLogger().debug(`[nevr:express] ${req.method} ${req.path}`)
       }
 
       // Handle request
-      const response = await zapi.handleRequest(zapiRequest)
+      const response = await nevr.handleRequest(nevrRequest)
 
       // Send response
       sendResponse(res, response)
     } catch (error) {
       if (debugLogs) {
-        console.error("[nevr:express] Unhandled error:", error)
+        getLogger().error("[nevr:express] Unhandled error:", error)
       }
-      
+
       res.status(500).json({
         error: {
           code: "INTERNAL_ERROR",
@@ -244,8 +256,111 @@ export function jwtAuth(
   }
 }
 
+// -----------------------------------------------------------------------------
+// Helper: Session Auth (with Auth Plugin)
+// -----------------------------------------------------------------------------
+
+/**
+ * Session-based auth that works with the Nevr auth plugin
+ * Reads session token from cookies and validates against the database
+ *
+ * @example
+ * ```typescript
+ * import { expressAdapter, sessionAuth } from "nevr/adapters/express"
+ * import { PrismaClient } from "@prisma/client"
+ * import { prisma } from "nevr/drivers/prisma"
+ *
+ * const prismaClient = new PrismaClient()
+ * const driver = prisma(prismaClient)
+ *
+ * app.use("/api", expressAdapter(api, {
+ *   getUser: sessionAuth(driver),
+ *   cors: true,
+ * }))
+ * ```
+ */
+export function sessionAuth(
+  driver: any,
+  options?: {
+    /** Cookie name for session token (default: "nevr.session_token") */
+    cookieName?: string
+    /** Session expiry in seconds (default: 7 days) */
+    sessionExpiresIn?: number
+  }
+): (req: Request) => Promise<User | null> {
+  const cookieName = options?.cookieName || "nevr.session_token"
+  const sessionExpiresIn = options?.sessionExpiresIn || 60 * 60 * 24 * 7
+
+  return async (req: Request): Promise<User | null> => {
+    // Try to get token from cookie
+    const cookieHeader = req.headers.cookie
+    let token: string | undefined
+
+    if (cookieHeader) {
+      // Parse cookies
+      const cookies: Record<string, string> = {}
+      cookieHeader.split(";").forEach((cookie) => {
+        const [name, ...valueParts] = cookie.split("=")
+        const trimmedName = name?.trim()
+        if (trimmedName) {
+          cookies[trimmedName] = decodeURIComponent(valueParts.join("=").trim())
+        }
+      })
+      token = cookies[cookieName]
+    }
+
+    // Also try Authorization header (Bearer token)
+    if (!token) {
+      const auth = req.headers.authorization
+      if (auth?.startsWith("Bearer ")) {
+        token = auth.slice(7)
+      }
+    }
+
+    if (!token) {
+      return null
+    }
+
+    try {
+      // Find session in database
+      const session = await driver.findOne("session", { token })
+      if (!session) {
+        return null
+      }
+
+      // Check expiry
+      const expiresAt = new Date(session.expiresAt)
+      if (expiresAt < new Date()) {
+        return null
+      }
+
+      // Get user
+      const user = await driver.findOne("user", { id: session.userId })
+      if (!user) {
+        return null
+      }
+
+      // Update session last used (async, don't wait)
+      driver.update("session", { id: session.id }, { updatedAt: new Date() }).catch(() => {})
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role || "user",
+        image: user.image,
+        emailVerified: user.emailVerified,
+      }
+    } catch (error) {
+      getLogger().error("[nevr:express] Session auth error:", error)
+      return null
+    }
+  }
+}
+
 // Aliases for convenience
 export { devAuth as expressDevAuth }
 export { jwtAuth as expressJwtAuth }
+export { sessionAuth as expressSessionAuth }
 
 export default expressAdapter

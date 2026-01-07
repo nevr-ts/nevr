@@ -4,7 +4,7 @@
 // =============================================================================
 
 import { describe, it, expect, beforeEach } from "vitest"
-import { entity } from "./entity"
+import { entity } from "./entity.js"
 import {
   string,
   text,
@@ -17,8 +17,8 @@ import {
   hasMany,
   hasOne,
   FieldBuilder,
-} from "./fields"
-import type { Entity, FieldDef } from "./types"
+} from "./fields.js"
+import type { Entity, FieldDef } from "./types.js"
 
 // -----------------------------------------------------------------------------
 // Entity DSL Tests

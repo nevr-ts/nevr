@@ -21,12 +21,15 @@
 
 - 🚀 **Entity-first design** — Define entities, get complete CRUD APIs automatically
 - 🔒 **End-to-end type safety** — Full TypeScript inference from database to client
-- 🔐 **Built-in authentication** — [Better Auth](https://better-auth.com) integration with OAuth, sessions, JWT
+- 🔐 **Built-in authentication** — Email/password, OAuth, sessions, JWT
 - 🔌 **Framework agnostic** — Works with Express, Hono, and more
 - 🗄️ **Database agnostic** — Prisma driver included, more coming soon
-- 🧩 **Plugin system** — Extend with auth, timestamps, or custom plugins and more
+- 🧩 **Unified Plugin System** — Extend with auth, timestamps, payments, storage plugins
 - ⚡ **Zero config** — Sensible defaults, full customization when needed
 - 📦 **Auto-generated clients** — Type-safe API clients for your frontend
+- 🔄 **Workflow Engine** — Multi-step transactions with compensation (saga pattern)
+- 💉 **Service Container** — Functional dependency injection with lifecycle management
+- ✅ **Cross-field Validation** — Complex business rules with declarative syntax
 
 ## 📦 Installation
 
@@ -37,10 +40,11 @@ pnpm add nevr
 # or
 yarn add nevr
 ```
+
 ## 🆕 Create a New Nevr Project
 
 ```bash
-#quick installation with project scaffolding
+# Quick installation with project scaffolding
 npm create nevr@latest my-nevr-app
 ```
 
@@ -48,10 +52,9 @@ npm create nevr@latest my-nevr-app
 
 ```typescript
 import { entity, string, text, belongsTo, nevr } from "nevr"
-import { expressAdapter} from "nevr/adapters/express"
+import { expressAdapter } from "nevr/adapters/express"
 import { prisma } from "nevr/drivers/prisma"
 import { PrismaClient } from "@prisma/client"
-import {zapi as nevr} from "nevr"
 import express from "express"
 
 // 1️⃣ Define your entities
@@ -86,15 +89,17 @@ That's it! You now have a full REST API with:
 - `GET/POST /api/posts` — List & create posts
 - `GET/PUT/DELETE /api/posts/:id` — Read, update, delete post
 
-## 📖 Entity DSL
+---
+
+## 📖 Entity-First DSL
 
 ### Field Types
 
 ```typescript
-import { entity, string, text, int, float, bool, datetime, json, belongsTo } from "nevr"
+import { entity, string, text, int, float, bool, datetime, json, belongsTo, email } from "nevr"
 
 const task = entity("task", {
-  // String fields
+  // String fields with validation
   title: string.min(1).max(200),           // VARCHAR with validation
   slug: string.unique(),                    // Unique constraint
   description: text.optional(),             // Long text, nullable
@@ -124,6 +129,36 @@ const task = entity("task", {
 | `.unique()` | Add unique constraint | `string.unique()` |
 | `.default(value)` | Set default value | `bool.default(false)` |
 | `.min(n)` / `.max(n)` | Validation bounds | `string.min(1).max(100)` |
+| `.trim()` | Trim whitespace | `string.trim()` |
+| `.lower()` / `.upper()` | Case transformation | `string.lower()` |
+
+### Security & Privacy (Entity-First)
+
+Control field visibility and mutability with the Entity-First DSL:
+
+```typescript
+const user = entity("user", {
+  email: string.email().unique(),
+  
+  // 🔐 Password: auto-hashed, never returned in responses
+  password: string.password().omit(),
+  
+  // 🔒 Protected fields: can't be set by clients
+  role: string.default("user").writable("none"),
+  emailVerified: bool.default(false).writable("none"),
+  
+  // 📖 Read-only computed fields
+  lastLoginAt: datetime.writable("none").optional(),
+}).build()
+```
+
+| Builder Method | Description |
+|----------------|-------------|
+| `.password()` | Hash on save, compare securely |
+| `.omit()` | Never return in API responses |
+| `.writable("none")` | Server-only, no client writes |
+| `.writable("create")` | Set on create only |
+| `.email()` | Email validation |
 
 ### Access Control
 
@@ -145,42 +180,22 @@ const post = entity("post", { /* fields */ })
 - `owner` — Must own the resource (via `ownedBy`)
 - `admin` — Must have admin role
 
-### Relations with Auth Plugin
-
-Using the auth plugin's user entity:
-
-```typescript
-import { auth, authUser } from "nevr/plugins/auth"
-
-const post = entity("post", {
-  title: string,
-  content: text,
-  author: belongsTo(authUser),  // Reference auth plugin's user
-})
-  .ownedBy("author")
-  .build()
-
-const api = nevr({
-  entities: [post],
-  plugins: [auth({ emailAndPassword: true })],
-  driver: prisma(db),
-})
-```
+---
 
 ## 🔌 Adapters
 
 ### Express
 
 ```typescript
-import { expressAdapter,devAuth } from "nevr/adapters/express"
+import { expressAdapter, devAuth } from "nevr/adapters/express"
 
 const app = express()
-
 app.use("/api", expressAdapter(api, { 
   getUser: devAuth,
   cors: true 
 }))
 ```
+
 ### Hono
 
 ```typescript
@@ -192,6 +207,8 @@ mountNevr(app, "/api", api, { getUser: honoDevAuth })
 
 export default app
 ```
+
+---
 
 ## 🗄️ Drivers
 
@@ -207,16 +224,18 @@ const api = nevr({
 })
 ```
 
-Generate your Prisma schema with [@nevr/cli](https://www.npmjs.com/package/@nevr/cli):
+Generate your Prisma schema with `@nevr/cli`:
 
 ```bash
 npx @nevr/cli generate
-npx prisma db push --schema=./generated/prisma/schema.prisma
+npx prisma db push --schema=./prisma/schema.prisma
 ```
+
+---
 
 ## 🧩 Plugins
 
-### Authentication (Better Auth)
+### Authentication
 
 Full-featured auth with email/password, OAuth, sessions, and JWT:
 
@@ -227,10 +246,11 @@ const api = nevr({
   entities: [post],
   plugins: [
     auth({
-      emailAndPassword: true,
-      mode: "session",  // "session" | "bearer" | "jwt"
-      // OAuth providers
-      // providers: { google: {...}, github: {...} }
+      emailAndPassword: {enabled: true},
+      socialProviders: {
+        google: { clientId: "...", clientSecret: "..." },
+        github: { clientId: "...", clientSecret: "..." },
+      },
     })
   ],
   driver: prisma(db),
@@ -242,6 +262,7 @@ const api = nevr({
 - `POST /api/auth/sign-in` — Sign in
 - `POST /api/auth/sign-out` — Sign out
 - `GET /api/auth/session` — Get current session
+- `GET /api/auth/callback/:provider` — OAuth callback
 
 ### Timestamps
 
@@ -256,6 +277,99 @@ const api = nevr({
   driver: prisma(db),
 })
 ```
+
+---
+
+## 🔄 Workflow Engine
+
+Execute multi-step operations with automatic rollback (saga pattern):
+
+```typescript
+import { createWorkflow, step, createEntityStep, deleteEntityStep } from "nevr"
+
+const signUpWorkflow = createWorkflow({
+  name: "user-signup",
+  useTransaction: true,
+  execute: async (ctx, input) => {
+    // Step 1: Create user
+    const user = await step(ctx, {
+      name: "create-user",
+      execute: () => ctx.driver.create("user", { email: input.email }),
+      compensate: (result) => ctx.driver.delete("user", { id: result.id }),
+    })
+    
+    // Step 2: Create profile
+    await step(ctx, {
+      name: "create-profile",
+      execute: () => ctx.driver.create("profile", { userId: user.id }),
+      compensate: () => ctx.driver.delete("profile", { userId: user.id }),
+    })
+    
+    // Step 3: Send welcome email
+    await step(ctx, {
+      name: "send-email",
+      execute: () => sendWelcomeEmail(user.email),
+      retry: { maxAttempts: 3, delay: 1000 },
+    })
+    
+    return user
+  }
+})
+```
+
+---
+
+## 💉 Service Container
+
+Functional dependency injection with lifecycle management:
+
+```typescript
+const api = nevr({ entities: [...], driver })
+
+// Register services
+api.registerService("stripe", () => new Stripe(process.env.STRIPE_KEY!))
+api.registerService("email", () => new EmailService(), { lifecycle: "singleton" })
+
+// Resolve in hooks or handlers
+const handlePayment = async (ctx) => {
+  const stripe = ctx.resolve<Stripe>("stripe")
+  return stripe.charges.create({ amount: 1000, currency: "usd" })
+}
+```
+
+**Lifecycle Options:**
+- `singleton` — Single instance for app lifetime (default)
+- `transient` — New instance on each resolve
+- `scoped` — New instance per request scope
+
+---
+
+## ✅ Cross-Field Validation
+
+Validate complex business rules:
+
+```typescript
+const order = entity("order", {
+  startDate: datetime,
+  endDate: datetime,
+  minQty: int,
+  maxQty: int,
+})
+  .validate({
+    dateRange: {
+      fn: (data) => data.endDate > data.startDate,
+      message: "End date must be after start date",
+      fields: ["startDate", "endDate"],
+    },
+    qtyRange: {
+      fn: (data) => data.maxQty >= data.minQty,
+      message: "Max quantity must be >= min quantity",
+    },
+  })
+  .build()
+```
+
+---
 
 ## 🔍 Query API
 
@@ -278,6 +392,31 @@ GET /api/posts?include=author
 GET /api/posts?include=author,comments
 ```
 
+---
+
+## 🔷 Type Inference
+
+Get end-to-end type safety from server to client:
+
+```typescript
+// Server
+import { nevr, entity, string } from "nevr"
+export const api = nevr({ entities: [...], driver })
+export type API = typeof api
+
+// Client (can be in a different package!)
+import type { API } from "../server"
+import { createClient } from "nevr/client"
+
+const client = createClient<API>({ baseURL: "/api" })
+
+// Full autocomplete & type checking!
+const users = await client.users.findMany()
+const user = await client.users.create({ email: "..." })
+```
+
+---
+
 ## 📚 Related Packages
 
 | Package | Description |
@@ -287,10 +426,14 @@ GET /api/posts?include=author,comments
 | [`@nevr/generator`](https://www.npmjs.com/package/@nevr/generator) | Prisma/TypeScript generator |
 | [`create-nevr`](https://www.npmjs.com/package/create-nevr) | Project scaffolder |
 
+---
+
 ## 🤝 Contributing
 
-We welcome contributions! See our [Contributing Guide](https://github.com/nevr-ts/nevr/blob/main/CONTRIBUTING.md) for details.
+We welcome contributions! See our [Contributing Guide](./CONTRIBUTING.md) for details.
+
+---
 
 ## 📄 License
 
-[MIT](https://github.com/nevr-ts/nevr/blob/main/LICENSE) © Nevr Contributors
+[MIT](./LICENSE) © Nevr Contributors

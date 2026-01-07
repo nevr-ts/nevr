@@ -4,7 +4,8 @@
 // =============================================================================
 
 import type { Context, MiddlewareHandler, Hono } from "hono"
-import type { ZapiInstance, ZapiRequest, ZapiResponse, User } from "../types.js"
+import type { NevrInstance, NevrRequest, NevrResponse, User } from "../types.js"
+import { getLogger } from "../logger.js"
 
 // -----------------------------------------------------------------------------
 // Types
@@ -31,10 +32,10 @@ export interface HonoAdapterOptions {
 // Request Converter
 // -----------------------------------------------------------------------------
 
-async function honoToZapi(
+async function honoToNevr(
   c: Context,
   getUser?: HonoAdapterOptions["getUser"]
-): Promise<ZapiRequest> {
+): Promise<NevrRequest> {
   // Get user
   const user = getUser ? await getUser(c) : null
 
@@ -76,7 +77,7 @@ async function honoToZapi(
   }
 
   return {
-    method: c.req.method as ZapiRequest["method"],
+    method: c.req.method as NevrRequest["method"],
     path: url.pathname,
     params: c.req.param() as Record<string, string>,
     query,
@@ -95,7 +96,7 @@ async function honoToZapi(
 // Response Sender
 // -----------------------------------------------------------------------------
 
-function sendResponse(c: Context, response: ZapiResponse): Response {
+function sendResponse(c: Context, response: NevrResponse): Response {
   // Set headers
   if (response.headers) {
     for (const [key, value] of Object.entries(response.headers)) {
@@ -151,7 +152,7 @@ function getCorsHeaders(
  * @example
  * ```typescript
  * import { Hono } from "hono"
- * import { zapi } from "nevr"
+ * import { nevr } from "nevr"
  * import { honoAdapter } from "nevr/adapters/hono"
  *
  * const app = new Hono()
@@ -166,7 +167,7 @@ function getCorsHeaders(
  * ```
  */
 export function honoAdapter(
-  zapi: ZapiInstance,
+  nevr: NevrInstance,
   options: HonoAdapterOptions = {}
 ): MiddlewareHandler {
   const { getUser, cors, debugLogs } = options
@@ -190,21 +191,21 @@ export function honoAdapter(
         }
       }
 
-      // Convert Hono context to Zapi request
-      const zapiRequest = await honoToZapi(c, getUser)
+      // Convert Hono context to Nevr request
+      const nevrRequest = await honoToNevr(c, getUser)
 
       if (debugLogs) {
-        console.log(`[nevr:hono] ${c.req.method} ${c.req.path}`)
+        getLogger().debug(`[nevr:hono] ${c.req.method} ${c.req.path}`)
       }
 
       // Handle request
-      const response = await zapi.handleRequest(zapiRequest)
+      const response = await nevr.handleRequest(nevrRequest)
 
       // Send response
       return sendResponse(c, response)
     } catch (error) {
       if (debugLogs) {
-        console.error("[nevr:hono] Unhandled error:", error)
+        getLogger().error("[nevr:hono] Unhandled error:", error)
       }
 
       return c.json(
@@ -239,7 +240,7 @@ export function honoAdapter(
  */
 export function mountNevr(
   app: Hono<any>,
-  api: ZapiInstance,
+  api: NevrInstance,
   options: HonoAdapterOptions = {}
 ): void {
   const prefix = options.prefix || "/api"
@@ -250,7 +251,8 @@ export function mountNevr(
 }
 
 // Alias for backward compatibility
-export { mountNevr as mountZapi }
+/** @deprecated Use mountNevr instead */
+// export { mountNevr  }
 
 // -----------------------------------------------------------------------------
 // Helper: Development Auth

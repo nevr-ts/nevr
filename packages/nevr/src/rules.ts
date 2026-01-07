@@ -48,6 +48,97 @@ export function ownerOrAdmin(ownerField: string): RuleFn {
 }
 
 // -----------------------------------------------------------------------------
+// Named Rules (defineRule)
+// -----------------------------------------------------------------------------
+
+/** Named rule with metadata for debugging and introspection */
+export interface NamedRule extends RuleFn {
+  /** Rule name for debugging */
+  ruleName: string
+  /** Original check function */
+  check: RuleFn
+}
+
+/** Registry of all defined rules for introspection */
+const ruleRegistry = new Map<string, NamedRule>()
+
+/**
+ * Define a named custom rule
+ * Named rules provide better debugging and can be inspected via getRuleRegistry()
+ * 
+ * @param name - Unique name for the rule (used in error messages)
+ * @param check - Rule function that returns true if access is allowed
+ * @returns Named rule function
+ * 
+ * @example
+ * ```typescript
+ * const premiumUser = defineRule("premium", async (ctx) => {
+ *   const user = await ctx.resolve("userService").getUser(ctx.user.id)
+ *   return user.subscription === "premium"
+ * })
+ * 
+ * entity("feature", { ... }).rules({ read: [premiumUser] })
+ * ```
+ */
+export function defineRule(name: string, check: RuleFn): NamedRule {
+  // Create the named rule function
+  const namedRule: NamedRule = Object.assign(
+    async (ctx: RuleContext) => {
+      try {
+        return await check(ctx)
+      } catch (e) {
+        throw new Error(`Rule "${name}" failed: ${(e as Error).message}`)
+      }
+    },
+    {
+      ruleName: name,
+      check,
+    }
+  )
+
+  // Register the rule
+  ruleRegistry.set(name, namedRule)
+
+  return namedRule
+}
+
+/**
+ * Get all registered named rules
+ * Useful for debugging and introspection
+ */
+export function getRuleRegistry(): Map<string, NamedRule> {
+  return new Map(ruleRegistry)
+}
+
+/**
+ * Get a registered rule by name
+ */
+export function getRule(name: string): NamedRule | undefined {
+  return ruleRegistry.get(name)
+}
+
+/**
+ * Check if a rule is a named rule
+ */
+export function isNamedRule(rule: RuleFn): rule is NamedRule {
+  return typeof rule === "function" && "ruleName" in rule
+}
+
+/**
+ * Get the name of a rule (returns the name if NamedRule, undefined otherwise)
+ */
+export function getRuleName(rule: RuleFn): string | undefined {
+  return isNamedRule(rule) ? rule.ruleName : undefined
+}
+
+/**
+ * Clear the rule registry (for testing)
+ */
+export function clearRuleRegistry(): void {
+  ruleRegistry.clear()
+}
+
+// -----------------------------------------------------------------------------
 // Rule Resolution
 // -----------------------------------------------------------------------------
 
@@ -107,8 +198,12 @@ export async function checkRules(
       const result = await rule(fullCtx)
       if (!result) {
         // Determine appropriate error message
+        const ruleName = getRuleName(rule)
         if (ctx.user === null) {
           return { allowed: false, error: "Authentication required" }
+        }
+        if (ruleName) {
+          return { allowed: false, error: `Permission denied by rule: ${ruleName}` }
         }
         return { allowed: false, error: "Permission denied" }
       }

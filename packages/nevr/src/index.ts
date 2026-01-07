@@ -15,6 +15,23 @@ export type {
   EntityConfig,
   Operation,
 
+  // Entity Actions (Pillar 1 integration)
+  EntityAction,
+  EntityActionContext,
+  EntityWorkflowConfig,
+  EntityWorkflowStep,
+
+  // Cross-Field Validation (Tier 2)
+  EntityValidator,
+  EntityValidatorFn,
+  EntityValidatorContext,
+
+  // Field-Level Access Policies (Tier 2)
+  FieldAccessPolicy,
+  FieldAccessPolicyRule,
+  FieldAccessPolicyFn,
+  FieldAccessContext,
+
   // User & Auth
   User,
 
@@ -25,8 +42,8 @@ export type {
   BuiltInRule,
 
   // Request/Response
-  ZapiRequest,
-  ZapiResponse,
+  NevrRequest,
+  NevrResponse,
 
   // Query
   QueryOptions,
@@ -60,13 +77,17 @@ export type {
 
   // Error
   ErrorCode,
-  ZapiError,
+  NevrError,
 
   // Config & Instance
-  ZapiConfig,
-  ZapiInstance,
+  NevrConfig,
+  NevrInstance,
   CorsOptions,
   SecurityOptions,
+
+  // Service Registration
+  ServiceRegistrationOptions,
+  ServiceResolverContext,
 } from "./types.js"
 
 // Fields DSL
@@ -83,12 +104,32 @@ export {
   belongsTo,
   hasMany,
   hasOne,
+  selfRef,
+  jsonTyped,
   FieldBuilder,
   RelationBuilder,
+  SelfRefBuilder,
+  TypedFieldBuilder,
 } from "./fields.js"
 
 // Entity DSL
-export { entity, EntityBuilder, resolveEntity } from "./entity.js"
+export { entity, EntityBuilder, resolveEntity, action, step, ActionBuilder } from "./entity.js"
+export type { ActionDef } from "./entity.js"
+
+// Pre-built Entity Actions
+export {
+  softDeleteAction,
+  restoreAction,
+  archiveAction,
+  unarchiveAction,
+  cloneAction,
+  bulkUpdateAction,
+  bulkDeleteAction,
+  toggleAction,
+  exportAction,
+  countAction,
+  existsAction,
+} from "./plugins/core/actions.js"
 
 // Rules
 export {
@@ -97,18 +138,43 @@ export {
   admin,
   owner,
   ownerOrAdmin,
+  defineRule,
+  getRule,
+  getRuleRegistry,
+  isNamedRule,
+  getRuleName,
+  clearRuleRegistry,
   checkRules,
   resolveRule,
   getRulesForOperation,
 } from "./rules.js"
 
+export type { NamedRule } from "./rules.js"
+
 // Validation
 export { validateInput, validateQueryParams } from "./validation.js"
 
+// Logger
+export { getLogger, setLogger, noopLogger, consoleLogger, createPrefixedLogger } from "./logger.js"
+export type { Logger } from "./logger.js"
+
+// Utils
+export { capitalize, pascalCase, camelCase, kebabCase, snakeCase, isValidIdentifier, isValidEntityName } from "./utils/index.js"
+
 // Errors
 export {
+  // Base error class
   NevrErrorClass,
-  ZapiErrorClass,
+  // Specialized error classes
+  EntityNotFoundError,
+  ValidationFailedError,
+  AuthenticationError,
+  AuthorizationError,
+  ConflictError,
+  PluginError,
+  ConfigurationError,
+  DatabaseError,
+  // Error response builders
   createErrorResponse,
   validationError,
   unauthorizedError,
@@ -117,14 +183,17 @@ export {
   conflictError,
   internalError,
   handleError,
+  // Centralized error codes
+  ErrorCodes,
+  getHttpStatus,
 } from "./error.js"
 
-// Plugin System
+
+// Plugin Runtime
 export {
   createHookContext,
   executeHook,
   executeErrorHook,
-  createPlugin,
   registerPlugin,
   unregisterPlugin,
   getPlugin,
@@ -137,25 +206,53 @@ export {
   collectMiddleware,
   collectRoutes,
   initializePlugins,
-  PluginBuilder,
-} from "./plugin.js"
+} from "./plugins/unified/runtime.js"
 
-export type { PluginConfig, PluginSchema } from "./plugin.js"
+// =============================================================================
+// PLUGIN SYSTEM
+// =============================================================================
 
-// New Plugin System (Core)
+// Plugin Creation (RECOMMENDED - use these for all new plugins)
 export {
-  definePlugin,
-  simplePlugin,
-  registerPluginFactory,
-  getPluginFactory,
-  createFromFactory,
+  createPlugin,             // ← THE ONE function for creating plugins
+  createLifecyclePlugin,    // Convenience: lifecycle-only plugins
+  createEntityHooksPlugin,  // Convenience: entity hooks plugins
+  createInterceptorPlugin,  // Convenience: interceptor plugins
+  endpoint,                 // Helper for defining typed endpoints
+} from "./plugins/unified/index.js"
+
+// Plugin Detection & Validation
+export {
+  detectPluginType,
+  isValidPlugin,
+  processPlugin,
+  processPlugins,
+  isUnifiedPlugin,
+  normalizePlugin,
+  normalizePlugins,
+  validateUnifiedPlugin,
+} from "./plugins/unified/index.js"
+
+// Lifecycle Management
+export {
+  LifecycleManager,
+  getLifecycleManager,
+  setLifecycleManager,
+  clearLifecycleManager,
+  registerAndInitializePlugins,
+  executeLifecycleHook,
+} from "./plugins/unified/index.js"
+
+// -----------------------------------------------------------------------------
+// Plugin Registry & Advanced (internal use)
+// -----------------------------------------------------------------------------
+export {
   registerPluginInstance,
   getPluginInstance,
   getPluginEntity,
   markPluginInitialized,
   isPluginInitialized,
   getAllPlugins,
-  clearPluginFactories,
   resolveAllPlugins,
   initializeAllPlugins,
   validatePlugin,
@@ -167,32 +264,82 @@ export {
   resolveEntityRef,
   clearEntityCache,
   getPluginEntityFn,
+  // Schema helpers
+  schemaFromEntities,
+  defineSchema,
+  pluginEntity,
+  entitiesToSchema,
 } from "./plugins/core/index.js"
 
 export type {
-  ZapiPlugin,
+  NevrPlugin,
   PluginMeta,
-  PluginFactory,
+  PluginSchema as NevrPluginSchema,
   PluginExtension,
-  DefinePluginOptions,
-} from "./plugins/core/index.js"
+  PluginFactory,
+  ResolvedPlugin,
+  PluginMigration,
+  EndpointDefinition,
+  EndpointInput,
+  EndpointOutput,
+  OpenAPIMetadata,
+} from "./plugins/core/contract.js"
+
+export type {
+  CreatePluginOptions,
+  PluginType,
+  AnyPlugin,
+} from "./plugins/unified/facade.js"
+
+export type {
+  UnifiedPlugin,
+  UnifiedPluginFactory,
+  UnifiedPluginMeta,
+  LifecycleHooks,
+  EntityHooks,
+  EntityHook,
+  EntityHookContext,
+  RequestInterceptors,
+  Interceptor,
+  InterceptorContext,
+  InterceptorHandler,
+  PathMatcher,
+  PluginSchema,
+  FieldDefinition,
+  EntityDefinition,
+  Migration,
+  RateLimitRule,
+  InferPluginOptions,
+} from "./plugins/unified/types.js"
+
+// Context System (Global State Management)
+export {
+  createNevrContext,
+  getGlobalContext,
+  setGlobalContext,
+  clearGlobalContext,
+  RuleRegistry,
+  PluginManager,
+} from "./context.js"
+
+export type { NevrContext } from "./context.js"
 
 // Driver System (Database abstraction)
 export {
   createDriverFactory,
-} from "./driver/index.js"
+} from "./drivers/base.js"
 
 export type {
   DriverFactoryConfig,
   DriverDebugLogOption,
   DriverFactoryOptions,
   CustomDriverMethods,
-} from "./driver/index.js"
+} from "./drivers/base.js"
 
 // Adapter System (HTTP framework abstraction)
 export {
   createAdapterFactory,
-} from "./adapter/index.js"
+} from "./adapters/escape-hatch.js"
 
 export type {
   AdapterConfig,
@@ -201,29 +348,154 @@ export type {
   AdapterContext,
   AdapterFactoryOptions,
   CustomAdapterMethods,
-} from "./adapter/index.js"
+} from "./adapters/escape-hatch.js"
 
 // Router
 export { matchRoute, pluralize, singularize } from "./router.js"
 
 // Main factory
-export { zapi } from "./nevr.js"
+export { nevr, type TypedNevrInstance } from "./nevr.js"
 
-// Alias for nevr (backwards compat and new API)
-export { zapi as nevr } from "./nevr.js"
-
-// =============================================================================
-// TYPE ALIASES - Nevr naming convention
-// These are aliases for the Zapi* types for cleaner naming
-// =============================================================================
+// Service Container (Pillar 3: Functional DI)
+export {
+  ServiceContainer,
+  ScopedContainer,
+  getGlobalContainer,
+  setGlobalContainer,
+  clearGlobalContainer,
+  createScope,
+  createService,
+  lazyService,
+  createResolverContext,
+} from "./container.js"
 
 export type {
-  ZapiRequest as NevrRequest,
-  ZapiResponse as NevrResponse,
-  ZapiError as NevrError,
-  ZapiConfig as NevrConfig,
-  ZapiInstance as NevrInstance,
-} from "./types.js"
+  ServiceFactory,
+  ServiceOptions,
+  ServiceContext,
+  ServiceRegistry,
+  TypedResolver,
+  ResolverContext,
+  DefineServices,
+  MergeServices,
+} from "./container.js"
+
+// Remote Joiner (Pillar 2: Link Engine)
+export {
+  RemoteJoiner,
+  createRemoteJoiner,
+  hasRemoteRelations,
+  getRemoteRelationFields,
+  splitIncludes,
+  validateRemoteRelations,
+} from "./remote-joiner.js"
+
+export type {
+  RemoteService,
+  RemoteJoinerOptions,
+} from "./remote-joiner.js"
+
+// Workflow Engine (Pillar 1: Atomic + Rollbacks)
+export {
+  workflow,
+  executeWorkflow,
+  runWorkflow,
+  WorkflowBuilder,
+  createEntityStep,
+  updateEntityStep,
+  deleteEntityStep,
+} from "./workflow.js"
+
+export type {
+  WorkflowContext,
+  WorkflowMetadata,
+  WorkflowStep,
+  WorkflowConfig,
+  WorkflowResult,
+  StepResult,
+} from "./workflow.js"
+
+// Enhancements
+export {
+  // Enhancement pipeline
+  enhanceWriteData,
+  enhanceReadData,
+  enhanceReadDataArray,
+  hasEnhancements,
+  getEnhancementSummary,
+  initEnhancements,
+
+  // Validation
+  validateField,
+  validateData,
+  getValidationSchema,
+  FieldValidationError,
+  FieldValidationErrors,
+
+  // Transforms
+  transformField,
+  transformData,
+  hasTransforms,
+  getTransformFields,
+
+  // Security
+  hashPassword,
+  verifyPassword,
+  isPasswordHash,
+  initEncryption,
+  registerEncryptionKey,
+  setPrimaryEncryptionKey,
+  getRegisteredKeyIds,
+  removeEncryptionKey,
+  clearEncryptionKeys,
+  generateEncryptionKey,
+  encryptValue,
+  decryptValue,
+  reEncryptValue,
+  reEncryptRecord,
+  isEncrypted,
+  getEncryptionKeyId,
+  processWriteData,
+  processReadData,
+  getPasswordFields,
+  getOmitFields,
+  getEncryptedFields,
+  hasSecurityFields,
+
+  // Cross-Field Validation (Tier 2)
+  validateCrossFields,
+  hasCrossFieldValidators,
+  getValidators,
+  getValidatorsForOperation,
+  getCrossFieldValidatedFields,
+  CrossFieldValidationError,
+  CrossFieldValidationErrors,
+
+  // Field Access Policies (Tier 2)
+  evaluatePolicy,
+  canReadField,
+  canWriteField,
+  filterReadableFields,
+  filterWritableFields,
+  hasFieldAccessPolicies,
+  getReadPolicyFields,
+  getWritePolicyFields,
+  getAccessPolicyFields,
+  getFieldAccessSummary,
+  FieldAccessDeniedError,
+
+  // Enhanced Driver
+  createEnhancedDriver,
+  isEnhancedDriver,
+  getBaseDriver,
+} from "./enhancements/index.js"
+
+export type {
+  EnhancementOptions,
+  NevrEnhancementConfig,
+  EnhancedDriverOptions,
+} from "./enhancements/index.js"
+
 
 // =============================================================================
 // ADAPTERS (HTTP framework integrations)
@@ -245,7 +517,96 @@ export type {
 // =============================================================================
 // Note: Plugins are available via subpath imports:
 // - nevr/plugins/auth
-// - nevr/plugins/payments
-// - nevr/plugins/storage
 // - nevr/plugins/timestamps
-// Direct imports avoid loading optional dependencies like better-auth
+// Direct imports avoid loading optional dependencies when not needed
+
+// =============================================================================
+// TYPE INFERENCE (E2E Type Safety)
+// =============================================================================
+// These exports enable end-to-end type inference from server to client
+// Similar to better-auth's $Infer pattern or tRPC's type inference
+
+export {
+  defineConfig,
+} from "./plugins/core/inference.js"
+
+export type {
+  // $Infer Pattern
+  $Infer,
+
+  // Server Type Creation
+  NevrInstanceType,
+  CreateServerType,
+
+  // Inference from Server
+  InferClientFromServer,
+  InferServerPlugin,
+  InferEntity,
+  InferEndpoints,
+  InferErrorCodes as InferServerErrorCodes,
+  InferPathMethods,
+  PathMethodMap,
+
+  // Plugin Type Inference
+  InferPluginTypes,
+  InferPluginEndpoints,
+  InferPluginErrorCodes,
+  MergePlugins,
+
+  // Entity Type Inference
+  InferEntityFromSchema,
+  InferEntitiesFromPluginSchema,
+  InferEntityRoutes,
+  FieldTypeToTS,
+
+  // Direct Entity Inference
+  InferEntityData,
+  InferCreateInput,
+  InferUpdateInput,
+
+  // Response Type Helpers
+  ListResponse,
+  SingleResponse,
+  ApiResponse,
+  EntityPaths,
+
+  // DX Helper Types (Simplified Access)
+  EntityOf,
+  EntityNamesOf,
+  EntitiesOf,
+} from "./plugins/core/inference.js"
+
+// =============================================================================
+// CLIENT TYPE INFERENCE
+// =============================================================================
+// For frontend usage - import from "nevr/client" for full client features
+
+export type {
+  // Client creation with server inference
+  CreateClientOptions,
+  InferClientType,
+  InferEntityType,
+  InferPluginActions,
+
+  // Entity CRUD types
+  EntityCRUD,
+  EntitiesAPI,
+
+  // Auth inference
+  InferAuthFromClient,
+  InferSchemaExtensions,
+
+  // Session types for auth
+  BaseUser,
+  BaseSession,
+  SessionState,
+
+  // Helper types
+  InferClientAPI,
+  InferActions,
+  InferAtoms,
+  InferErrorCodes,
+  InferSessionFromClient,
+  InferUserFromClient,
+  InferAdditionalFields,
+} from "./client/types.js"

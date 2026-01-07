@@ -3,7 +3,7 @@
 // Routes requests to appropriate handlers
 // =============================================================================
 
-import type { ZapiRequest, ZapiResponse, Entity, Plugin, Route } from "./types.js"
+import type { NevrRequest, NevrResponse, Entity, Plugin, Route } from "./types.js"
 import type { ResolvedEntityMeta, RouteHandler } from "./plugins/core/contract.js"
 
 // -----------------------------------------------------------------------------
@@ -55,6 +55,50 @@ export function singularize(str: string): string {
 }
 
 /**
+ * Get the route path for an entity with custom pluralization support
+ */
+export function getEntityRoutePath(entityName: string, options?: EntityRouteOptions): string {
+  // Check custom route mapping first
+  if (options?.routes?.[entityName]) {
+    return options.routes[entityName]
+  }
+
+  // Disable pluralization if requested
+  if (options?.disablePluralization) {
+    return entityName
+  }
+
+  // Use custom pluralization function if provided
+  if (options?.pluralize) {
+    return options.pluralize(entityName)
+  }
+
+  // Default pluralization
+  return pluralize(entityName)
+}
+
+/**
+ * Entity routing options
+ */
+export interface EntityRouteOptions {
+  /**
+   * Custom pluralization function
+   * @example (name) => name + 's' // simple pluralization
+   */
+  pluralize?: (entityName: string) => string
+  /**
+   * Disable auto-pluralization (use entity name as-is)
+   * @default false
+   */
+  disablePluralization?: boolean
+  /**
+   * Custom route mappings per entity
+   * @example { user: 'users', person: 'people' }
+   */
+  routes?: Record<string, string>
+}
+
+/**
  * Route matching options including plugin metadata
  */
 export interface MatchRouteOptions {
@@ -62,13 +106,15 @@ export interface MatchRouteOptions {
   pluginRoutes?: Route[]
   /** Entity metadata from plugins (for base paths and route configs) */
   entityMeta?: Map<string, ResolvedEntityMeta>
+  /** Entity routing options */
+  entityRoutes?: EntityRouteOptions
 }
 
 /**
  * Match a request to a route
  */
 export function matchRoute(
-  req: ZapiRequest,
+  req: NevrRequest,
   entities: Map<string, Entity>,
   options?: MatchRouteOptions | Route[]
 ): RouteMatch {
@@ -117,7 +163,8 @@ export function matchRoute(
     // Skip plugin entities - they use base paths
     if (entityMeta?.has(name)) continue
 
-    if (pluralize(name) === resourceName || name === resourceName) {
+    const entityPath = getEntityRoutePath(name, opts.entityRoutes)
+    if (entityPath === resourceName || name === resourceName) {
       entity = e
       break
     }
@@ -159,7 +206,7 @@ export function matchRoute(
  * Example: /auth/users -> auth plugin's user entity
  */
 function matchPluginEntityRoute(
-  req: ZapiRequest,
+  req: NevrRequest,
   parts: string[],
   entities: Map<string, Entity>,
   entityMeta: Map<string, ResolvedEntityMeta>
