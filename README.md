@@ -1,371 +1,339 @@
-# ⚡ Nevr
+<p align="center">
+  <img src="docs/docs/public/nevr_pp.png" alt="Nevr Logo" width="120" height="120" />
+</p>
 
-[![Beta](https://img.shields.io/badge/status-beta-orange.svg)](https://github.com/nevr-ts/nevr)
-[![CI](https://github.com/nevr-ts/nevr/actions/workflows/ci.yml/badge.svg)](https://github.com/nevr-ts/nevr/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<h1 align="center">⚡ Nevr</h1>
 
-**Nevr write boilerplate again.** Nevr is a Zero-API, entity-first framework that turns your domain models into a fully functional, type-safe backend instantly.
+<p align="center">
+  <strong>The Full-Stack TypeScript Framework That Makes Backend Development Fun Again</strong>
+</p>
 
-> ⚠️ **Beta Software**: Nevr is under active development. APIs may change before v1.0.
+<p align="center">
+  <a href="https://github.com/nevr-ts/nevr"><img src="https://img.shields.io/badge/status-beta-orange.svg" alt="Beta"></a>
+  <a href="https://github.com/nevr-ts/nevr/actions/workflows/ci.yml"><img src="https://github.com/nevr-ts/nevr/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <a href="https://www.npmjs.com/package/nevr"><img src="https://img.shields.io/npm/v/nevr.svg?color=blue" alt="npm version"></a>
+</p>
 
-## Quick Start
+<p align="center">
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-why-nevr">Why Nevr?</a> •
+  <a href="#-features">Features</a> •
+  <a href="#-documentation">Documentation</a> •
+  <a href="#-ecosystem">Ecosystem</a>
+</p>
+
+---
+
+## 🎯 What is Nevr?
+
+**Nevr** is a **full-stack TypeScript framework** that eliminates boilerplate by turning your domain models into fully functional, type-safe APIs. Define your entities once—get CRUD endpoints, validation, authorization, Prisma schema, and typed clients automatically.
+
+```typescript
+// This is your entire backend for a blog post resource
+import { entity, string, text, belongsTo } from "nevr"
+
+export const post = entity("post", {
+  title: string.min(1).max(200),
+  content: text,
+  author: belongsTo(() => user),
+})
+  .ownedBy("author")
+  .rules({
+    create: ["authenticated"],
+    read: ["everyone"],
+    update: ["owner"],
+    delete: ["owner", "admin"],
+  })
+```
+
+**That's it.** You now have:
+- ✅ `POST /api/posts` — Create (validated, auth-protected)
+- ✅ `GET /api/posts` — List (filtered, sorted, paginated)
+- ✅ `GET /api/posts/:id` — Read (with relation includes)
+- ✅ `PUT /api/posts/:id` — Update (ownership enforced)
+- ✅ `DELETE /api/posts/:id` — Delete (ownership enforced)
+- ✅ Prisma schema auto-generated
+- ✅ TypeScript types inferred end-to-end
+- ✅ Type-safe client for your frontend
+
+---
+
+## 🚀 Quick Start
 
 ```bash
+# Create a new project in 30 seconds
 npm create nevr@latest my-api
 cd my-api
-npm run generate && npm run dev
+
+# Generate schema and start developing
+npm run generate
+npm run db:push
+npm run dev
 ```
 
-## Core Idea: Define once, get everything.
-
-```ts
-import { entity, string, text, belongsTo } from "nevr"
-
-export const post = entity("post", {
-  title: string.min(1).max(200),
-  body: text,
-  author: belongsTo(() => user),
-}).ownedBy("author")
-```
-
-From this, you get CRUD endpoints, validation, auth rules, Prisma schema, TS types, and a client.
+Your API is live at **http://localhost:3000/api** 🎉
 
 ---
 
-## 🚫 Solving the 6 Backend Nightmares
+## 💡 Why Nevr?
 
-1. **The Boilerplate Trap**: Stop writing repetitive Controllers, Services, and Routes.
-2. **The Type-Safety Gap**: Automatic client generation ensures your frontend build fails if the entity changes.
-3. **Authorization Nightmares**: Declarative permissions (e.g., `.ownedBy('author')`) baked into the model.
-4. **Inconsistent Validation**: Single source of truth for both Database constraints and Runtime validation.
-5. **Documentation Drift**: Your schema *is* the documentation. OpenAPI specs are always in sync.
-6. **The Expertise Bottleneck**: Junior and mid-level developers often spend days researching best practices for complex logic. Nevr encapsulates Senior-level architectural patterns into plug-and-play modules. The knowledge is in the system, not just in the minds of a few.
+### The Problem
 
----
+Building backends in 2024 still feels like it's 2014:
 
-## 🥊 The Code Duel: Traditional vs. Nevr
+| Pain Point | Traditional Approach |
+|------------|---------------------|
+| **Boilerplate Hell** | 50-100 lines across 5+ files for one resource |
+| **Type Drift** | Frontend and backend types go out of sync |
+| **Auth Spaghetti** | Manual middleware chains, scattered ownership checks |
+| **Validation Chaos** | Duplicate logic in DB schema AND runtime |
+| **Documentation Rot** | Swagger/OpenAPI decorators that lie |
 
-# Traditional Approach (Express + Prisma + Zod)
- To get a single Post resource with validation and ownership-checks, you typically write:
+### The Nevr Solution
 
-- ❌ ~50-100 lines across 3+ files
-- 1. Define Prisma Schema (schema.prisma)
-- 2. Define Zod Validation (post.schema.ts)
-- 3. Define Types (post.types.ts)
-- 4. Write Controller logic (post.controller.ts)
-- 5. Setup Routes (post.routes.ts)
-```ts 
-router.post("/posts", async (req, res) => {
-  const schema = z.object({ title: z.string().min(1), body: z.string() });
-  const data = schema.parse(req.body); // Manual validation
-  
-  const post = await prisma.post.create({ 
-    data: { ...data, authorId: req.user.id } // Manual ownership link
-  });
-  res.json(post);
-});
-```
-// ...Repeat for GET, PUT, DELETE, and Pagination logic
-
-# The Nevr Approach
- With Nevr, the Entity is the API. You define the Post entity once:
-
-// ✅ 8 lines, 1 file. Everything handled.
-```ts
-import { entity, string, text, belongsTo } from "nevr"
-export const post = entity("post", {
-  title: string.min(1).max(200),
-  body: text,
-  author: belongsTo(() => user),
-}).ownedBy("author") 
-```
-DONE. You now have:
-
-- POST /api/posts (Validated & Auth protected)
-- GET /api/posts (Filtered, Sorted, Paginated)
-- PUT /api/posts/:id (Ownership enforced)
-- DELETE /api/posts/:id (Ownership enforced)
-- Fully typed Frontend Client
+| Pain Point | Nevr Approach |
+|------------|---------------|
+| **Boilerplate Hell** | 8 lines, 1 file. Zero controllers, zero services. |
+| **Type Drift** | Build fails if entity changes—client types are inferred |
+| **Auth Spaghetti** | Declarative: `.ownedBy("author")` or `.rules({...})` |
+| **Validation Chaos** | Single source of truth: `string.min(1).max(200)` |
+| **Documentation Rot** | Schema IS the documentation—always in sync |
 
 ---
 
-## 🧩 The "Assemble-not-Build" Philosophy
+## ✨ Features
 
-Nevr isn't just a framework; it's a modular ecosystem built on the **Nevr Trinity**:
+### 🏗️ Entity-First Architecture
 
-1. **Adapters**: Where your API lives (Express, Hono, Next.js).
-2. **Drivers**: How your data is stored (Prisma, Drizzle, Kysely).
-3. **Plugins**: Everything else.
-
-### 🚀 Everything is a Plugin
-In Nevr, high-level features are self-contained plugins. You don't need to be a senior architect to implement complex logic—you just plug it in.
-
-| Plugin | What it adds to your project |
-| :--- | :--- |
-| **Auth** | Login routes, JWT/Session handling, and `User` schemas....and more. |
-| **Payment** | Stripe integration, webhook handlers, and `Transaction` entities....and more. |
-| **Storage** | S3/Cloudinary upload logic and file metadata tracking....and more. |
-| **Realtime** | WebSocket emitters and event listeners for your entities....and more. |
-|... | ... | ... |...more plugins to come... |
-
-### 🛠️ Customization & Extensibility
-Every plugin is **open and extendable**.
-- **Extend the Schema:** Add custom fields to a plugin's internal entities.
-- **Override Rules:** Customize the authorization logic of a pre-built plugin.
-- **Create Your Own:** Package your business logic into a plugin and reuse it across every project you build.
-
-> **Junior-Friendly, Senior-Powered**: Spend 1 hour learning the Nevr DSL, and you can assemble a backend that would typically take a senior developer weeks to architect from scratch.
-
----
-
-## ⚖️ Traditional Backend vs. Nevr
-
-| Feature | Traditional (Express / NestJS) | **Nevr** |
-| :--- | :--- | :--- |
-| **Boilerplate** | Write Routes, Controllers, and Services for every resource. | **Zero-API.** Define the Entity; the plumbing is handled. |
-| **Type Safety** | Manually sync interfaces or use decorators. | **End-to-End.** Client is generated from the Entity; build fails on drift. |
-| **Validation** | Duplicate logic in DB schema and Runtime (Zod/Joi). | **Single Source of Truth.** Constraints are baked into the Entity. |
-| **Authorization** | Manual middleware chains and ownership checks. | **Declarative.** Use `.ownedBy()` or `.rules()` in the model. |
-| **Documentation** | Maintain Swagger/OpenAPI decorators manually. | **Mathematically Synced.** OpenAPI spec is the schema itself. |
-| **Data Access** | Manual CRUD logic and Repository patterns. | **Automatic CRUD.** Filtering, sorting, and pagination out-of-the-box. |
-
----
-
-## Concepts At A Glance
-
-- Entities: `entity(name, { fields })` → `.ownedBy(field)` `.rules({...})` `.noTimestamps()`
-- Fields: `string`, `text`, `int`, `float`, `boolean`/`bool`, `datetime`, `json`, `email`
-- Relations: `belongsTo(entity)`, `hasMany(entity)`, `hasOne(entity)` with `.foreignKey()`, `.onDelete()`, `.optional()`
-- Rules: `everyone`, `authenticated`, `admin`, `owner`, `ownerOrAdmin`
-- Validation: automatic by field definitions (min/max/optional/unique/email)
-- Driver: implements data access (`nevr/drivers/prisma`)
-- Adapter: bridges HTTP (`nevr/adapters/express`, `nevr/adapters/hono`)
-- Plugins: extend fields, hooks, routes, middleware
-- Generator: `@nevr/generator` or CLI `@nevr/cli`
-
-## Generator & Client
-
-Generate schema, types, and a typed client:
-
-```ts
-import { generate } from "@nevr/generator"
-import { user, post } from "./entities"
-
-generate([user, post], { outDir: "./generated", prismaProvider: "sqlite" })
-```
-
-Use the client in your frontend:
-
-```ts
-import { createClient } from "./generated/client"
-const api = createClient({ baseUrl: "/api", headers: { "X-User-Id": "u_123" } })
-const posts = await api.posts.list({ filter: { published: true }, limit: 10 })
-```
-
-## Reference Cheatsheet
-
-Fields
-- `string.text.int.float.boolean.datetime.json.email`
-- Modifiers: `.optional() .unique() .default(v) .min(n) .max(n)`
-
-Relations
-- `belongsTo(() => User).foreignKey("userId").onDelete("cascade").optional()`
-- `hasMany(() => Post)` • `hasOne(() => Profile)`
-
-Entity builder
-- `.ownedBy("author")` sets default CRUD rules around ownership
-- `.rules({ create: ["authenticated"], update: ["owner"] })`
-- `.noTimestamps()` disables createdAt/updatedAt
-
-Rules (built-ins)
-- `everyone`, `authenticated`, `admin`, `owner`, `ownerOrAdmin`
-
-Adapter helpers (Express)
-- `expressAdapter(api, { getUser, cors, debugLogs })`
-<!-- - `expressDevAuth(req)` → reads `X-User-Id`, `X-User-Role` -->
-- `expressJwtAuth(verify)` → parse Bearer token and verify
-
-
-## Documentation
-
-- Developer docs live in  docs/ (VitePress). Start with docs/guide/getting-started.md
-- To run docs locally:
-
-```bash
-cd "docs"
-npm install
-npm run docs:dev
-```
-
-## Contributing
-
-PRs welcome! Please see CONTRIBUTING.md and open an issue with your proposal.
-
-- | `string` | Short text |
-- | `text` | Long text |
-- | `int` | Integer |
-- | `float` | Decimal |
-- | `bool` | Boolean |
-- | `datetime` | Date & time |
-- | `json` | JSON data |
-- | `email` | Email with validation |
-
-### Modifiers
+Your entities are the API. No controllers, no services, no routes.
 
 ```typescript
-string              // Required
-string.optional()   // Nullable
-string.unique()     // Unique constraint
-string.default("x") // Default value
-int.min(0).max(100) // Validation
+const user = entity("user", {
+  email: string.email().unique(),
+  name: string.min(1).max(100),
+  role: string.default("user"),
+  password: string.password().omit(), // Hashed, never returned
+})
 ```
 
-### Relations
+### 🔐 Industrial-Grade Security
 
 ```typescript
-author: belongsTo(user)  // Many-to-one
-posts: hasMany(post)     // One-to-many
-```
+// Field-level encryption
+ssn: string.encrypted(),
 
-### Authorization Rules
+// Automatic password hashing
+password: string.password().omit(),
 
-```typescript
-// Built-in rules
-everyone        // Anyone can access
-authenticated   // Must be logged in
-owner           // Must own the resource
-admin           // Must be admin role
-
-// Usage
-entity("post", { ... }).rules({
+// Declarative authorization
+.rules({
   create: ["authenticated"],
-  read: ["everyone"],
-  update: ["owner"],
-  delete: ["owner", "admin"],
-})
-
-// Shorthand
-entity("post", { ... }).ownedBy("author")
-```
-
-### Query Parameters
-
-| Parameter | Example | Description |
-|-----------|---------|-------------|
-| filter | `?filter[published]=true` | Filter results |
-| sort | `?sort=-createdAt` | Sort (- for desc) |
-| limit | `?limit=10` | Limit results |
-| offset | `?offset=20` | Skip results |
-| include | `?include=author` | Include relations |
-
-## Advanced Usage
-
-### Context Injection
-
-Inject dependencies (like database clients or services) into every request:
-
-```typescript
-const api = nevr({
-  // ...
-  context: async (req) => ({
-    db: new PrismaClient(),
-    currentUser: req.user
-  })
+  update: ["owner", "admin"],
 })
 ```
 
-### Error Handling
+### 🔄 Workflow Engine (Saga Pattern)
 
-Nevr automatically handles errors and returns standardized JSON responses:
+Handle complex multi-step operations with automatic rollback:
 
-```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Validation failed",
-    "details": [
-      { "field": "email", "message": "Invalid email" }
-    ]
-  }
-}
+```typescript
+const checkoutWorkflow = workflow("checkout")
+  .step("reserve", reserveInventory, cancelReservation)
+  .step("charge", chargePayment, refundPayment)
+  .step("fulfill", createShipment, cancelShipment)
+  .build()
+
+// If any step fails, previous steps are automatically compensated
+await runWorkflow(checkoutWorkflow, { cartId, paymentMethod })
 ```
 
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        NEVR CORE                            │
-│  Entity DSL │ Validation │ Rules │ Plugin System │ Router   │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-       ┌───────────────────┼───────────────────┐
-       │                   │                   │
-       ▼                   ▼                   ▼
- ┌───────────┐      ┌───────────┐      ┌─────────────┐
- │  Adapter  │      │  Driver   │      │   Plugin    │
- └───────────┘      └───────────┘      └─────────────┘
-       │                   │                   │
-       ▼                   ▼                   ▼
-   Express             Prisma            timestamps
-   (Hono)             (Drizzle)          soft-delete
-   (Next.js)          (Kysely)            auth
-    ...                 ...               payment
-                                           ...
-```                                        
-
-## Packages
-
-| Package | Description |
-|---------|-------------|
-| `nevr` | Core library |
-| `@nevr/generator` | Code generators |
-| `@nevr/cli` | CLI tool |
-| `create-nevr` | Project scaffolder |
-
-## Plugin System
-
-Extend nevr with plugins:
+### 🧩 Plugin Ecosystem
 
 ```typescript
 const api = nevr({
-  entities: [...],
-  driver: prisma(db),
+  entities: [user, post],
   plugins: [
-    timestamps(),    // Auto createdAt/updatedAt
-    softDelete(),    // Soft delete support
+    auth({
+      emailAndPassword: true,
+      socialProviders: { google: true, github: true },
+    }),
+    timestamps(),      // Auto createdAt/updatedAt
+    storage({ s3: {} }),
+    payments({ stripe: {} }),
   ],
 })
 ```
 
-## Roadmap
+### 🔗 Remote Data Stitching
 
-### Current (MVP)
-- ✅ Entity DSL
-- ✅ Field types & validation
-- ✅ Relations (belongsTo, hasMany)
-- ✅ Authorization rules
-- ✅ CRUD operations
-- ✅ Filtering, sorting, pagination
-- ✅ Include relations
-- ✅ Prisma driver
-- ✅ Express adapter
-- ✅ Hono adapter
-- ✅ Dev & JWT auth helpers
-- ✅ Timestamps plugin
-- ✅ Generator for Prisma schema & TS types
-- ✅ Code generators
-- ✅ CLI & scaffolder
+Join data across microservices without GraphQL:
 
+```typescript
+const order = entity("order", {
+  // Local fields
+  total: int,
+  // Remote relation - fetched from user-service
+    subscription: belongsTo(() => stripeSubscription).remote("stripe"),
+})
+```
 
-### Coming Soon
-- **Drivers**: Drizzle, Kysely...
-- **Adapters**: Next.js, Fastify, Koa...
-- **Feature Plugins**: storage, search-meilisearch....
-- **Enterprise Plugins**: advanced RBAC, audit logs, multi-tenancy...
-- **Testing Utilities**: mocks, fixtures, e2e helpers...
-- **Performance Optimizations**: caching, batching...
-- ...more!
+### 📊 Service Container (Dependency Injection)
 
-## License
+```typescript
+const emailService = createService("email", () => ({
+  send: async (to, subject, body) => { /* ... */ },
+}))
 
-MIT
+// Available in all hooks and workflows
+ctx.services.email.send(user.email, "Welcome!", "...")
+```
+
+### 🎯 End-to-End Type Safety
+
+```typescript
+// Server
+const api = nevr({ entities: [user, post] })
+export type API = typeof api
+
+// Client (types inferred automatically)
+import type { API } from "./server"
+const client = createClient<API>({ baseURL: "/api" })
+
+const posts = await client.posts.list() // Fully typed!
+```
+
+---
+
+## 📊 The Numbers Don't Lie
+
+| Metric | Traditional (Express + Prisma + Zod) | Nevr |
+|--------|--------------------------------------|------|
+| Lines of code per resource | ~80-120 | ~10 |
+| Files per resource | 5+ | 1 |
+| Time to add a new entity | 30+ min | 2 min |
+| Type safety | Manual maintenance | Automatic |
+| Authorization logic | Scattered | Declarative |
+
+---
+
+## 🌐 Framework Agnostic
+
+Nevr works with your favorite tools:
+
+```
+                    ┌─────────────────────────────────────────┐
+                    │              NEVR CORE                  │
+                    │  Entities • Validation • Authorization   │
+                    │  Workflows • Services • Remote Joiner   │
+                    └──────────────────┬──────────────────────┘
+                                       │
+        ┌──────────────────────────────┼──────────────────────────────┐
+        │                              │                              │
+        ▼                              ▼                              ▼
+   ┌─────────┐                   ┌─────────┐                   ┌───────────┐
+   │ Adapter │                   │ Driver  │                   │  Plugin   │
+   └─────────┘                   └─────────┘                   └───────────┘
+        │                              │                              │
+        ▼                              ▼                              ▼
+   • Express                      • Prisma                      • Auth
+   • Hono                         • Drizzle (soon)              • Timestamps
+   • Next.js (soon)               • Kysely (soon)               • Storage
+   • Fastify (soon)                                             • Payments
+```
+
+---
+
+## 📦 Ecosystem
+
+| Package | Description |
+|---------|-------------|
+| [`nevr`](https://www.npmjs.com/package/nevr) | Core framework |
+| [`@nevr/cli`](https://www.npmjs.com/package/@nevr/cli) | CLI for development |
+| [`@nevr/generator`](https://www.npmjs.com/package/@nevr/generator) | Schema & type generator |
+| [`create-nevr`](https://www.npmjs.com/package/create-nevr) | Project scaffolder |
+
+---
+
+## 📚 Documentation
+
+- **[Getting Started](docs/docs/get-started/introduction.md)** — Your first Nevr project
+- **[Entity DSL Reference](docs/docs/entities/defining.md)** — Master the entity syntax
+- **[Plugin System](docs/docs/plugins/overview.md)** — Extend Nevr with plugins
+- **[Workflows](docs/docs/actions/workflows.md)** — Build complex operations
+- **[Type Inference](docs/docs/reference/inference.md)** — End-to-end type safety
+
+Run docs locally:
+
+```bash
+cd docs
+npm install
+npm run docs:dev
+```
+
+---
+
+## 🗺️ Roadmap
+
+### ✅ Shipped
+- Entity DSL with full validation
+- Relations (belongsTo, hasMany, hasOne)
+- Authorization rules & ownership
+- Prisma driver
+- Express & Hono adapters
+- Auth plugin (Better Auth integration)
+- Workflow engine with saga pattern
+- Service container (DI)
+- Remote data joiner
+- Field encryption & password hashing
+- CLI & project scaffolder
+
+### 🚧 Coming Soon
+- **Drizzle & Kysely drivers**
+- **Next.js & Fastify adapters**
+- **Real-time subscriptions (WebSocket)**
+- **GraphQL adapter**
+- **Admin dashboard generator**
+- **Multi-tenancy plugin**
+- **Audit logging plugin**
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+```bash
+# Clone and install
+git clone https://github.com/nevr-ts/nevr.git
+cd nevr
+npm install
+
+# Run tests
+npm test
+
+# Build all packages
+npm run build
+```
+
+---
+
+## 💬 Community
+
+- [GitHub Discussions](https://github.com/nevr-ts/nevr/discussions) — Ask questions
+- [GitHub Issues](https://github.com/nevr-ts/nevr/issues) — Report bugs
+- [Twitter](https://twitter.com/nevr_ts) — Stay updated
+
+---
+
+## 📄 License
+
+[MIT](LICENSE) © Nevr Contributors
+
+---
+
+<p align="center">
+  <strong>Stop writing boilerplate. Start shipping products.</strong>
+  <br><br>
+  <a href="https://github.com/nevr-ts/nevr">⭐ Star us on GitHub</a>
+</p>
