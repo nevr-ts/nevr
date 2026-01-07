@@ -216,5 +216,5 @@ const email = await container.get<EmailService>("emailService")
 ## Related
 
 - [Workflow Engine](/reference/workflow) - Saga pattern with DI support
-- [Plugins](/plugin/creating-plugins) - Plugin-provided services
+- [Plugins](/plugins/creating) - Plugin-provided services
 - [Actions](/reference/actions) - Using services in entity actions

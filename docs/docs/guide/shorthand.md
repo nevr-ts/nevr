@@ -349,6 +349,6 @@ interface PluginFieldDef {
 
 ## Next Steps
 
-- [Plugin Development](/plugin/create) - Creating custom plugins
+- [Plugin Development](/plugins/creating) - Creating custom plugins
 - [Entity Fields](/fields/overview) - Field types reference
 - [Transactions](/guide/transactions) - Multi-entity operations

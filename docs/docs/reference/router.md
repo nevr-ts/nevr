@@ -56,5 +56,5 @@ interface MatchRouteOptions {
 
 ## See Also
 
-- [Custom Routes](/guide/custom-routes)
+- [Custom Routes](/guides/custom-endpoints)
 - [Adapters](/adapters/overview)
