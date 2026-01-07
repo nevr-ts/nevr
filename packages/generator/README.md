@@ -1,99 +1,156 @@
-# @nevr/generator
+<h1 align="center">🔧 @nevr/generator</h1>
 
-[![Beta](https://img.shields.io/badge/status-beta-orange.svg)](https://github.com/nevr-ts/nevr)
+<p align="center">
+  <strong>Turn your entities into Prisma schemas, types, and clients</strong>
+</p>
 
-Code generator for [nevr](https://github.com/nevr-ts/nevr) - generates Prisma schema, TypeScript types, and API client from entity definitions.
+<p align="center">
+  <a href="https://www.npmjs.com/package/@nevr/generator"><img src="https://img.shields.io/npm/v/@nevr/generator.svg?style=flat-square&color=blue" alt="npm version"></a>
+  <a href="https://github.com/nevr-ts/nevr/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg?style=flat-square" alt="license"></a>
+</p>
 
-## Installation
+---
+
+## 🎯 What It Does
+
+The generator takes your Nevr entity definitions and produces:
+
+- **Prisma Schema** — Complete database schema with relations
+- **OpenAPI Spec** — Swagger/OpenAPI 3.0 specification
+- **TypeScript Types** — Fully typed interfaces (deprecated, use `$Infer`)
+- **API Client** — Ready-to-use fetch wrapper (deprecated, use `createClient`)
+
+---
+
+## 📦 Installation
 
 ```bash
 npm install @nevr/generator
 ```
 
-## Usage
+> **Note:** Usually used via `@nevr/cli`. Direct usage is for advanced cases.
+
+---
+
+## 🚀 Quick Usage
 
 ```typescript
-import { generate } from "@nevr/generator"
-import { entity, string, text, belongsTo } from "nevr"
+import { generateSchema } from "@nevr/generator"
+import { user, post } from "./entities"
 
-// Define entities
-const user = entity("user", {
-  email: string.unique(),
-  name: string,
-}).build()
-
-const post = entity("post", {
-  title: string,
-  body: text,
-  author: belongsTo(() => user),
-})
-  .ownedBy("author")
-  .build()
-
-// Generate all files
-generate([user, post], {
-  outDir: "./generated",
-  prismaProvider: "sqlite", // or "postgresql", "mysql"
+// Generate Prisma schema
+generateSchema([user, post], {
+  provider: "postgresql",
+  output: "./prisma",
 })
 ```
 
-## API
+---
 
-### `generate(entities, options)`
+## 📖 API Reference
 
-Generates all files at once:
-- Prisma schema (`prisma/schema.prisma`)
-- TypeScript types (`types.ts`)
-- API client (`client.ts`)
+### `generateSchema(entities, options)`
 
-Options:
-- `outDir` - Output directory (default: `./generated`)
-- `prismaProvider` - Database provider: `sqlite`, `postgresql`, `mysql` (default: `sqlite`)
-- `prismaOutput` - Custom Prisma client output path
+Main function to generate complete Prisma schema.
+
+```typescript
+generateSchema(entities, {
+  provider: "sqlite" | "postgresql" | "mysql",
+  output: "./generated",
+  useCache: true,  // Enable incremental builds
+})
+```
 
 ### `generatePrismaSchema(entities, options)`
 
-Generate only the Prisma schema.
+Generate only the Prisma schema string.
 
 ```typescript
-import { generatePrismaSchema } from "@nevr/generator"
-
-const schema = generatePrismaSchema([user, post], {
+const schema = generatePrismaSchema(entities, {
   provider: "postgresql",
 })
-
-console.log(schema) // Prisma schema string
+console.log(schema) // Complete .prisma content
 ```
 
-### `generateTypes(entities)`
+### `generatePrismaModels(entities)`
 
-Generate only the TypeScript type definitions.
+Generate only model definitions (no datasource/generator blocks).
 
 ```typescript
-import { generateTypes } from "@nevr/generator"
-
-const types = generateTypes([user, post])
-
-console.log(types) // TypeScript interfaces
+const models = generatePrismaModels(entities)
+// model User { ... }
+// model Post { ... }
 ```
 
-### `generateClient(entities)`
+### `generatePrismaHeader(options)`
 
-Generate only the API client.
+Generate only the datasource and generator blocks.
 
 ```typescript
-import { generateClient } from "@nevr/generator"
-
-const client = generateClient([user, post])
-
-console.log(client) // Client code
+  url: 'env("DATABASE_URL")',
+})
 ```
 
-## Learn More
+### `generateOpenAPI(entities, options)`
 
-- [Nevr Documentation](https://github.com/nevr-ts/nevr)
-- [Prisma Documentation](https://prisma.io/docs)
+Generate OpenAPI 3.0 specification.
 
-## License
+```typescript
+const spec = generateOpenAPI(entities, {
+  info: { title: "My API", version: "1.0.0" },
+  servers: [{ url: "http://localhost:3000" }],
+  outPath: "./openapi.json",
+  security: true // Add bearer auth scheme
+})
+```
 
-MIT
+---
+
+## ⚡ Incremental Caching
+
+The generator caches entity hashes to skip unchanged entities:
+
+```
+.nevr-cache.json
+├── version: "1.0.0"
+├── entities: { user: "abc123...", post: "def456..." }
+└── lastGenerated: "2024-01-15T10:30:00Z"
+```
+
+Disable with `useCache: false`.
+
+---
+
+## ⚠️ Deprecated Functions
+
+These functions still work but are deprecated in favor of type inference:
+
+| Deprecated | Replacement |
+|------------|-------------|
+| `generateTypes()` | Use `$Infer` pattern |
+| `generateClient()` | Use `createClient<typeof api>()` |
+
+```typescript
+// ❌ Old way
+const types = generateTypes(entities)
+
+// ✅ New way - types inferred automatically
+import type { API } from "./server"
+type User = API["$Infer"]["Entities"]["user"]
+```
+
+---
+
+## 📚 Related
+
+| Package | Description |
+|---------|-------------|
+| [`nevr`](https://npmjs.com/package/nevr) | Core framework |
+| [`@nevr/cli`](https://npmjs.com/package/@nevr/cli) | CLI interface |
+| [`create-nevr`](https://npmjs.com/package/create-nevr) | Project scaffolder |
+
+---
+
+## 📄 License
+
+[MIT](https://github.com/nevr-ts/nevr/blob/main/LICENSE) © Nevr Contributors
