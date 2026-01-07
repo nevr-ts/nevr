@@ -15,7 +15,10 @@
 
 import type { Entity } from "../types.js"
 import { getLogger } from "../logger.js"
-import { pbkdf2, randomBytes, timingSafeEqual } from "crypto"
+import { pbkdf2, randomBytes, timingSafeEqual, webcrypto } from "crypto"
+
+// Use webcrypto for AES-GCM encryption (compatible with Node.js 16+)
+const crypto = webcrypto as Crypto
 
 // -----------------------------------------------------------------------------
 // Password Hashing (using Node.js PBKDF2)
