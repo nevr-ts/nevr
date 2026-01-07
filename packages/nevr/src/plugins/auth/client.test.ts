@@ -42,6 +42,11 @@ describe("Auth Client Plugin", () => {
                 "/auth/revoke-session": "POST",
                 "/auth/revoke-sessions": "POST",
                 "/auth/revoke-other-sessions": "POST",
+                "/auth/update-user": "POST",
+                "/auth/change-password": "POST",
+                "/auth/change-email": "POST",
+                "/auth/delete-user": "POST",
+                "/auth/link-social": "POST",
             })
         })
 
@@ -57,6 +62,11 @@ describe("Auth Client Plugin", () => {
                 "/api/auth/revoke-session": "POST",
                 "/api/auth/revoke-sessions": "POST",
                 "/api/auth/revoke-other-sessions": "POST",
+                "/api/auth/update-user": "POST",
+                "/api/auth/change-password": "POST",
+                "/api/auth/change-email": "POST",
+                "/api/auth/delete-user": "POST",
+                "/api/auth/link-social": "POST",
             })
         })
 

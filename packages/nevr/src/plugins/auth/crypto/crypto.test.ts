@@ -25,7 +25,7 @@ import {
 describe("Crypto - Password", () => {
     it("should hash a password", async () => {
         const password = "testpassword123"
-        const hash = await hashPassword(password)
+        const hash = await hashPassword(password, 1) // Low cost for testing
 
         expect(hash).toBeDefined()
         expect(hash.startsWith("$pbkdf2$")).toBe(true)
@@ -34,19 +34,19 @@ describe("Crypto - Password", () => {
 
     it("should verify correct password", async () => {
         const password = "testpassword123"
-        const hash = await hashPassword(password)
+        const hash = await hashPassword(password, 1)
 
         const isValid = await verifyPassword(password, hash)
         expect(isValid).toBe(true)
-    }, 15000)
+    })
 
     it("should reject incorrect password", async () => {
         const password = "testpassword123"
-        const hash = await hashPassword(password)
+        const hash = await hashPassword(password, 1)
 
         const isValid = await verifyPassword("wrongpassword", hash)
         expect(isValid).toBe(false)
-    }, 15000)
+    })
 
     it("should reject malformed hash", async () => {
         const isValid = await verifyPassword("test", "not-a-valid-hash")
@@ -55,23 +55,23 @@ describe("Crypto - Password", () => {
 
     it("should detect when rehash is needed", async () => {
         // Low cost hash
-        const hash = await hashPassword("test", 5) // 2^5 * 1000 = 32000 iterations
+        const hash = await hashPassword("test", 2) // 4000 iterations
 
         // Should need rehash with higher cost
-        expect(needsRehash(hash, 10)).toBe(true)
+        expect(needsRehash(hash, 3)).toBe(true)
 
         // Should not need rehash with same or lower cost
-        expect(needsRehash(hash, 5)).toBe(false)
-        expect(needsRehash(hash, 4)).toBe(false)
+        expect(needsRehash(hash, 2)).toBe(false)
+        expect(needsRehash(hash, 1)).toBe(false)
     })
 
     it("should produce different hashes for same password", async () => {
         const password = "testpassword123"
-        const hash1 = await hashPassword(password)
-        const hash2 = await hashPassword(password)
+        const hash1 = await hashPassword(password, 1)
+        const hash2 = await hashPassword(password, 1)
 
         expect(hash1).not.toBe(hash2) // Different salts
-    }, 15000)
+    })
 })
 
 // -----------------------------------------------------------------------------

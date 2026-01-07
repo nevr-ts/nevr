@@ -41,7 +41,7 @@ function createTestEntity(fields: Record<string, Omit<FieldDef, "hasDefault"> & 
 describe("Security Enhancement", () => {
     describe("Password Hashing", () => {
         it("should hash a password", async () => {
-            const hash = await hashPassword("password123")
+            const hash = await hashPassword("password123", 1) // Lower cost for testing
 
             expect(hash).toBeDefined()
             expect(hash).not.toBe("password123")
@@ -50,28 +50,28 @@ describe("Security Enhancement", () => {
         })
 
         it("should verify correct password", async () => {
-            const hash = await hashPassword("password123")
+            const hash = await hashPassword("password123", 1)
             const isValid = await verifyPassword("password123", hash)
 
             expect(isValid).toBe(true)
         })
 
         it("should reject incorrect password", async () => {
-            const hash = await hashPassword("password123")
+            const hash = await hashPassword("password123", 1)
             const isValid = await verifyPassword("wrongpassword", hash)
 
             expect(isValid).toBe(false)
         })
 
         it("should generate unique hashes", async () => {
-            const hash1 = await hashPassword("password123")
-            const hash2 = await hashPassword("password123")
+            const hash1 = await hashPassword("password123", 1)
+            const hash2 = await hashPassword("password123", 1)
 
             expect(hash1).not.toBe(hash2)
         })
 
         it("isPasswordHash should detect password hashes", async () => {
-            const realHash = await hashPassword("test")
+            const realHash = await hashPassword("test", 1)
             expect(isPasswordHash(realHash)).toBe(true)
             expect(isPasswordHash("plaintext")).toBe(false)
             expect(isPasswordHash("")).toBe(false)
@@ -143,7 +143,7 @@ describe("Security Enhancement", () => {
         it("should hash password fields", async () => {
             const entity = createTestEntity({
                 email: { type: "string", optional: false, unique: false },
-                password: { type: "string", optional: false, unique: false, security: { password: {} } },
+                password: { type: "string", optional: false, unique: false, security: { password: { cost: 1 } } },
             })
 
             const result = await processWriteData(
@@ -158,10 +158,10 @@ describe("Security Enhancement", () => {
 
         it("should not re-hash already hashed passwords", async () => {
             const entity = createTestEntity({
-                password: { type: "string", optional: false, unique: false, security: { password: {} } },
+                password: { type: "string", optional: false, unique: false, security: { password: { cost: 1 } } },
             })
 
-            const originalHash = await hashPassword("test")
+            const originalHash = await hashPassword("test", 1)
             const result = await processWriteData({ password: originalHash }, entity)
 
             expect(result.password).toBe(originalHash)
@@ -180,7 +180,7 @@ describe("Security Enhancement", () => {
 
         it("should skip non-string values", async () => {
             const entity = createTestEntity({
-                count: { type: "int", optional: false, unique: false, security: { password: {} } },
+                count: { type: "int", optional: false, unique: false, security: { password: { cost: 1 } } },
             })
 
             const result = await processWriteData({ count: 42 }, entity)
