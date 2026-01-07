@@ -9,22 +9,23 @@ npm install express
 npm install -D @types/express
 ```
 
-## Usage
-
-The `expressAdapter` creates an Express router that you can mount anywhere in your application.
+## Basic Usage
 
 ```typescript
 import express from "express"
 import { nevr } from "nevr"
 import { expressAdapter } from "nevr/adapters/express"
-// ... imports for entities and driver
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { user, post } from "./entities"
 
+const db = new PrismaClient()
 const app = express()
 
 // 1. Initialize Nevr
 const api = nevr({
-  entities: [/* ... */],
-  driver: /* ... */
+  entities: [user, post],
+  driver: prisma(db)
 })
 
 // 2. Add Body Parser (Required)
@@ -35,13 +36,67 @@ app.use("/api", expressAdapter(api))
 
 // 4. Start Server
 app.listen(3000, () => {
-  console.log("Server running on port 3000")
+  console.log("Server running on http://localhost:3000")
+})
+```
+
+## With Authentication
+
+```typescript
+import express from "express"
+import { nevr } from "nevr"
+import { expressAdapter } from "nevr/adapters/express"
+import { prisma } from "nevr/drivers/prisma"
+import { auth } from "nevr/plugins/auth"
+import { PrismaClient } from "@prisma/client"
+import { post } from "./entities"
+
+const db = new PrismaClient()
+const app = express()
+
+const api = nevr({
+  entities: [post],
+  driver: prisma(db),
+  plugins: [
+    auth({
+      mode: "session",
+      emailAndPassword: true,
+    })
+  ]
+})
+
+app.use(express.json())
+app.use("/api", expressAdapter(api))
+
+app.listen(3000)
+```
+
+Now you have authentication endpoints at:
+- `POST /api/auth/sign-up`
+- `POST /api/auth/sign-in`
+- `POST /api/auth/sign-out`
+- `GET /api/auth/session`
+
+## Adapter Options
+
+```typescript
+expressAdapter(api, {
+  // Custom user extraction (for custom auth)
+  getUser: async (req) => {
+    return { id: "123", role: "admin" }
+  },
+
+  // Enable CORS
+  cors: true,  // or specific origins: ["http://localhost:3000"]
+
+  // Debug logging
+  debugLogs: true,
 })
 ```
 
 ## Middleware
 
-You can use standard Express middleware before the Nevr adapter to handle things like logging, CORS, or global authentication.
+Use standard Express middleware before Nevr:
 
 ```typescript
 import cors from "cors"

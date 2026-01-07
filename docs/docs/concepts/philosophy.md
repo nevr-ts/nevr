@@ -1,4 +1,5 @@
 # The Nevr Philosophy
+> Nevr is built on the belief that backend development should be simple, efficient, and focused on delivering value—not on reinventing the wheel.
 
 Nevr was born from a simple observation: **Backend development has become an exercise in gluing together the same libraries and patterns over and over again.** We believe that developers shouldn't be architects of boilerplate; they should be architects of value.
 
@@ -26,12 +27,15 @@ We believe in extreme modularity and using the best tools for the job without re
 
 ---
 
-## 3. Encapsulated Expertise (The "Human" Philosophy)
+## 3. Encapsulated Expertise (The "Embedded Senior" Philosophy)
 
-The biggest bottleneck in development isn't code—it's **knowledge**. 
+The biggest bottleneck in development isn't code—it's **knowledge**.
 
-Traditional frameworks require a Senior Developer to architect the "right way" to handle security, auth, or real-time data. In Nevr, **Senior-level knowledge is encapsulated into the System.** * **Best Practices by Default**: Our plugin system uses standards like Zod for validation and Better Auth for authentication and more. You get industry best practices without needing to research or implement them yourself.
-* **The 1-Hour Mastery**: Because Nevr uses an intuitive Entity DSL, a junior or mid-level developer can deploy a professional-grade, type-safe backend in a single afternoon.
+Traditional frameworks require a Senior Developer to architect the "right way" to handle security, auth, or real-time data. In Nevr, **Senior-level knowledge is encapsulated into the System.**
+
+* **Best Practices by Default**: Our plugin system uses standards like Zod for validation and a self-contained auth plugin for authentication. You get industry best practices without needing to research or implement them yourself.
+* **Rapid Proficiency**: Because Nevr uses an intuitive Entity DSL, a junior or mid-level developer can deploy a professional-grade, type-safe backend in a single afternoon.
+* **Architectural Guardrails**: The system prevents common "junior mistakes" (like N+1 queries, exposing password hashes, or missing authorization checks) by default. You stay safe while you learn.
 
 ---
 

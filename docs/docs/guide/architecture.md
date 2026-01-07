@@ -21,7 +21,7 @@ Plugins determine **what** Nevr can do.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        ZAPI CORE                            │
+│                        NEVR CORE                            │
 │  Entity DSL │ Validation │ Rules │ Plugin System │ Router   │
 └──────────────────────────┬──────────────────────────────────┘
                            │
@@ -36,6 +36,6 @@ Plugins determine **what** Nevr can do.
        ▼                   ▼                   ▼
    Express             Prisma            timestamps
    (Hono)             (Drizzle)          soft-delete
-   (Next.js)          (Kysely)           auth-better
-                                         storage-s3
+   (Next.js)          (Kysely)           auth
+                                         storage
 ```

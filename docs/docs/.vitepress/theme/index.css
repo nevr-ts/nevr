@@ -10,6 +10,12 @@
   .payoff-grid {
     grid-template-columns: 1.2fr 1fr;
   }
+  .text[data-v-72cc4481] {
+        font-size: 50px;
+    }
+        .tagline[data-v-72cc4481] {
+        font-size: 21px;
+    }
 }
 .payoff-output {
   background: var(--vp-c-bg-soft);
@@ -57,6 +63,7 @@
   max-width: 100%!important;
   height: auto;
   margin-top: 2rem;
+   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 }
 

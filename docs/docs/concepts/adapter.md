@@ -8,6 +8,19 @@ Adapters in Nevr are responsible for the **HTTP Layer**. They allow Nevr to run 
 2.  **Context Parsing**: Extracting headers, query parameters, and body content.
 3.  **Response Formatting**: Sending the result back to the client in a standard format.
 
+### Request Lifecycle
+1.  **Incoming Request**: Adapter receives native framework request.
+2.  **Conversion**: Converts to `NevrRequest` using `toNevrRequest()`. 
+3.  **Handling**: Nevr core processes the request.
+4.  **Response**: Adapter converts `NevrResponse` back to native format.
+
+## Internal Context (`AdapterContext`)
+Adapters expose helpers for deep integration:
+
+- `getUser()`: Retrieve the authenticated user from the native request.
+- `toNevrRequest()`: Convert raw request for manual handling.
+- `fromNevrResponse()`: Helper to send responses manually.
+
 ## Available Adapters
 
 ### Express Adapter
@@ -43,4 +56,21 @@ import { nodeAdapter } from "nevr/adapters/node"
 import { createServer } from "http"
 
 const server = createServer(nodeAdapter(nevrInstance))
+```
+
+## Creating Custom Adapters
+Nevr provides a `createAdapterFactory` helper to simplify building adapters for new frameworks.
+
+```typescript
+export const myFrameworkAdapter = createAdapterFactory({
+  config: { ... },
+  methods: {
+    getMethod: (req) => req.method,
+    getPath: (req) => req.url,
+    // ... implement other abstract methods
+  },
+  createHandler: (handleRequest) => {
+    return (req, res) => handleRequest(req, res)
+  }
+})
 ```

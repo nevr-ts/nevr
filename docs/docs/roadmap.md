@@ -10,8 +10,9 @@ The current version provides the core foundation for building type-safe, schema-
 - ✅ **Auto-Generated API**: Instant CRUD endpoints with validation.
 - ✅ **Prisma Integration**: Seamless database management.
 - ✅ **Plugin System**: Extensible architecture with dependency injection.
-- ✅ **Core Plugins**: Authentication, Payments (Stripe), and Storage.
+- ✅ **Auth Plugin**: Full authentication with better-auth.
 - ✅ **Adapters**: Support for Express and Hono.
+- 🔜 **Payments & Storage Plugins**: Coming in future releases.
 
 ---
 

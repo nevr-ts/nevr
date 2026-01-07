@@ -171,3 +171,25 @@ android/
 .turbo
 # Tsup build output
 dist/tsup
+
+#claude files
+.claude/
+CLAUDE.md
+
+# Build artifacts (bundled configs)
+*.bundled_*.mjs
+*.bundled_*.js
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Test artifacts
+*.test.ts.new
+*.spec.ts.new
+
+# Database files (additional)
+*.db-journal
+
+# VitePress cache
+.vitepress/cache

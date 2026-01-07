@@ -1,0 +1,149 @@
+# Plugins Overview
+
+> 🔌 **Plugins are modular extensions that add reusable features to your Nevr application.**
+
+## Why Plugins?
+
+### The Problem: Features That Every App Needs
+
+| Feature | Without Plugins | With Plugins |
+|---------|-----------------|---------------|
+| **Authentication** | Write 500+ lines of auth code | `auth({ emailAndPassword: { enabled: true } })` |
+| **Timestamps** | Add createdAt/updatedAt to every entity manually | One-line plugin for all entities |
+| **Rate limiting** | Build custom middleware | `rateLimit({ max: 100 })` |
+| **Logging** | Implement hooks everywhere | Plugin auto-hooks all requests |
+
+> 🟢 **Beginner Tip**: Think of plugins as "drop-in features". You install them, configure them, and they just work—without writing the underlying code.
+
+### What Plugins Can Add
+
+| Capability | Description | Example |
+|------------|-------------|----------|
+| **Entities** | New database tables/models | User, Session, Account |
+| **Endpoints** | Custom API operations | `/auth/sign-in`, `/auth/sign-out` |
+| **Interceptors** | Request/response processing | Authentication checks, logging |
+| **Entity Hooks** | CRUD lifecycle callbacks | `beforeCreate`, `afterDelete` |
+| **Services** | Injectable utilities | Email service, Payment processor |
+
+---
+
+## Using Plugins
+
+Plugins are passed to the `nevr` configuration:
+
+```typescript
+import { nevr } from "nevr"
+import { auth } from "nevr/plugins/auth"
+import { timestamps } from "nevr/plugins/timestamps"
+
+const api = nevr({
+  entities: [user, post],
+  driver: prisma(db),
+  
+  plugins: [
+    // Official plugin with options
+    auth({
+      emailAndPassword: { enabled: true },
+      socialProviders: {
+        google: { clientId: "...", clientSecret: "..." },
+        github: { clientId: "...", clientSecret: "..." },
+      },
+    }),
+    
+    // Official simple plugin
+    timestamps(),
+    
+    // Your custom plugin
+    myCustomPlugin({ apiKey: "..." }),
+  ]
+})
+```
+
+> 🟡 **Intermediate Tip**: Plugins are applied in order. If plugin B depends on plugin A, make sure A comes first in the array.
+
+---
+
+## Official Plugin Ecosystem
+
+| Plugin | Package | Description | Status |
+|--------|---------|-------------|--------|
+| **Auth** | `nevr/plugins/auth` | Complete authentication system | ✅ Ready |
+| **Timestamps** | `nevr/plugins/timestamps` | Auto `createdAt`/`updatedAt` | ✅ Ready |
+
+---
+
+## Creating Your Own Plugins
+
+### Quick Example 🟢
+
+```typescript
+import { createPlugin, endpoint } from "nevr"
+
+const helloWorld = createPlugin({
+  id: "hello",
+  name: "Hello World",
+  version: "1.0.0",
+  
+  lifecycle: {
+    onInit: () => console.log("👋 Hello from Plugin!")
+  },
+  
+  endpoints: {
+    hello: endpoint("/hello", {
+      method: "GET",
+      handler: async () => ({ message: "Hello World!" }),
+    }),
+  },
+})
+```
+
+### Configurable Plugin 🟡
+
+```typescript
+interface Options {
+  greeting: string
+  shout?: boolean
+}
+
+const greetPlugin = createPlugin<Options>({
+  id: "greet",
+  name: "Greeting Plugin",
+  version: "1.0.0",
+  
+  defaults: { shout: false },
+  
+  factory: (options) => ({
+    endpoints: {
+      greet: endpoint("/greet", {
+        method: "GET",
+        handler: async () => {
+          const msg = options.greeting
+          return { message: options.shout ? msg.toUpperCase() : msg }
+        },
+      }),
+    },
+  }),
+})
+
+// Usage
+nevr({ plugins: [greetPlugin({ greeting: "Welcome!" })] })
+```
+
+See [Creating Plugins](./creating) for the full guide.
+
+---
+
+## Plugin API at a Glance
+
+| Function | Use Case | Level |
+|----------|----------|-------|
+| `createPlugin()` | Most plugins | 🟢 Recommended |
+| `createPlugin()` with `factory` | Configurable plugins |
+
+---
+
+## Next Steps
+
+- [Creating Plugins](./creating) - Build your own plugins
+- [Auth Plugin](./auth) - Authentication system
+- [Interceptors](./interceptors) - Request/response hooks

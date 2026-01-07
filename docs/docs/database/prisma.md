@@ -36,7 +36,7 @@ When you run the Nevr generator, it automatically creates a `schema.prisma` file
 npx tsx src/generate.ts
 ```
 
-The generated schema will be located at `generated/prisma/schema.prisma` (or wherever you configured `outDir`).
+The generated schema will be located at `./prisma/schema.prisma` (or wherever you configured `outDir`).
 
 ## Database Migration
 
@@ -44,10 +44,10 @@ Once the schema is generated, you use standard Prisma commands to update your da
 
 ```bash
 # For prototyping (SQLite/Dev)
-npx prisma db push --schema=generated/prisma/schema.prisma
+npx prisma db push --schema=prisma/schema.prisma
 
 # For production (Migrations)
-npx prisma migrate dev --schema=generated/prisma/schema.prisma
+npx prisma migrate dev --schema=prisma/schema.prisma
 ```
 
 ## Accessing Prisma Client

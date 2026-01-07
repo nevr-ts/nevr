@@ -1,10 +1,14 @@
 # Basic Usage
 
-Once installed, here is the typical workflow.
+> ⚡ **The Nevr Development Loop.**
+
+Once installed, your workflow is simple: **Define → Generate → Run.**
+
+---
 
 ## 1. Define Entities
 
-Describe your data model using the Nevr DSL.
+Your `src/entities` folder is your source of truth.
 
 ```typescript
 // src/entities/post.ts
@@ -19,58 +23,45 @@ export const post = entity("post", {
 
 ## 2. Generate Artifacts
 
-Run the generator to create the Prisma schema and TypeScript types.
+Whenever you change an entity, run the generator. This updates your Prisma schema and TypeScript types.
 
 ```bash
 npm run generate
+```
+
+Then push changes to the database:
+
+```bash
 npm run db:push
 ```
 
-## 3. Create the Server
+## 3. Use the Type-Safe Client
 
-We recommend separating your configuration from your server entry point.
+Nevr automatically generates a client SDK for your frontend or other services.
 
-**`src/config.ts`** — The Nevr configuration
 ```typescript
-import { zapi as nevr } from "nevr"
-import { prisma } from "nevr/drivers/prisma"
-import { PrismaClient } from "@prisma/client"
-import { post } from "./entities/post"
+import { client } from "./client" // Generated client
 
-const db = new PrismaClient()
-
-export const api = nevr({
-  entities: [post],
-  driver: prisma(db),
+// 100% Type-Safe!
+const posts = await client.post.findMany({
+  where: { published: true },
+  select: { title: true } 
 })
 ```
 
-**`src/server.ts`** — The HTTP Server
-```typescript
-import express from "express"
-import { expressAdapter } from "nevr/adapters/express"
-import { api } from "./config"
+## 4. That's it!
 
-const app = express()
+You have a running API with:
+- `POST /api/posts` (Create)
+- `GET /api/posts` (List)
+- `GET /api/posts/:id` (Read)
+- `PATCH /api/posts/:id` (Update)
+- `DELETE /api/posts/:id` (Delete)
 
-app.use(express.json())
-app.use("/api", expressAdapter(api))
+---
 
-app.listen(3000, () => {
-  console.log("Server running on http://localhost:3000")
-})
-```
+## Next Steps
 
-## 4. Consume the API
-
-You can now make requests to your API.
-
-```bash
-# Create a post
-curl -X POST http://localhost:3000/api/posts \
-  -H "Content-Type: application/json" \
-  -d '{"title": "Hello Nevr", "content": "This is amazing!"}'
-
-# List posts
-curl http://localhost:3000/api/posts
-```
+- [Custom Actions](/guide/actions) - Add complex logic beyond CRUD
+- [Authorization](/entities/authorization) - Secure your endpoints
+- [Relationships](/fields/relations) - Connect your data

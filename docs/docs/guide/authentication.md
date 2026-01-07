@@ -1,39 +1,222 @@
 # Authentication
 
-Nevr stays auth‑agnostic but ships helpers for development and JWT. You can integrate any provider (e.g., Better Auth) via the adapter `getUser` callback.
+Nevr provides a built-in auth plugin that handles user authentication without any external dependencies.
 
-## Development Auth (headers)
+## Quick Start
 
-```ts
-import { expressAdapter, expressDevAuth } from "nevr/adapters/express"
+```typescript
+import { nevr } from "nevr"
+import { auth } from "nevr/plugins/auth"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
 
-app.use("/api", expressAdapter(api, { getUser: expressDevAuth }))
-// Send headers: X-User-Id, X-User-Role
+const db = new PrismaClient()
+
+const api = nevr({
+  entities: [],
+  driver: prisma(db),
+  plugins: [
+    auth({
+      mode: "session",
+      emailAndPassword: true,
+    })
+  ]
+})
 ```
 
-## JWT Auth
+Set the secret in your environment:
 
-```ts
-import { expressAdapter, expressJwtAuth } from "nevr/adapters/express"
+```bash
+AUTH_SECRET="your-random-secret-key"
+```
 
-const verify = async (token: string) => {
-  // verify and return { id, role } or null
+## How It Works
+
+1. **User signs up** → Creates user + session
+2. **User signs in** → Creates new session
+3. **Session cookie** → Sent with every request
+4. **Middleware extracts** → `req.user` available in handlers
+5. **Rules enforce** → Access control on entities
+
+## Protecting Entities
+
+Use the auth plugin with entity rules:
+
+```typescript
+import { entity, string, text, belongsTo } from "nevr"
+
+const user = entity("user", {
+  name: string,
+  email: string.unique(),
+})
+
+const post = entity("post", {
+  title: string,
+  body: text,
+  author: belongsTo(() => user),
+})
+  .ownedBy("author")
+  .rules({
+    create: ["authenticated"],
+    read: ["everyone"],
+    update: ["owner"],
+    delete: ["owner", "admin"],
+  })
+```
+
+## Built-in Rules
+
+| Rule | Meaning |
+|------|---------|
+| `everyone` | Public access |
+| `authenticated` | Must be logged in |
+| `owner` | Must own the resource |
+| `admin` | Must have admin role |
+
+## Custom Rules
+
+Create custom authorization logic:
+
+```typescript
+const premiumOnly = (ctx) => {
+  return ctx.user?.subscription === "premium"
 }
 
-app.use("/api", expressAdapter(api, { getUser: expressJwtAuth(verify) }))
+const post = entity("post", { ... })
+  .rules({
+    create: [premiumOnly],
+  })
 ```
 
-## Better Auth (concept)
+## API Endpoints
 
-Use your Better Auth session or token verification to build `getUser(req)` and return `{ id, role } | null`.
+The auth plugin adds these routes:
 
-## Authorization Rules
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/auth/sign-up` | Create account |
+| POST | `/api/auth/sign-in` | Sign in |
+| POST | `/api/auth/sign-out` | Sign out |
+| GET | `/api/auth/session` | Get current session |
 
-Protect entities with ownership-aware rules using `ownedBy` or explicit `.rules()`:
+## Frontend Usage
 
-```ts
-const post = entity("post", { author: belongsTo(() => user) }).ownedBy("author")
+```typescript
+// Sign up
+await fetch("/api/auth/sign-up", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  credentials: "include",
+  body: JSON.stringify({
+    email: "user@example.com",
+    password: "password123",
+    name: "John Doe"
+  })
+})
 
-// or
-post.rules({ update: ["owner"], delete: ["owner", "admin"] })
+// Sign in
+await fetch("/api/auth/sign-in", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  credentials: "include",
+  body: JSON.stringify({
+    email: "user@example.com",
+    password: "password123"
+  })
+})
+
+// Check session
+const { user, session } = await fetch("/api/auth/session", {
+  credentials: "include"
+}).then(r => r.json())
+
+if (user) {
+  console.log("Logged in as:", user.email)
+}
+
+// Sign out
+await fetch("/api/auth/sign-out", {
+  method: "POST",
+  credentials: "include"
+})
+```
+
+## Configuration Options
+
+```typescript
+auth({
+  // Required (or use AUTH_SECRET env)
+  secret: "your-secret",
+
+  // Auth mode: "session" | "bearer"
+  mode: "session",
+
+  // Enable email/password auth
+  emailAndPassword: true,
+
+  // Session settings
+  session: {
+    expiresIn: 60 * 60 * 24 * 7, // 7 days
+    cookieName: "nevr.session_token",
+  },
+
+  // Password requirements
+  password: {
+    minLength: 8,
+    requireUppercase: false,
+    requireNumbers: false,
+  }
+})
+```
+
+## Bearer Token Mode
+
+For mobile apps or API-only clients:
+
+```typescript
+auth({ mode: "bearer" })
+```
+
+Sign in returns a token:
+
+```json
+{
+  "user": { "id": "abc", "email": "..." },
+  "token": "eyJhbGc..."
+}
+```
+
+Use in requests:
+
+```typescript
+fetch("/api/posts", {
+  headers: {
+    "Authorization": "Bearer eyJhbGc..."
+  }
+})
+```
+
+## No Auth Plugin?
+
+If you don't need the auth plugin, you can still use header-based auth for development:
+
+```typescript
+import { expressAdapter, expressDevAuth } from "nevr/adapters/express"
+
+app.use("/api", expressAdapter(api, {
+  getUser: expressDevAuth // Uses X-User-Id header
+}))
+```
+
+Or implement your own:
+
+```typescript
+app.use("/api", expressAdapter(api, {
+  getUser: async (req) => {
+    const token = req.headers.authorization?.replace("Bearer ", "")
+    if (!token) return null
+    // Your verification logic
+    return { id: "user-id", role: "user" }
+  }
+}))
 ```

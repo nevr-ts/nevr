@@ -55,17 +55,17 @@ export interface NevrPlugin {
 
 For complex applications, we recommend configuring plugins in separate files (e.g., `src/plugins/auth.ts`) and importing them into your main config.
 
-**`src/plugins/payments.ts`**
+**`src/plugins/auth.ts`**
 ```typescript
-import { payments } from "nevr/plugins/payments"
+import { auth } from "nevr/plugins/auth"
 
-export const paymentsPlugin = payments({
-  provider: "stripe",
+export const authPlugin = auth({
+  session: { expiresIn: "7d" },
   extend: {
     entities: {
-      customer: {
+      user: {
         fields: {
-          internalNotes: { add: { type: "text" } }
+          role: { add: { type: "string", default: "user" } }
         }
       }
     }
@@ -77,12 +77,12 @@ export const paymentsPlugin = payments({
 ```typescript
 import { nevr } from "nevr"
 import { authPlugin } from "./plugins/auth"
-import { paymentsPlugin } from "./plugins/payments"
+import { timestamps } from "nevr/plugins/timestamps"
 
 export const api = nevr({
   plugins: [
     authPlugin,
-    paymentsPlugin
+    timestamps()
   ]
 })
 ```

@@ -19,6 +19,29 @@ const db = new PrismaClient()
 const api = nevr({ entities, driver: prisma(db) })
 ```
 
+### Configuration Options
+
+```ts
+const driver = prisma(db, {
+  provider: "postgresql",     // Database provider
+  usePlural: false,           // Use plural table names
+  debugLogs: false,           // Enable debug logs
+  transactions: true,         // Enable transaction support
+  modelMap: {                 // Custom entity → model name mapping
+    user: "User",
+    blogPost: "BlogPost",
+  },
+})
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `provider` | `"sqlite" \| "postgresql" \| "mysql" \| ...` | - | Database provider |
+| `usePlural` | `boolean` | `false` | Use plural table names |
+| `debugLogs` | `boolean \| object` | `false` | Enable debug logging |
+| `transactions` | `boolean` | `true` | Enable transaction support |
+| `modelMap` | `Record<string, string>` | - | Entity to Prisma model name mapping |
+
 ### Query translation
 
 List endpoint query params map to Prisma args:
