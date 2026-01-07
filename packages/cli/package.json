@@ -1,6 +1,6 @@
 {
   "name": "@nevr/cli",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "CLI for Nevr - Nevr write boilerplate again",
   "type": "module",
   "bin": {
@@ -27,7 +27,13 @@
     "tsup": "^8.5.0",
     "typescript": "^5.7.0"
   },
-  "keywords": ["nevr", "cli", "generator", "prisma", "api"],
+  "keywords": [
+    "nevr",
+    "cli",
+    "generator",
+    "prisma",
+    "api"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

@@ -1,6 +1,6 @@
 {
   "name": "create-nevr",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Create a new Nevr project - Nevr write boilerplate again",
   "type": "module",
   "bin": {
@@ -26,7 +26,15 @@
     "tsup": "^8.5.0",
     "typescript": "^5.7.0"
   },
-  "keywords": ["nevr", "create", "scaffold", "cli", "api", "rest", "prisma"],
+  "keywords": [
+    "nevr",
+    "create",
+    "scaffold",
+    "cli",
+    "api",
+    "rest",
+    "prisma"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

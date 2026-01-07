@@ -1,6 +1,6 @@
 {
   "name": "@nevr/generator",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Code generators for Nevr - Prisma schema, TypeScript types, API client",
   "type": "module",
   "main": "dist/index.cjs",
@@ -34,7 +34,14 @@
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   },
-  "keywords": ["nevr", "generator", "prisma", "typescript", "codegen", "api"],
+  "keywords": [
+    "nevr",
+    "generator",
+    "prisma",
+    "typescript",
+    "codegen",
+    "api"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

@@ -1,6 +1,6 @@
 {
   "name": "nevr",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "The Entity-First Full Stack Framework for TypeScript. Define your entities, never write boilerplate again.",
   "type": "module",
   "main": "./dist/index.js",
