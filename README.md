@@ -155,8 +155,19 @@ const api = nevr({
   entities: [user, post],
   plugins: [
     auth({
-      emailAndPassword: true,
-      socialProviders: { google: true, github: true },
+      secret: "",
+      emailAndPassword: {
+        enable: true,
+        
+      },
+      socialProviders: { google: {
+        clientId: "",
+        clientSecret: "",
+        },
+        github: {
+          clientId: "",
+          clientSecret: "",
+        },
     }),
     timestamps(),      // Auto createdAt/updatedAt
     storage({ s3: {} }),
@@ -198,7 +209,7 @@ export type API = typeof api
 
 // Client (types inferred automatically)
 import type { API } from "./server"
-const client = createClient<API>({ baseURL: "/api" })
+const client = createTypedClient<API>({ baseURL: "/api" })
 
 const posts = await client.posts.list() // Fully typed!
 ```

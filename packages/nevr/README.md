@@ -406,12 +406,12 @@ export type API = typeof api
 
 // Client (can be in a different package!)
 import type { API } from "../server"
-import { createClient } from "nevr/client"
+import { createTypedClient } from "nevr/client"
 
-const client = createClient<API>({ baseURL: "/api" })
+const client = createTypedClient<API>({ baseURL: "/api" })
 
 // Full autocomplete & type checking!
-const users = await client.users.findMany()
+const users = await client.users.list()
 const user = await client.users.create({ email: "..." })
 ```
 
