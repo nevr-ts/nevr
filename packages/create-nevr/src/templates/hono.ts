@@ -20,9 +20,9 @@ export const honoTemplates = {
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
-    "@nevr/generator": "^0.2.0",
+    "@nevr/generator": "^0.3.0",
     "@hono/node-server": "^1.13.0",
-    "nevr": "^0.2.0",
+    "nevr": "^0.3.0",
     "hono": "^4.6.0",
     "dotenv": "^16.4.0"
   },
