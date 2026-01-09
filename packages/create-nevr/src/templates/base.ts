@@ -93,12 +93,10 @@ prisma/migrations
 
   "src/plugins/auth.ts": () => `// =============================================================================
 // AUTH PLUGIN CONFIGURATION
+// Auth entities (User, Session, Account, Verification) are auto-registered!
 // =============================================================================
 
-import { auth, userEntity, sessionEntity, accountEntity, verificationEntity } from "nevr/plugins/auth"
-
-// Export auth entities for Prisma schema generation
-export const authEntities = [userEntity, sessionEntity, accountEntity, verificationEntity]
+import { auth } from "nevr/plugins/auth"
 
 export const authPlugin = auth({
   // Secret for signing session tokens (from .env)
@@ -135,23 +133,21 @@ export const authPlugin = auth({
 // PLUGIN EXPORTS
 // =============================================================================
 
-export { authPlugin, authEntities } from "./auth.js"
+export { authPlugin } from "./auth.js"
 `,
 
   "src/nevr.config.ts": (db: string, withAuth: boolean) => `// =============================================================================
 // NEVR CONFIGURATION
+// Auth plugin entities are auto-registered when the plugin is imported!
 // =============================================================================
 
 import * as entities from "./entities/index.js"
-${withAuth ? `import { authPlugin, authEntities } from "./plugins/index.js"\n` : ""}
+${withAuth ? `import { authPlugin } from "./plugins/index.js"\n` : ""}
 const entityArray = Object.values(entities).filter(e => e && typeof e === "object")
 
 export const config = {
   database: "${db}" as const,
-  entities: [
-    ...entityArray,${withAuth ? `
-    ...authEntities, // User, Session, Account, Verification` : ""}
-  ],
+  entities: entityArray,
   plugins: [${withAuth ? `
     authPlugin,` : ""}
   ],
@@ -160,7 +156,7 @@ export const config = {
 export default config
 `,
 
-  "src/generate.ts": (db: string) => `// =============================================================================
+  "src/generate.ts": (db: string, withAuth: boolean) => `// =============================================================================
 // GENERATOR SCRIPT
 // Run: npm run generate
 // =============================================================================
@@ -168,12 +164,13 @@ export default config
 import "dotenv/config"
 import { generate } from "@nevr/generator"
 import { config } from "./nevr.config.js"
+${withAuth ? `
+// Import auth entities directly (auto-registered when auth module is imported)
+import { userEntity, sessionEntity, accountEntity, verificationEntity } from "nevr/plugins/auth"
+const authEntities = [userEntity, sessionEntity, accountEntity, verificationEntity]
+` : "const authEntities: any[] = []"}
 
-const pluginEntities = config.plugins
-  .filter(p => p && typeof p === "object" && "entities" in p)
-  .flatMap((p: any) => p.entities || [])
-
-const allEntities = [...config.entities, ...pluginEntities]
+const allEntities = [...config.entities, ...authEntities]
 
 const entityNames = allEntities.map((e: any) => e.name || e._name)
 const duplicates = entityNames.filter((name: string, i: number) => entityNames.indexOf(name) !== i)

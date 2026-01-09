@@ -26,6 +26,36 @@ import { getLogger } from "../../logger.js"
 
 const pluginRegistry = new Map<string, UnifiedPlugin>()
 
+// Track which plugins were pre-registered (schema-only)
+const preRegisteredPlugins = new Set<string>()
+
+/**
+ * Pre-register a plugin's schema at import time.
+ * This allows plugin() references to work during generation,
+ * before the full plugin is instantiated.
+ * 
+ * Call this as a side effect in your plugin's module.
+ */
+export function preRegisterPluginSchema(id: string, schema: UnifiedPlugin["schema"]): void {
+    if (pluginRegistry.has(id)) {
+        // Already registered (either pre-registered or fully registered)
+        return
+    }
+
+    // Create a minimal plugin with just schema
+    const minimalPlugin: UnifiedPlugin = {
+        meta: {
+            id,
+            name: id,
+            version: "0.0.0",
+        },
+        schema,
+    }
+
+    pluginRegistry.set(id, minimalPlugin)
+    preRegisteredPlugins.add(id)
+}
+
 /**
  * Register a unified plugin globally
  */
@@ -34,6 +64,14 @@ export function registerPlugin(plugin: UnifiedPlugin): void {
     if (!id) {
         throw new Error("[Nevr] Plugin must have a meta.id")
     }
+
+    // If this plugin was pre-registered, replace it with the full version
+    if (preRegisteredPlugins.has(id)) {
+        pluginRegistry.set(id, plugin)
+        preRegisteredPlugins.delete(id)
+        return
+    }
+
     if (pluginRegistry.has(id)) {
         throw new Error(`[Nevr] Plugin "${id}" is already registered.`)
     }
@@ -44,6 +82,7 @@ export function registerPlugin(plugin: UnifiedPlugin): void {
  * Unregister a plugin by ID
  */
 export function unregisterPlugin(id: string): boolean {
+    preRegisteredPlugins.delete(id)
     return pluginRegistry.delete(id)
 }
 
@@ -66,6 +105,7 @@ export function listPlugins(): UnifiedPlugin[] {
  */
 export function clearPluginRegistry(): void {
     pluginRegistry.clear()
+    preRegisteredPlugins.clear()
 }
 
 /**

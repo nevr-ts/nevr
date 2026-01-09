@@ -60,6 +60,18 @@ export { authClient, type AuthClientOptions, type AuthClientMethods, type Sessio
 export * from "./plugins/username/index.js"
 
 // =============================================================================
+// PRE-REGISTRATION (Side Effect)
+// This allows plugin('auth').user to work during generation,
+// before the full plugin is instantiated via auth({...})
+// =============================================================================
+
+import { preRegisterPluginSchema } from "../unified/runtime.js"
+import { getAuthSchema as _getAuthSchema } from "./schema.js"
+
+// Pre-register auth schema when this module is imported
+preRegisterPluginSchema("auth", _getAuthSchema())
+
+// =============================================================================
 // DEFAULT CONFIGURATION
 // =============================================================================
 

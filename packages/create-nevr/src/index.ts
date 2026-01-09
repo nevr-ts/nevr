@@ -61,7 +61,7 @@ const HELP = `
     npm create nevr@latest my-api --no-interactive
 `
 
-const VERSION = "0.3.4"
+const VERSION = "0.3.5"
 
 // -----------------------------------------------------------------------------
 // Parse CLI Arguments
@@ -186,7 +186,7 @@ function generateProject(config: ProjectConfig): void {
   files.push(["src/middleware/.gitkeep", baseTemplates["src/middleware/.gitkeep"]()])
   files.push(["src/utils/.gitkeep", baseTemplates["src/utils/.gitkeep"]()])
   files.push(["src/nevr.config.ts", baseTemplates["src/nevr.config.ts"](database, withAuth)])
-  files.push(["src/generate.ts", baseTemplates["src/generate.ts"](database)])
+  files.push(["src/generate.ts", baseTemplates["src/generate.ts"](database, withAuth)])
 
   // Add auth plugin if enabled
   if (withAuth) {

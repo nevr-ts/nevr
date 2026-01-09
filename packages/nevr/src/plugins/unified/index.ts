@@ -51,6 +51,14 @@ export {
     executeLifecycleHook,
 } from "./lifecycle.js"
 
+// Runtime
+export {
+    preRegisterPluginSchema,
+    registerPlugin,
+    getPlugin,
+    listPlugins,
+} from "./runtime.js"
+
 // Helpers
 export {
     matchPath,

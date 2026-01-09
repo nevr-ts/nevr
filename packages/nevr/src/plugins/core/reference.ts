@@ -27,6 +27,9 @@ export interface PluginEntityRef {
  * Usage:
  *   belongsTo(() => plugin("auth").user)
  *   hasMany(() => plugin("payments").subscription)
+ * 
+ * Note: Built-in plugins like 'auth' pre-register their schema at import time,
+ * so plugin() references work even during generation.
  */
 export function plugin(pluginId: string): PluginEntityRef {
   return new Proxy({} as PluginEntityRef, {
@@ -39,7 +42,7 @@ export function plugin(pluginId: string): PluginEntityRef {
           return entityCache.get(cacheKey)!
         }
 
-        // Get plugin instance from registry
+        // Get plugin instance from registry (includes pre-registered plugins)
         const pluginInstance = getPluginInstance(pluginId)
 
         if (pluginInstance) {
@@ -63,24 +66,7 @@ export function plugin(pluginId: string): PluginEntityRef {
           return entity
         }
 
-        // Plugin not registered - try to resolve built-in plugins directly
-        // This supports generation-time usage when plugins aren't initialized
-        if (pluginId === "auth") {
-          // Return a placeholder entity that the generator can use
-          // The actual entity definition comes from authEntities in the config
-          const entity: Entity = {
-            name: entityName,
-            config: {
-              fields: {},
-              rules: {},
-              timestamps: true,
-            },
-          }
-          entityCache.set(cacheKey, entity)
-          return entity
-        }
-
-        throw new Error(`[Nevr] Plugin "${pluginId}" not found. Make sure it's registered.`)
+        throw new Error(`[Nevr] Plugin "${pluginId}" not found. Make sure it's imported or registered.`)
       }
     },
   })
