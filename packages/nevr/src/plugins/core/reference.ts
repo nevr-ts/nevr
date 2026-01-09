@@ -39,30 +39,48 @@ export function plugin(pluginId: string): PluginEntityRef {
           return entityCache.get(cacheKey)!
         }
 
-        // Get plugin instance
+        // Get plugin instance from registry
         const pluginInstance = getPluginInstance(pluginId)
-        if (!pluginInstance) {
-          throw new Error(`[Nevr] Plugin "${pluginId}" not found. Make sure it's registered.`)
+
+        if (pluginInstance) {
+          // Plugin is registered - use its schema
+          const schema = pluginInstance.schema
+          if (!schema?.entities?.[entityName]) {
+            throw new Error(`[Nevr] Entity "${entityName}" not found in plugin "${pluginId}"`)
+          }
+
+          // Create a placeholder entity for relationship resolution
+          const entity: Entity = {
+            name: entityName,
+            config: {
+              fields: {},
+              rules: {},
+              timestamps: true,
+            },
+          }
+
+          entityCache.set(cacheKey, entity)
+          return entity
         }
 
-        // Find entity in plugin's schema
-        const schema = pluginInstance.schema
-        if (!schema?.entities?.[entityName]) {
-          throw new Error(`[Nevr] Entity "${entityName}" not found in plugin "${pluginId}"`)
+        // Plugin not registered - try to resolve built-in plugins directly
+        // This supports generation-time usage when plugins aren't initialized
+        if (pluginId === "auth") {
+          // Return a placeholder entity that the generator can use
+          // The actual entity definition comes from authEntities in the config
+          const entity: Entity = {
+            name: entityName,
+            config: {
+              fields: {},
+              rules: {},
+              timestamps: true,
+            },
+          }
+          entityCache.set(cacheKey, entity)
+          return entity
         }
 
-        // Create a placeholder entity for relationship resolution
-        const entity: Entity = {
-          name: entityName,
-          config: {
-            fields: {},
-            rules: {},
-            timestamps: true,
-          },
-        }
-
-        entityCache.set(cacheKey, entity)
-        return entity
+        throw new Error(`[Nevr] Plugin "${pluginId}" not found. Make sure it's registered.`)
       }
     },
   })
