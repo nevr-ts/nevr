@@ -59,12 +59,60 @@
       "types": "./dist/plugins/auth/client.d.ts"
     },
     "./plugins/auth/username": {
-      "import": "./dist/plugins/auth/plugins/username.js",
-      "types": "./dist/plugins/auth/plugins/username.d.ts"
+      "import": "./dist/plugins/auth/plugins/username/index.js",
+      "types": "./dist/plugins/auth/plugins/username/index.d.ts"
+    },
+    "./plugins/auth/username/client": {
+      "import": "./dist/plugins/auth/plugins/username/client.js",
+      "types": "./dist/plugins/auth/plugins/username/client.d.ts"
+    },
+    "./plugins/auth/magic-link": {
+      "import": "./dist/plugins/auth/plugins/magic-link/index.js",
+      "types": "./dist/plugins/auth/plugins/magic-link/index.d.ts"
+    },
+    "./plugins/auth/magic-link/client": {
+      "import": "./dist/plugins/auth/plugins/magic-link/client.js",
+      "types": "./dist/plugins/auth/plugins/magic-link/client.d.ts"
+    },
+    "./plugins/auth/two-factor": {
+      "import": "./dist/plugins/auth/plugins/two-factor/index.js",
+      "types": "./dist/plugins/auth/plugins/two-factor/index.d.ts"
+    },
+    "./plugins/auth/two-factor/client": {
+      "import": "./dist/plugins/auth/plugins/two-factor/client.js",
+      "types": "./dist/plugins/auth/plugins/two-factor/client.d.ts"
+    },
+    "./plugins/auth/phone-number": {
+      "import": "./dist/plugins/auth/plugins/phone-number/index.js",
+      "types": "./dist/plugins/auth/plugins/phone-number/index.d.ts"
+    },
+    "./plugins/auth/phone-number/client": {
+      "import": "./dist/plugins/auth/plugins/phone-number/client.js",
+      "types": "./dist/plugins/auth/plugins/phone-number/client.d.ts"
+    },
+    "./plugins/auth/anonymous": {
+      "import": "./dist/plugins/auth/plugins/anonymous/index.js",
+      "types": "./dist/plugins/auth/plugins/anonymous/index.d.ts"
+    },
+    "./plugins/auth/anonymous/client": {
+      "import": "./dist/plugins/auth/plugins/anonymous/client.js",
+      "types": "./dist/plugins/auth/plugins/anonymous/client.d.ts"
     },
     "./plugins/timestamps": {
       "import": "./dist/plugins/timestamps.js",
       "types": "./dist/plugins/timestamps.d.ts"
+    },
+    "./plugins/organization": {
+      "import": "./dist/plugins/organization/index.js",
+      "types": "./dist/plugins/organization/index.d.ts"
+    },
+    "./plugins/storage": {
+      "import": "./dist/plugins/storage/index.js",
+      "types": "./dist/plugins/storage/index.d.ts"
+    },
+    "./plugins/payment": {
+      "import": "./dist/plugins/payment/index.js",
+      "types": "./dist/plugins/payment/index.d.ts"
     }
   },
   "scripts": {

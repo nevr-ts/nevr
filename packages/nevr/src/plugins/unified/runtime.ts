@@ -311,18 +311,37 @@ export function collectRoutes(plugins: UnifiedPlugin[], nevr: NevrInstance): Rou
                                 headers: { Location: url },
                             }),
                         }
-                        const result = await endpoint.handler(ctx as any)
 
-                        // Handle response format (support both raw data and {status, body, headers})
-                        if (result && typeof result === 'object' && 'status' in result && 'body' in result) {
-                            const res = result as { status: number; body: unknown; headers?: Record<string, string> }
-                            return {
-                                status: res.status,
-                                body: res.body,
-                                headers: { ...responseHeaders, ...(res.headers || {}) },
+                        try {
+                            const result = await endpoint.handler(ctx as any)
+
+                            // Handle response format (support both raw data and {status, body, headers})
+                            if (result && typeof result === 'object' && 'status' in result && 'body' in result) {
+                                const res = result as { status: number; body: unknown; headers?: Record<string, string> }
+                                return {
+                                    status: res.status,
+                                    body: res.body,
+                                    headers: { ...responseHeaders, ...(res.headers || {}) },
+                                }
                             }
+                            return { status: 200, body: result, headers: responseHeaders }
+                        } catch (error) {
+                            // Handle EndpointError properly
+                            if (error && typeof error === 'object' && 'name' in error && (error as any).name === 'EndpointError') {
+                                const endpointError = error as unknown as { status: number; code: string; message: string; data?: Record<string, unknown> }
+                                return {
+                                    status: endpointError.status || 400,
+                                    body: {
+                                        error: endpointError.code || 'ERROR',
+                                        message: endpointError.message,
+                                        ...(endpointError.data && { data: endpointError.data }),
+                                    },
+                                    headers: responseHeaders,
+                                }
+                            }
+                            // Re-throw other errors to be handled by nevr's handleError
+                            throw error
                         }
-                        return { status: 200, body: result, headers: responseHeaders }
                     },
                 })
             }

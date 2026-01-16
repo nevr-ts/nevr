@@ -124,6 +124,7 @@ describe("Remote Joiner Helpers", () => {
         config: {
           fields: {
             localRelation: {
+              hasDefault: false,
               type: "string",
               optional: false,
               unique: false,
@@ -136,6 +137,7 @@ describe("Remote Joiner Helpers", () => {
               },
             },
             remoteRelation: {
+              hasDefault: false,
               type: "string",
               optional: false,
               unique: false,
@@ -236,9 +238,10 @@ describe("RemoteJoiner", () => {
         name: "post",
         config: {
           fields: {
-            title: { type: "string", optional: false, unique: false },
-            subscriptionId: { type: "string", optional: false, unique: false },
+            title: { hasDefault: false, type: "string", optional: false, unique: false },
+            subscriptionId: { hasDefault: false, type: "string", optional: false, unique: false },
             subscription: {
+              hasDefault: false,
               type: "string",
               optional: true,
               unique: false,
@@ -326,9 +329,10 @@ describe("RemoteJoiner", () => {
         name: "post",
         config: {
           fields: {
-            title: { type: "string", optional: false, unique: false },
-            subscriptionId: { type: "string", optional: false, unique: false },
+            title: { hasDefault: false, type: "string", optional: false, unique: false },
+            subscriptionId: { hasDefault: false, type: "string", optional: false, unique: false },
             subscription: {
+              hasDefault: false,
               type: "string",
               optional: true,
               unique: false,
@@ -407,9 +411,10 @@ describe("RemoteJoiner", () => {
         name: "post",
         config: {
           fields: {
-            title: { type: "string", optional: false, unique: false },
-            subscriptionId: { type: "string", optional: true, unique: false },
+            title: { hasDefault: false, type: "string", optional: false, unique: false },
+            subscriptionId: { hasDefault: false, type: "string", optional: true, unique: false },
             subscription: {
+              hasDefault: false,
               type: "string",
               optional: true,
               unique: false,
@@ -475,9 +480,10 @@ describe("Remote Joiner Integration Patterns", () => {
       name: "customer",
       config: {
         fields: {
-          email: { type: "string", optional: false, unique: true },
-          stripeSubscriptionId: { type: "string", optional: true, unique: false },
+          email: { hasDefault: false, type: "string", optional: false, unique: true },
+          stripeSubscriptionId: { hasDefault: false, type: "string", optional: true, unique: false },
           subscription: {
+            hasDefault: false,
             type: "string",
             optional: true,
             unique: false,
