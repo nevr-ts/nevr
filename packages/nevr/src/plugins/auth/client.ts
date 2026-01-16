@@ -81,6 +81,32 @@ export interface SessionData {
 }
 
 /**
+ * Fetch options for auth methods (onSuccess, onError callbacks)
+ */
+export interface AuthFetchOptions {
+    /**
+     * Called when request succeeds
+     */
+    onSuccess?: (context: { data: any }) => void | Promise<void>
+    /**
+     * Called when request fails
+     */
+    onError?: (context: { error: NevrFetchError }) => void | Promise<void>
+    /**
+     * Called before request is sent
+     */
+    onRequest?: (context: { url: string; options: RequestInit }) => void | Promise<void>
+    /**
+     * Called after response is received
+     */
+    onResponse?: (context: { response: Response; data: any }) => void | Promise<void>
+    /**
+     * Disable signal triggers (session refresh) on success
+     */
+    disableSignal?: boolean
+}
+
+/**
  * Sign up input
  */
 export interface SignUpEmailInput {
@@ -90,6 +116,10 @@ export interface SignUpEmailInput {
     image?: string
     callbackURL?: string
     rememberMe?: boolean
+    /**
+     * Inline fetch options (alternative to second parameter)
+     */
+    fetchOptions?: AuthFetchOptions
 }
 
 /**
@@ -100,6 +130,10 @@ export interface SignInEmailInput {
     password: string
     callbackURL?: string
     rememberMe?: boolean
+    /**
+     * Inline fetch options (alternative to second parameter)
+     */
+    fetchOptions?: AuthFetchOptions
 }
 
 /**
@@ -111,6 +145,10 @@ export interface SignInSocialInput {
     errorURL?: string
     scopes?: string[]
     loginHint?: string
+    /**
+     * Inline fetch options (alternative to second parameter)
+     */
+    fetchOptions?: AuthFetchOptions
 }
 
 /**
@@ -144,43 +182,53 @@ export interface RevokeSessionInput {
 export interface AuthClientMethods {
     /**
      * Sign up with email and password
+     * @param input - Sign up data (email, password, name)
+     * @param fetchOptions - Optional callbacks (onSuccess, onError)
      */
     signUp: {
-        email: (input: SignUpEmailInput) => Promise<NevrFetchResponse<AuthResponse>>
+        email: (input: SignUpEmailInput, fetchOptions?: AuthFetchOptions) => Promise<NevrFetchResponse<AuthResponse>>
     }
 
     /**
      * Sign in with email and password
+     * @param input - Sign in data (email, password)
+     * @param fetchOptions - Optional callbacks (onSuccess, onError)
      */
     signIn: {
-        email: (input: SignInEmailInput) => Promise<NevrFetchResponse<AuthResponse>>
-        social: (input: SignInSocialInput) => Promise<NevrFetchResponse<{ url: string; redirect: boolean }>>
+        email: (input: SignInEmailInput, fetchOptions?: AuthFetchOptions) => Promise<NevrFetchResponse<AuthResponse>>
+        social: (input: SignInSocialInput, fetchOptions?: AuthFetchOptions) => Promise<NevrFetchResponse<{ url: string; redirect: boolean }>>
     }
 
     /**
      * Sign out the current user
+     * @param fetchOptions - Optional callbacks (onSuccess, onError)
      */
-    signOut: () => Promise<NevrFetchResponse<{ success: boolean }>>
+    signOut: (fetchOptions?: AuthFetchOptions) => Promise<NevrFetchResponse<{ success: boolean }>>
 
     /**
      * Get current session
+     * @param fetchOptions - Optional callbacks (onSuccess, onError)
      */
-    getSession: () => Promise<NevrFetchResponse<SessionData | null>>
+    getSession: (fetchOptions?: AuthFetchOptions) => Promise<NevrFetchResponse<SessionData | null>>
 
     /**
      * List all active sessions
+     * @param fetchOptions - Optional callbacks (onSuccess, onError)
      */
-    listSessions: () => Promise<NevrFetchResponse<{ sessions: AuthSession[] }>>
+    listSessions: (fetchOptions?: AuthFetchOptions) => Promise<NevrFetchResponse<{ sessions: AuthSession[] }>>
 
     /**
      * Revoke a specific session
+     * @param input - Session token to revoke
+     * @param fetchOptions - Optional callbacks (onSuccess, onError)
      */
-    revokeSession: (input: RevokeSessionInput) => Promise<NevrFetchResponse<{ status: boolean }>>
+    revokeSession: (input: RevokeSessionInput, fetchOptions?: AuthFetchOptions) => Promise<NevrFetchResponse<{ status: boolean }>>
 
     /**
      * Revoke all sessions
+     * @param fetchOptions - Optional callbacks (onSuccess, onError)
      */
-    revokeSessions: () => Promise<NevrFetchResponse<{ status: boolean }>>
+    revokeSessions: (fetchOptions?: AuthFetchOptions) => Promise<NevrFetchResponse<{ status: boolean }>>
 
     /**
      * Revoke all sessions except current
@@ -451,48 +499,90 @@ export function authClient(options?: AuthClientOptions): AuthClientPlugin {
                 }
             }
 
+            // Helper to merge fetch options from input and second parameter
+            const mergeOptions = (inputOptions?: AuthFetchOptions, paramOptions?: AuthFetchOptions): AuthFetchOptions => {
+                return { ...inputOptions, ...paramOptions }
+            }
+
+            // Helper to call callbacks after request completes
+            const handleCallbacks = async (
+                result: NevrFetchResponse<any>,
+                opts?: AuthFetchOptions
+            ) => {
+                if (result.error && opts?.onError) {
+                    await opts.onError({ error: result.error })
+                } else if (!result.error && opts?.onSuccess) {
+                    await opts.onSuccess({ data: result.data })
+                }
+            }
+
             return {
                 signUp: {
-                    email: async (input: SignUpEmailInput) => {
+                    email: async (input: SignUpEmailInput, fetchOptions?: AuthFetchOptions) => {
+                        const { fetchOptions: inputOpts, ...body } = input
+                        const opts = mergeOptions(inputOpts, fetchOptions)
+
                         const result = await $fetch(`${basePath}/sign-up/email`, {
                             method: "POST",
-                            body: input,
+                            body,
+                            onRequest: opts.onRequest,
+                            onResponse: opts.onResponse,
                         })
-                        if (!result.error) {
+
+                        if (!result.error && !opts.disableSignal) {
                             await updateSession()
                         }
+
+                        await handleCallbacks(result, opts)
                         return result as NevrFetchResponse<AuthResponse>
                     },
                 },
 
                 signIn: {
-                    email: async (input: SignInEmailInput) => {
+                    email: async (input: SignInEmailInput, fetchOptions?: AuthFetchOptions) => {
+                        const { fetchOptions: inputOpts, ...body } = input
+                        const opts = mergeOptions(inputOpts, fetchOptions)
+
                         const result = await $fetch(`${basePath}/sign-in/email`, {
                             method: "POST",
-                            body: input,
+                            body,
+                            onRequest: opts.onRequest,
+                            onResponse: opts.onResponse,
                         })
-                        if (!result.error) {
+
+                        if (!result.error && !opts.disableSignal) {
                             await updateSession()
                         }
+
+                        await handleCallbacks(result, opts)
                         return result as NevrFetchResponse<AuthResponse>
                     },
-                    social: async (input: SignInSocialInput) => {
-                        const { provider, ...body } = input
+                    social: async (input: SignInSocialInput, fetchOptions?: AuthFetchOptions) => {
+                        const { provider, fetchOptions: inputOpts, ...body } = input as SignInSocialInput & { fetchOptions?: AuthFetchOptions }
+                        const opts = mergeOptions(inputOpts, fetchOptions)
+
                         const result = await $fetch(`${basePath}/sign-in/${provider}`, {
                             method: "POST",
                             body,
+                            onRequest: opts.onRequest,
+                            onResponse: opts.onResponse,
                         })
+
+                        await handleCallbacks(result, opts)
                         return result as NevrFetchResponse<{ url: string; redirect: boolean }>
                     },
                 },
 
-                signOut: async () => {
+                signOut: async (fetchOptions?: AuthFetchOptions) => {
                     const result = await $fetch(`${basePath}/sign-out`, {
                         method: "POST",
+                        onRequest: fetchOptions?.onRequest,
+                        onResponse: fetchOptions?.onResponse,
                     })
+
                     if (!result.error) {
                         // Clear session atom
-                        if ($session) {
+                        if ($session && !fetchOptions?.disableSignal) {
                             $session.set({
                                 data: null,
                                 error: null,
@@ -509,36 +599,53 @@ export function authClient(options?: AuthClientOptions): AuthClientPlugin {
                             }
                         }
                     }
+
+                    await handleCallbacks(result, fetchOptions)
                     return result as NevrFetchResponse<{ success: boolean }>
                 },
 
-                getSession: async () => {
+                getSession: async (fetchOptions?: AuthFetchOptions) => {
                     const result = await $fetch(`${basePath}/get-session`, {
                         method: "GET",
+                        onRequest: fetchOptions?.onRequest,
+                        onResponse: fetchOptions?.onResponse,
                     })
+
+                    await handleCallbacks(result, fetchOptions)
                     return result as NevrFetchResponse<SessionData | null>
                 },
 
-                listSessions: async () => {
+                listSessions: async (fetchOptions?: AuthFetchOptions) => {
                     const result = await $fetch(`${basePath}/list-sessions`, {
                         method: "GET",
+                        onRequest: fetchOptions?.onRequest,
+                        onResponse: fetchOptions?.onResponse,
                     })
+
+                    await handleCallbacks(result, fetchOptions)
                     return result as NevrFetchResponse<{ sessions: AuthSession[] }>
                 },
 
-                revokeSession: async (input: RevokeSessionInput) => {
+                revokeSession: async (input: RevokeSessionInput, fetchOptions?: AuthFetchOptions) => {
                     const result = await $fetch(`${basePath}/revoke-session`, {
                         method: "POST",
                         body: input,
+                        onRequest: fetchOptions?.onRequest,
+                        onResponse: fetchOptions?.onResponse,
                     })
+
+                    await handleCallbacks(result, fetchOptions)
                     return result as NevrFetchResponse<{ status: boolean }>
                 },
 
-                revokeSessions: async () => {
+                revokeSessions: async (fetchOptions?: AuthFetchOptions) => {
                     const result = await $fetch(`${basePath}/revoke-sessions`, {
                         method: "POST",
+                        onRequest: fetchOptions?.onRequest,
+                        onResponse: fetchOptions?.onResponse,
                     })
-                    if (!result.error) {
+
+                    if (!result.error && !fetchOptions?.disableSignal) {
                         // Clear session since all are revoked
                         if ($session) {
                             $session.set({
@@ -548,60 +655,87 @@ export function authClient(options?: AuthClientOptions): AuthClientPlugin {
                             })
                         }
                     }
+
+                    await handleCallbacks(result, fetchOptions)
                     return result as NevrFetchResponse<{ status: boolean }>
                 },
 
-                revokeOtherSessions: async () => {
+                revokeOtherSessions: async (fetchOptions?: AuthFetchOptions) => {
                     const result = await $fetch(`${basePath}/revoke-other-sessions`, {
                         method: "POST",
+                        onRequest: fetchOptions?.onRequest,
+                        onResponse: fetchOptions?.onResponse,
                     })
+
+                    await handleCallbacks(result, fetchOptions)
                     return result as NevrFetchResponse<{ status: boolean }>
                 },
 
-                linkSocial: async (input: LinkSocialInput) => {
+                linkSocial: async (input: LinkSocialInput, fetchOptions?: AuthFetchOptions) => {
                     const result = await $fetch(`${basePath}/link-social`, {
                         method: "POST",
                         body: input,
+                        onRequest: fetchOptions?.onRequest,
+                        onResponse: fetchOptions?.onResponse,
                     })
+
+                    await handleCallbacks(result, fetchOptions)
                     return result as NevrFetchResponse<{ url: string; redirect: boolean }>
                 },
 
-                updateUser: async (input: { name?: string; image?: string }) => {
+                updateUser: async (input: { name?: string; image?: string }, fetchOptions?: AuthFetchOptions) => {
                     const result = await $fetch(`${basePath}/update-user`, {
                         method: "POST",
                         body: input,
+                        onRequest: fetchOptions?.onRequest,
+                        onResponse: fetchOptions?.onResponse,
                     })
-                    if (!result.error) {
+
+                    if (!result.error && !fetchOptions?.disableSignal) {
                         await updateSession()
                     }
+
+                    await handleCallbacks(result, fetchOptions)
                     return result as NevrFetchResponse<{ user: AuthUser }>
                 },
 
-                changePassword: async (input: { currentPassword: string; newPassword: string; revokeOtherSessions?: boolean }) => {
+                changePassword: async (input: { currentPassword: string; newPassword: string; revokeOtherSessions?: boolean }, fetchOptions?: AuthFetchOptions) => {
                     const result = await $fetch(`${basePath}/change-password`, {
                         method: "POST",
                         body: input,
+                        onRequest: fetchOptions?.onRequest,
+                        onResponse: fetchOptions?.onResponse,
                     })
+
+                    await handleCallbacks(result, fetchOptions)
                     return result as NevrFetchResponse<{ status: boolean }>
                 },
 
-                changeEmail: async (input: { newEmail: string; callbackURL?: string }) => {
+                changeEmail: async (input: { newEmail: string; callbackURL?: string }, fetchOptions?: AuthFetchOptions) => {
                     const result = await $fetch(`${basePath}/change-email`, {
                         method: "POST",
                         body: input,
+                        onRequest: fetchOptions?.onRequest,
+                        onResponse: fetchOptions?.onResponse,
                     })
-                    if (!result.error) {
+
+                    if (!result.error && !fetchOptions?.disableSignal) {
                         await updateSession()
                     }
+
+                    await handleCallbacks(result, fetchOptions)
                     return result as NevrFetchResponse<{ status: boolean }>
                 },
 
-                deleteUser: async (input: { password: string }) => {
+                deleteUser: async (input: { password: string }, fetchOptions?: AuthFetchOptions) => {
                     const result = await $fetch(`${basePath}/delete-user`, {
                         method: "POST",
                         body: input,
+                        onRequest: fetchOptions?.onRequest,
+                        onResponse: fetchOptions?.onResponse,
                     })
-                    if (!result.error) {
+
+                    if (!result.error && !fetchOptions?.disableSignal) {
                         // Clear session atom
                         if ($session) {
                             $session.set({
@@ -611,6 +745,8 @@ export function authClient(options?: AuthClientOptions): AuthClientPlugin {
                             })
                         }
                     }
+
+                    await handleCallbacks(result, fetchOptions)
                     return result as NevrFetchResponse<{ status: boolean }>
                 },
             }

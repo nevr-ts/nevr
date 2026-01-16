@@ -124,9 +124,10 @@ describe("Username Plugin", () => {
             const plugin = username()
 
             expect(plugin.schema).toBeDefined()
-            expect(plugin.schema?.entities?.user).toBeDefined()
-            expect(plugin.schema?.entities?.user?.fields?.username).toBeDefined()
-            expect(plugin.schema?.entities?.user?.fields?.displayUsername).toBeDefined()
+            // Username plugin extends the existing 'user' entity, it doesn't define a new one
+            expect(plugin.schema?.extend?.user).toBeDefined()
+            expect(plugin.schema?.extend?.user?.username).toBeDefined()
+            expect(plugin.schema?.extend?.user?.displayUsername).toBeDefined()
         })
 
         it("should have init function with database hooks", () => {
@@ -159,7 +160,7 @@ describe("Username Plugin", () => {
                 body: { username: "newuser" },
             }
 
-            const result = await handler(ctx as any)
+            const result = await handler(ctx as any) as any
 
             expect(result.status).toBe(200)
             expect(result.body.available).toBe(true)
@@ -182,7 +183,7 @@ describe("Username Plugin", () => {
                 body: { username: "existinguser" },
             }
 
-            const result = await handler(ctx as any)
+            const result = await handler(ctx as any) as any
 
             expect(result.status).toBe(200)
             expect(result.body.available).toBe(false)
@@ -292,7 +293,7 @@ describe("Username Plugin", () => {
                 headers: {},
             }
 
-            const result = await handler(ctx as any)
+            const result = await handler(ctx as any) as any
 
             expect(result.status).toBe(200)
             expect(result.body.token).toBeDefined()
@@ -312,7 +313,7 @@ describe("Username Plugin", () => {
                 headers: {},
             }
 
-            const result = await handler(ctx as any)
+            const result = await handler(ctx as any) as any
 
             expect(result.status).toBe(200)
             expect(result.body.user.username).toBe("testuser")
@@ -362,7 +363,7 @@ describe("Username Plugin", () => {
                 body: { username: "testuser" },
             }
 
-            const result = await handler(ctx as any)
+            const result = await handler(ctx as any) as any
 
             expect(result.body.available).toBe(false)
         })

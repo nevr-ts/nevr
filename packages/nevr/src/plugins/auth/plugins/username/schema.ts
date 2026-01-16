@@ -24,10 +24,9 @@ export interface UsernameNormalizers {
  */
 export function getUsernameSchema(_normalizers: UsernameNormalizers): PluginSchema {
     return {
-        entities: {
+       
+        extend: {
             user: {
-                description: "Extended user with username support",
-                fields: {
                     // Username - normalized (lowercase), unique, indexed
                     // Normalization is applied via hooks in the plugin
                     username: string
@@ -44,6 +43,7 @@ export function getUsernameSchema(_normalizers: UsernameNormalizers): PluginSche
                         .description("Display name with original casing"),
                 },
             },
-        },
+        }
+        
     }
-}
+

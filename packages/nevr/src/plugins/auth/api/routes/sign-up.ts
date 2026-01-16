@@ -9,6 +9,7 @@ import type { AuthPluginOptions, AuthUser, InternalAdapter } from "../../types.j
 import { AUTH_ERROR_CODES } from "../../error-codes.js"
 import { hashPassword } from "../../crypto/index.js"
 import { setSessionCookie, type SessionCookieConfig } from "../../cookies/session-cookie.js"
+import { createEmailVerificationToken } from "../../crypto/jwt.js"
 import { runHook } from "../hooks.js"
 import { getLogger } from "../../../../logger.js"
 import { createInternalAdapter } from "../internal-adapter.js"
@@ -47,6 +48,7 @@ export interface SignUpRouteConfig {
  */
 export function signUpEmail(config: SignUpRouteConfig) {
     const { options, cookieConfig, passwordConfig } = config
+    const secret = options.secret || process.env.AUTH_SECRET || process.env.NEVR_AUTH_SECRET || ""
 
     // Build schema with dynamic password length
     const schema = z.object({
@@ -92,23 +94,33 @@ export function signUpEmail(config: SignUpRouteConfig) {
                 })
             }
 
-            // Check for existing user
+            // Check if sign-up is disabled
+            if (options.emailAndPassword?.disableSignUp) {
+                throw new EndpointError("BAD_REQUEST", {
+                    code: AUTH_ERROR_CODES.SIGN_UP_DISABLED,
+                    message: "Sign up is disabled",
+                })
+            }
+
+            // Check for existing user FIRST - before any other operations
             const existingUser = await adapter.findUserByEmail(body.email)
             if (existingUser) {
+                // Important: Just throw the error - no session creation, no cookie setting
+                getLogger().info(`[auth] Sign-up attempt for existing email: ${body.email}`)
                 throw new EndpointError("CONFLICT", {
                     code: AUTH_ERROR_CODES.USER_ALREADY_EXISTS,
                     message: "A user with this email already exists",
                 })
             }
 
-            // Hash password
+            // Hash password BEFORE creating user (so if hashing fails, user isn't created)
             const hashedPassword = await passwordConfig.hash(body.password)
 
             // Create user
             let user: AuthUser
             try {
                 user = await adapter.createUser({
-                    email: body.email,
+                    email: body.email.toLowerCase(),
                     name: body.name,
                     image: body.image || null,
                     emailVerified: false,
@@ -129,16 +141,54 @@ export function signUpEmail(config: SignUpRouteConfig) {
                 password: hashedPassword,
             })
 
+            // Send verification email if configured
+            // This happens when either sendOnSignUp is true OR requireEmailVerification is true
+            const shouldSendVerificationEmail =
+                options.emailVerification?.sendOnSignUp === true ||
+                options.emailAndPassword?.requireEmailVerification === true
+
+            if (shouldSendVerificationEmail && options.emailVerification?.sendVerificationEmail) {
+                try {
+                    const expiresIn = options.emailVerification?.expiresIn ?? 3600
+                    const token = createEmailVerificationToken(
+                        secret,
+                        user.email,
+                        undefined,
+                        expiresIn
+                    )
+
+                    const baseURL = options.baseURL || ""
+                    const callbackURL = body.callbackURL
+                        ? encodeURIComponent(body.callbackURL)
+                        : encodeURIComponent("/")
+                    const url = `${baseURL}/auth/verify-email?token=${token}&callbackURL=${callbackURL}`
+
+                    await options.emailVerification.sendVerificationEmail(
+                        { user, url, token },
+                        ctx.request
+                    )
+
+                    getLogger().debug(`[auth] Verification email sent to ${user.email}`)
+                } catch (e) {
+                    getLogger().error("[auth] Failed to send verification email", e)
+                    // Don't throw - user was created successfully, just email failed
+                    // They can request a new verification email later
+                }
+            }
+
             const headers: Record<string, string> = {}
             let token: string | null = null
 
-            // Auto sign-in if enabled
-            const shouldAutoSignIn =
-                options.emailAndPassword?.enabled &&
-                options.emailAndPassword?.autoSignIn &&
-                !options.emailAndPassword?.requireEmailVerification
+            // Determine if we should auto sign-in
+            // Auto sign-in is DISABLED if:
+            // 1. autoSignIn is explicitly set to false
+            // 2. requireEmailVerification is true
+            const autoSignInDisabled =
+                options.emailAndPassword?.autoSignIn === false ||
+                options.emailAndPassword?.requireEmailVerification === true
 
-            if (shouldAutoSignIn) {
+            if (!autoSignInDisabled) {
+                // Auto sign-in enabled - create session and set cookie
                 const session = await adapter.createSession(user.id, body.rememberMe === false)
                 token = session.token
                 setSessionCookie(headers, session.token, cookieConfig, body.rememberMe === false)

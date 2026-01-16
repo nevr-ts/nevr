@@ -11,6 +11,7 @@ export const AUTH_ERROR_CODES = {
     PASSWORD_TOO_SHORT: "Password is too short",
     PASSWORD_TOO_LONG: "Password is too long",
     EMAIL_AND_PASSWORD_NOT_ENABLED: "Email and password sign-up is not enabled",
+    SIGN_UP_DISABLED: "Sign up is disabled",
 
     // Sign-in errors
     INVALID_EMAIL_OR_PASSWORD: "Invalid email or password",

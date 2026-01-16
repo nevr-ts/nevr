@@ -214,6 +214,50 @@ export interface AuthPluginOptions {
             allowDifferentEmails?: boolean
         }
     }
+
+    /**
+     * Auth sub-plugins (magic-link, two-factor, anonymous, phone-number)
+     * These extend auth with additional authentication methods
+     *
+     * @example
+     * ```ts
+     * import { auth } from "nevr/plugins/auth"
+     * import { magicLink } from "nevr/plugins/auth/magic-link"
+     * import { twoFactor } from "nevr/plugins/auth/two-factor"
+     *
+     * auth({
+     *   plugins: [
+     *     magicLink({ sendMagicLink: async ({ email, url }) => {...} }),
+     *     twoFactor(),
+     *   ]
+     * })
+     * ```
+     */
+    plugins?: AuthSubPlugin[]
+}
+
+/**
+ * Auth sub-plugin interface
+ * Sub-plugins extend auth with additional authentication methods
+ */
+export interface AuthSubPlugin {
+    /** Unique plugin identifier */
+    id: string
+    /** Plugin name */
+    name?: string
+    /** Plugin description */
+    description?: string
+    /** Endpoints provided by this sub-plugin */
+    endpoints?: Record<string, any>
+    /** Schema extensions (additional fields for user, session, etc.) */
+    schema?: Record<string, any>
+    /** Initialize the sub-plugin */
+    init?: (context: {
+        options: AuthPluginOptions
+        adapter: InternalAdapter
+        secret: string
+        baseURL?: string
+    }) => void | Promise<void>
 }
 
 // -----------------------------------------------------------------------------
