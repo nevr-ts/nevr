@@ -34,9 +34,8 @@ interface CopyObjectCommand {
     new(input: { Bucket: string; Key: string; CopySource: string }): unknown
 }
 
-interface GetSignedUrl {
-    (client: S3Client, command: unknown, options: { expiresIn: number }): Promise<string>
-}
+// Using any for getSignedUrl as the SDK types are complex
+type GetSignedUrl = any
 
 // -----------------------------------------------------------------------------
 // S3 Provider Implementation
@@ -56,9 +55,7 @@ export async function createS3Provider(config: S3ProviderConfig): Promise<Storag
 
     try {
         // Dynamic import AWS SDK v3
-        // @ts-expect-error - AWS SDK may not be installed
         const clientModule = await import("@aws-sdk/client-s3")
-        // @ts-expect-error - AWS SDK may not be installed
         const presignerModule = await import("@aws-sdk/s3-request-presigner")
 
         const S3Client = clientModule.S3Client
