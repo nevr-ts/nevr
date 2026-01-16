@@ -200,6 +200,31 @@ const emailService = createService("email", () => ({
 ctx.services.email.send(user.email, "Welcome!", "...")
 ```
 
+### 🧠 AI-Native & RAG 
+
+Nevr is the first framework with a **built-in RAG (Retrieval-Augmented Generation) engine**.
+
+```typescript
+const document = entity("document", {
+  content: text.embedding({ provider: "openai" }), // Auto-vectorized on save
+  metadata: json,
+})
+
+// Semantic Search is built-in
+const results = await api.semanticSearch("document", {
+  query: "quarterly report",
+  limit: 5
+})
+
+// Generate context for LLMs instantly
+// Default: markdown format
+const context = generateContextString(api)
+
+// Compact JSON format
+const compact = generateContextString(api, "json")
+
+```
+
 ### 🎯 End-to-End Type Safety
 
 ```typescript
@@ -292,12 +317,15 @@ npm run docs:dev
 - Authorization rules & ownership
 - Prisma driver
 - Express & Hono adapters
-- Auth plugin (Better Auth integration)
+- Auth plugin (full auth flows)
+- Organization & multi-tenancy
+- payments & storage plugins
 - Workflow engine with saga pattern
 - Service container (DI)
 - Remote data joiner
 - Field encryption & password hashing
 - CLI & project scaffolder
+- RAG & semantic search
 
 ### 🚧 Coming Soon
 - **Drizzle & Kysely drivers**
@@ -305,8 +333,8 @@ npm run docs:dev
 - **Real-time subscriptions (WebSocket)**
 - **GraphQL adapter**
 - **Admin dashboard generator**
-- **Multi-tenancy plugin**
 - **Audit logging plugin**
+- more!
 
 ---
 

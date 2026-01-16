@@ -104,10 +104,20 @@ export default defineConfig({
           { text: 'Using Plugins', link: '/plugins/using' },
           { text: 'Creating Plugins', link: '/plugins/creating' },
           { text: 'Interceptors', link: '/plugins/interceptors' },
-          { text: 'Auth Plugin', link: '/plugins/auth' },
-          // { text: 'Payments Plugin', link: '/plugins/payments' },
-          // { text: 'Storage Plugin', link: '/plugins/storage' },
-          // { text: 'Timestamps Plugin', link: '/plugins/timestamps' }
+          {
+            text: 'Auth Plugin',
+            collapsed: false,
+            items: [
+              { text: 'Overview', link: '/plugins/auth' },
+              { text: 'Magic Link', link: '/plugins/auth/magic-link' },
+              { text: 'Two Factor', link: '/plugins/auth/two-factor' },
+              { text: 'Phone Number', link: '/plugins/auth/phone-number' },
+              { text: 'Anonymous', link: '/plugins/auth/anonymous' },
+            ]
+          },
+          { text: 'Organization Plugin', link: '/plugins/organization' },
+          { text: 'Payment Plugin', link: '/plugins/payment' },
+          { text: 'Storage Plugin', link: '/plugins/storage' },
         ]
       },
       {
@@ -157,6 +167,8 @@ export default defineConfig({
         text: 'Guides',
         collapsed: true,
         items: [
+          { text: 'AI-First Development', link: '/guide/ai-first' },
+          { text: 'RAG & Vector Search', link: '/guide/rag' },
           { text: 'CRUD Operations', link: '/guides/crud' },
           { text: 'Filtering & Sorting', link: '/guides/filtering' },
           { text: 'Custom Endpoints', link: '/guides/custom-endpoints' },

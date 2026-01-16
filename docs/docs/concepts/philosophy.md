@@ -70,4 +70,74 @@ We named it **Nevr** because there are things you should **never** have to do ag
 * **Never** spend days researching how to "correctly" implement Auth or Payments.
 * **Never** worry about your Documentation drifting from your Code.
 
+---
+
+## 7. AI-First: Low-Entropy Architecture
+
+> Nevr is not just a framework for humans—it's designed to be the **native tongue of AI developers**.
+
+### The Problem: Entropy
+
+AI code generators (GitHub Copilot, Claude, ChatGPT) are incredibly powerful at writing prototypes. But as projects grow past 1,000 lines, they degrade:
+
+* **Context Window Limits**: The AI can't hold the entire codebase in memory.
+* **Hallucinations**: The AI "forgets" existing code and invents conflicting patterns.
+* **Boilerplate Overload**: 80% of tokens are wasted on repetitive plumbing, leaving only 20% for actual logic.
+
+Traditional frameworks have **High Entropy**—thousands of ways to do the same thing. This exhausts the AI's reasoning capacity.
+
+### The Solution: Low Entropy
+
+Nevr has **Low Entropy**:
+
+| Traditional Framework | Nevr |
+|:--|:--|
+| 2,000 lines for CRUD | 50-line Entity Schema |
+| Routes, Controllers, DTOs, Services | One declarative definition |
+| AI struggles to maintain consistency | AI holds entire app in context |
+
+Because Nevr abstracts the "How" into the framework, the AI only needs to focus on the **unique 20% logic**. The result:
+
+* **10x larger projects** before AI degradation.
+* **Zero hallucinations** on common patterns.
+* **Instant comprehension** via Introspection.
+
+### Introspection: The Self-Aware Codebase
+
+Nevr can describe itself to an AI in **under 500 tokens**:
+
+```typescript
+import { generateContextString } from "nevr"
+
+// Generate a high-density map of the entire application
+const context = generateContextString(api)
+// -> Entities, Relations, Actions, Services, Plugins...
+```
+
+With this context, an AI agent can:
+* Generate a new feature that perfectly integrates with existing schema.
+* Refactor code without breaking hidden dependencies.
+* Answer questions about the app instantly.
+
+### `.instruction()`: Notes for the AI
+
+Developers can leave AI-specific notes directly in the schema:
+
+```typescript
+entity("order", {
+  total: float.instruction("Calculate from lineItems, never set directly"),
+  status: string.options(["pending", "paid", "shipped"]).instruction("Use workflows for transitions"),
+})
+  .instruction("Core business entity - handle financial data with care")
+```
+
+These instructions are:
+* Invisible to the runtime (no performance cost).
+* Exported in the context for AI agents.
+* The bridge between human intent and AI execution.
+
+**Nevr is Compression Technology for AI Context Windows.**
+
+---
+
 **Focus on your product. Let Nevr handle the rest.**

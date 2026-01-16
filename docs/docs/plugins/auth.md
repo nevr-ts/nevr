@@ -414,8 +414,17 @@ registerAuthHooks({
 
 ---
 
-## Next Steps
+## Auth Sub-Plugins
 
-- [Email & Password](/plugins/auth/email-password) - Traditional authentication
-- [Social Sign-On](/plugins/auth/social) - OAuth providers
-- [Session Management](/plugins/auth/sessions) - Session configuration
+Extend authentication with additional capabilities:
+
+- [Magic Link](/plugins/auth/magic-link) - Passwordless email authentication
+- [Two Factor](/plugins/auth/two-factor) - TOTP-based 2FA with backup codes
+- [Phone Number](/plugins/auth/phone-number) - SMS-based OTP authentication
+- [Anonymous](/plugins/auth/anonymous) - Guest users with account linking
+
+## Related Plugins
+
+- [Organization Plugin](/plugins/organization) - Multi-tenant teams and roles
+- [Payment Plugin](/plugins/payment) - Subscription billing with Stripe
+- [Storage Plugin](/plugins/storage) - S3-compatible file storage
