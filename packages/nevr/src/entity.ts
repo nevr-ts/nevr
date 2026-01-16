@@ -284,6 +284,7 @@ export class EntityBuilder<
   private _actions: Record<string, EntityAction> = {}
   private _namespace?: string
   private _validators: EntityValidator[] = []
+  private _instruction?: string
 
   constructor(name: TName, fields: TFields) {
     // Validate entity name
@@ -388,6 +389,17 @@ export class EntityBuilder<
   namespace(ns: string): this {
     this._namespace = ns
     this.config.namespace = ns
+    return this
+  }
+
+  /**
+   * Add AI instruction for context generation
+   * Notes for AI agents about how to handle this entity
+   * @example entity("order", {...}).instruction("Core business entity - handle with care")
+   * @example entity("user", {...}).instruction("Contains PII, always verify permissions")
+   */
+  instruction(note: string): this {
+    this._instruction = note
     return this
   }
 
@@ -527,6 +539,7 @@ export class EntityBuilder<
         actions: Object.keys(this._actions).length > 0 ? this._actions : undefined,
         namespace: this._namespace,
         validators: this._validators.length > 0 ? this._validators : undefined,
+        instruction: this._instruction,
       },
     }
   }

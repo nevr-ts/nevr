@@ -246,6 +246,24 @@ export function handleError(error: unknown): NevrResponse {
     return createErrorResponse(error.code, error.message, error.details)
   }
 
+  // EndpointError from unified endpoint system (check by name since it might be from different module)
+  if (error && typeof error === "object" && "name" in error && (error as any).name === "EndpointError") {
+    const endpointError = error as unknown as { status: number; code: string; message: string; data?: Record<string, unknown>; toResponse?: () => NevrResponse }
+    // Use toResponse if available
+    if (typeof endpointError.toResponse === "function") {
+      return endpointError.toResponse()
+    }
+    // Otherwise build response manually
+    return {
+      status: endpointError.status || 400,
+      body: {
+        error: endpointError.code || "ERROR",
+        message: endpointError.message,
+        ...(endpointError.data && { data: endpointError.data }),
+      },
+    }
+  }
+
   // Prisma errors
   if (error && typeof error === "object" && "code" in error) {
     const prismaError = error as { code: string; message: string }

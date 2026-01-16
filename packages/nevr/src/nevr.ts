@@ -1328,6 +1328,15 @@ export function nevr<TEntities extends Entity[]>(
         // =========================================================================
 
         executeAction: executeEntityAction,
+
+        // =========================================================================
+        // RAG Engine (AI-First Semantic Search)
+        // =========================================================================
+
+        // These methods will be populated if RAG config is provided
+        rag: null as any,
+        semanticSearch: undefined as any,
+        generateEmbeddings: undefined as any,
     }
 
     // Collect plugin middleware and routes

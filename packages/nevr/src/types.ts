@@ -174,6 +174,8 @@ export interface FieldDef<
     }
     /** Mark as PII/sensitive data for compliance */
     sensitive?: boolean
+    /** AI instruction for context generation */
+    instruction?: string
   }
 }
 
@@ -261,6 +263,12 @@ export interface EntityConfig<TFields extends Record<string, FieldDef> = Record<
    * ```
    */
   validators?: EntityValidator[]
+  /**
+   * AI instruction for context generation
+   * Notes for AI agents about how to handle this entity
+   * @example "Core business entity - handle with care"
+   */
+  instruction?: string
 }
 
 /**
@@ -1161,6 +1169,46 @@ export interface NevrInstance {
     input: TInput,
     ctx?: { user?: User | null; resourceId?: string }
   ) => Promise<TOutput>
+
+  // =============================================================================
+  // RAG Engine (AI-First Semantic Search)
+  // =============================================================================
+
+  /**
+   * Semantic search across entities with embedding fields
+   * @example api.semanticSearch("customer support issues", { entities: ["ticket"] })
+   */
+  semanticSearch?: (
+    query: string,
+    options?: {
+      limit?: number
+      minScore?: number
+      entities?: string[]
+      fields?: string[]
+    }
+  ) => Promise<Array<{
+    id: string
+    score: number
+    metadata: { entity: string; field: string; recordId: string; text?: string }
+  }>>
+
+  /**
+   * Generate embeddings for a record (called automatically if autoGenerate is true)
+   */
+  generateEmbeddings?: (
+    entityName: string,
+    recordId: string,
+    data: Record<string, unknown>
+  ) => Promise<void>
+
+  /**
+   * RAG engine (null if not configured)
+   */
+  rag?: {
+    provider: { name: string; dimensions: number }
+    store: { name: string }
+    search: (query: string, options?: { limit?: number; entities?: string[] }) => Promise<Array<{ id: string; score: number; metadata: Record<string, unknown> }>>
+  } | null
 }
 
 /** Service registration options */

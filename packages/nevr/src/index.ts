@@ -415,6 +415,74 @@ export type {
   StepResult,
 } from "./workflow.js"
 
+// Introspection (AI-First Context Generation)
+export {
+  generateContext,
+  contextToMarkdown,
+  contextToJSON,
+  generateContextString,
+} from "./introspection.js"
+
+export type {
+  AppContext,
+  ContextEntity,
+  ContextField,
+  ContextPlugin,
+  ContextService,
+} from "./introspection.js"
+
+// RAG Engine (AI-First Retrieval-Augmented Generation)
+export {
+  // Embedding Providers
+  getEmbeddingProvider,
+  registerProvider,
+  hasProvider,
+  listProviders,
+  OpenAIEmbeddingProvider,
+  CohereEmbeddingProvider,
+  BaseEmbeddingProvider,
+  EmbeddingError,
+  // Vector Stores
+  getVectorStore,
+  registerStore,
+  hasStore,
+  listStores,
+  InMemoryVectorStore,
+  VectorStoreError,
+  // RAG Engine
+  createRAGEngine,
+  setRAGEngine,
+  getRAGEngine,
+  clearRAGEngine,
+  // Helpers
+  getEmbeddingFields,
+  hasEmbeddingFields,
+  getSearchableFields,
+  hasSearchableFields,
+  // Full-Text Search
+  buildPostgresSearchQuery,
+  buildSqliteSearchQuery,
+  inMemoryTextSearch,
+  highlightMatches,
+  extractSnippets,
+} from "./rag/index.js"
+
+export type {
+  EmbeddingProvider,
+  EmbeddingProviderConfig,
+  VectorStore,
+  VectorStoreConfig,
+  VectorMetadata,
+  VectorSearchResult,
+  VectorSearchOptions,
+  RAGConfig,
+  RAGEngine,
+  SemanticSearchOptions,
+  SemanticSearchResult,
+  TextSearchResult,
+  TextSearchOptions,
+} from "./rag/index.js"
+
 // Enhancements
 export {
   // Enhancement pipeline

@@ -21,6 +21,7 @@ const HELP = `
   Commands:
     generate:entity <name>    Generate a new entity file
     g:e <name>                Alias for generate:entity
+    context                   Generate AI-optimized context from app
     help                      Show this help message
     version                   Show version
 
@@ -30,6 +31,11 @@ const HELP = `
     -o, --output <path>       Output directory (default: src/entities)
     --with-relations          Include example relations
     --with-actions            Include example actions
+
+  Options for context:
+    --json                    Output in compact JSON format (default: markdown)
+    -o, --output <path>       Write to file (default: stdout)
+    -c, --config <path>       Path to nevr config file (default: src/index.ts)
 
   Field Types:
     string, text, int, float, bool, boolean, datetime, json, email
@@ -42,6 +48,9 @@ const HELP = `
     npx nevr g:e product -f "name:string,price:float,stock:int" -r "list:everyone,create:admin"
     npx nevr generate:entity post --fields "title:string,content:text" --with-relations
     npx nevr g:e order -f "total:float,status:string" --with-actions
+    npx nevr context                    # Output markdown to stdout
+    npx nevr context --json             # Output compact JSON
+    npx nevr context -o .ai/context.md  # Write to file
 
 `
 
@@ -59,6 +68,8 @@ function parseCliArgs() {
         fields: { type: "string", short: "f" },
         rules: { type: "string", short: "r" },
         output: { type: "string", short: "o" },
+        config: { type: "string", short: "c" },
+        json: { type: "boolean" },
         "with-relations": { type: "boolean" },
         "with-actions": { type: "boolean" },
         help: { type: "boolean", short: "h" },
@@ -73,6 +84,8 @@ function parseCliArgs() {
       fields: values.fields,
       rules: values.rules,
       output: values.output,
+      config: values.config,
+      jsonOutput: values.json ?? false,
       withRelations: values["with-relations"] ?? false,
       withActions: values["with-actions"] ?? false,
       help: values.help ?? false,
@@ -84,6 +97,7 @@ function parseCliArgs() {
       entityName: undefined,
       help: false,
       version: false,
+      jsonOutput: false,
       withRelations: false,
       withActions: false,
     }
@@ -127,6 +141,17 @@ async function main() {
         withRelations: args.withRelations,
         withActions: args.withActions,
       })
+      break
+    }
+
+    case "context": {
+      console.log("\n🧠 nevr context - AI-First Context Generation\n")
+      console.log("⚠️  Note: This command requires importing your nevr config.")
+      console.log("    For now, use the programmatic API:\n")
+      console.log(`    import { generateContextString } from "nevr"`)
+      console.log(`    import { api } from "./src/index"`)
+      console.log(`    console.log(generateContextString(api${args.jsonOutput ? ', "json"' : ''}))\n`)
+      console.log("    Full CLI support coming in the next release.")
       break
     }
 

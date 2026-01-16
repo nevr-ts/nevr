@@ -73,7 +73,7 @@ export class FieldBuilder<
   protected _meta: { label?: string; description?: string; placeholder?: string; example?: unknown; icon?: string } = {}
   protected _options?: string[]
   protected _ui: { component?: string; hidden?: boolean | ("list" | "detail" | "form" | "create" | "edit")[]; readonly?: boolean; order?: number; width?: string | number; group?: string } = {}
-  protected _semantic: { searchable?: boolean; embedding?: { provider?: string; model?: string; dimensions?: number }; sensitive?: boolean } = {}
+  protected _semantic: { searchable?: boolean; embedding?: { provider?: string; model?: string; dimensions?: number }; sensitive?: boolean; instruction?: string } = {}
 
   constructor(type: TType) {
     this._type = type
@@ -522,6 +522,18 @@ export class FieldBuilder<
   sensitive(): FieldBuilder<TType, TOptional, THasDefault> {
     const clone = this._clone()
     clone._semantic.sensitive = true
+    return clone
+  }
+
+  /**
+   * Add AI instruction for context generation
+   * Notes for AI agents about how to handle this field
+   * @example string.instruction("Must be a corporate email if role is admin")
+   * @example text.instruction("Primary content for RAG indexing")
+   */
+  instruction(note: string): FieldBuilder<TType, TOptional, THasDefault> {
+    const clone = this._clone()
+    clone._semantic.instruction = note
     return clone
   }
 
