@@ -176,3 +176,18 @@ export { AUTH_ERROR_CODES } from "./auth/error-codes.js"
 
 // Timestamps Plugin
 export { timestamps } from "./timestamps.js"
+
+// Organization Plugin
+export { organization } from "./organization/index.js"
+
+// Storage Plugin
+export { storage } from "./storage/index.js"
+
+// Payment Plugin
+export { payment } from "./payment/index.js"
+
+// Auth Sub-plugins (for use with auth({ plugins: [...] }))
+export { magicLink } from "./auth/plugins/magic-link/index.js"
+export { twoFactor } from "./auth/plugins/two-factor/index.js"
+export { phoneNumber } from "./auth/plugins/phone-number/index.js"
+export { anonymous } from "./auth/plugins/anonymous/index.js"
