@@ -48,7 +48,7 @@ export const sessionMiddleware = createMiddleware(async (ctx) => {
     }
 
     // Ensure ctx has user and session
-    ;(orgCtx as any).user = user
+    ; (orgCtx as any).user = user
     orgCtx.session = session
 })
 
@@ -122,7 +122,7 @@ export function createOrgMiddleware(
             const member = await adapter.findMemberByUserAndOrg(user.id, organizationId)
             if (!member) {
                 throw new EndpointError("FORBIDDEN", {
-                    message: ORGANIZATION_ERROR_CODES.NOT_A_MEMBER,
+                    message: ORGANIZATION_ERROR_CODES.USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION,
                 })
             }
 
@@ -148,7 +148,7 @@ export function createPermissionMiddleware(
 
         if (!orgCtx.member) {
             throw new EndpointError("FORBIDDEN", {
-                message: ORGANIZATION_ERROR_CODES.NOT_A_MEMBER,
+                message: ORGANIZATION_ERROR_CODES.USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION,
             })
         }
 
