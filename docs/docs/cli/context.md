@@ -188,6 +188,6 @@ console.log(ctx.embeddings)
 
 ## See Also
 
-- [Introspection](/guide/introspection) - Programmatic introspection API
+
 - [RAG](/guide/rag) - Retrieval-Augmented Generation
 - [nevr introspect](/cli/introspect) - Show entities summary
