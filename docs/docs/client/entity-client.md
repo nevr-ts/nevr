@@ -60,6 +60,7 @@ const { data, error } = await client.products.list({
   take: 10,
   skip: 0,
   include: ["category"],
+  select: { id: true, name: true, price: true }
 })
 
 // Response
@@ -78,6 +79,7 @@ interface ListOptions<T> {
   take?: number
   skip?: number
   include?: string[]
+  select?: Record<string, boolean>
 }
 ```
 
@@ -228,14 +230,10 @@ await client.auth.signIn.email({ email: "...", password: "..." })
 await client.stripe.createCheckout({ priceId: "..." })
 ```
 
-> [!TIP]
-> `createTypedClient<API>()` = `createClient()` + entity type inference from your server API.
-> Use the same `plugins: [...]` pattern - works with any plugin!
-
 > [!NOTE]
 > The `import type { API }` is required for entity type safety. This is a TypeScript requirement - runtime strings like `["user"]` cannot carry type information.
 
----
+
 
 ## Examples
 
@@ -247,6 +245,7 @@ async function getPage(page: number, pageSize = 10) {
     take: pageSize,
     skip: (page - 1) * pageSize,
     sort: { createdAt: "desc" },
+    select: { id: true, name: true, price: true },
   })
 }
 ```
@@ -274,8 +273,15 @@ const { data } = await client.orders.list({
   include: ["items", "customer"],
 })
 ```
+### Filter by selected Fields
 
----
+```typescript
+const { data } = await client.users.list({
+  filter: { role: "admin" },
+  select: { id: true, email: true, name: true }
+})
+```
+
 
 ## Next Steps
 

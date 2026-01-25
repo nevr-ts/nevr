@@ -12,7 +12,7 @@ pnpm add nevr
 
 ---
 
-## createClient()
+## createTypedClient()
 
 The main factory function to create a Nevr client:
 
@@ -25,9 +25,6 @@ const client = createTypedClient<API>({
   basePath: "/api",
 })
 ```
-
-> [!NOTE]
-> For advanced use cases without type inference, you can use `createClient(options)`.
 
 ### NevrClientOptions
 
@@ -157,8 +154,8 @@ const client = createTypedClient<Api>({
 })
 
 // Auto-wired methods!
-await client.analytics.track({ event: "page_view" })
-const { data } = await client.analytics.getStats({ period: "7d" })
+await client.analytics.track.create({ event: "page_view" })
+const { data } = await client.analytics.getStats.list({ period: "7d" })
 ```
 
 ### Pre-built Plugins
@@ -167,6 +164,10 @@ const { data } = await client.analytics.getStats({ period: "7d" })
 |:--|:--|:--|
 | `entityClient({ entities })` | `{entity}s` | CRUD methods (list, get, create, update, delete) |
 | `authClient()` | `auth` | Auth with reactive session state |
+| `storageClient()` | `storage` | File upload and management |
+| `paymentsClient()` | `payments` | Stripe payment integration |
+| `aiClient()` | `ai-gateway` | AI model integration |
+| `ragClient()` | `rag` | Retrieval-Augmented Generation |
 
 ```typescript
 import { createTypedClient, entityClient } from "nevr/client"
@@ -177,6 +178,10 @@ const client = createTypedClient<API>({
   plugins: [
     entityClient({ entities: ["user", "product"] }),
     authClient(),
+    storageClient(),
+    paymentsClient(),
+    aiClient(),
+    ragClient(),
   ],
 })
 
