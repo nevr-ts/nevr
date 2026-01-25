@@ -14,12 +14,13 @@ import { parseArgs } from "util"
 import { baseTemplates } from "./templates/base.js"
 import { expressTemplates } from "./templates/express.js"
 import { honoTemplates } from "./templates/hono.js"
+import { nextjsTemplates } from "./templates/nextjs.js"
 
 // -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
 
-type Template = "express" | "hono"
+type Template = "express" | "hono" | "nextjs"
 type Database = "sqlite" | "postgresql" | "mysql"
 type PackageManager = "npm" | "pnpm" | "bun"
 
@@ -43,7 +44,7 @@ const HELP = `
     npm create nevr@latest [project-name] [options]
 
   Options:
-    -t, --template <name>    Template to use (express, hono)
+    -t, --template <name>    Template to use (express, hono, nextjs)
     -d, --database <db>      Database (sqlite, postgresql, mysql)
     --auth                   Include auth plugin
     --no-auth                Skip auth plugin
@@ -57,6 +58,7 @@ const HELP = `
     npm create nevr@latest
     npm create nevr@latest my-api
     npm create nevr@latest my-api --template hono
+    npm create nevr@latest my-api --template nextjs
     npm create nevr@latest my-api -t express -d postgresql --auth
     npm create nevr@latest my-api --no-interactive
 `
@@ -121,11 +123,19 @@ const templateConfig = {
     name: "Express",
     description: "Classic Node.js framework, battle-tested",
     templates: expressTemplates,
+    isNextjs: false,
   },
   hono: {
     name: "Hono",
     description: "Ultrafast, lightweight, edge-ready",
     templates: honoTemplates,
+    isNextjs: false,
+  },
+  nextjs: {
+    name: "Next.js",
+    description: "Full-stack React framework with App Router",
+    templates: nextjsTemplates,
+    isNextjs: true,
   },
 }
 
@@ -135,11 +145,11 @@ const templateConfig = {
 
 function generateProject(config: ProjectConfig): void {
   const { name, template, database, withAuth, packageManager } = config
+  const isNextjs = template === "nextjs"
 
   // Handle "." for current directory
   const isCurrentDir = name === "." || name === "./"
   const dir = isCurrentDir ? process.cwd() : join(process.cwd(), name)
-  const displayName = isCurrentDir ? "current directory" : name
 
   // Allow existing empty directories or current directory
   if (existsSync(dir) && !isCurrentDir) {
@@ -152,52 +162,71 @@ function generateProject(config: ProjectConfig): void {
 
   console.log(`\n📁 Creating ${name}...\n`)
 
-  // Create directories
-  const directories = [
-    "src",
-    "src/entities",
-    "src/hooks",
-    "src/routes",
-    "src/middleware",
-    "src/utils",
-    "prisma",
-  ]
+  // Create directories based on template type
+  const directories = isNextjs
+    ? ["app", "app/api/health", "app/api/[...nevr]", "lib", "lib/entities"]
+    : ["src", "src/entities"]
 
   if (withAuth) {
-    directories.push("src/plugins")
+    directories.push(isNextjs ? "lib/plugins" : "src/plugins")
   }
 
   for (const d of directories) {
     mkdirSync(join(dir, d), { recursive: true })
   }
 
-  // Get templates
-  const frameworkTemplates = templateConfig[template].templates
   const files: [string, string][] = []
 
-  // Add base templates
-  files.push(["tsconfig.json", baseTemplates["tsconfig.json"]()])
-  files.push([".gitignore", baseTemplates[".gitignore"]()])
-  files.push([".env", baseTemplates[".env"](database, withAuth)])
-  files.push(["src/entities/index.ts", baseTemplates["src/entities/index.ts"]()])
-  files.push(["src/entities/.gitkeep", baseTemplates["src/entities/.gitkeep"]()])
-  files.push(["src/hooks/.gitkeep", baseTemplates["src/hooks/.gitkeep"]()])
-  files.push(["src/routes/.gitkeep", baseTemplates["src/routes/.gitkeep"]()])
-  files.push(["src/middleware/.gitkeep", baseTemplates["src/middleware/.gitkeep"]()])
-  files.push(["src/utils/.gitkeep", baseTemplates["src/utils/.gitkeep"]()])
-  files.push(["src/nevr.config.ts", baseTemplates["src/nevr.config.ts"](database, withAuth)])
-  files.push(["src/generate.ts", baseTemplates["src/generate.ts"](database, withAuth)])
+  if (isNextjs) {
+    // Next.js specific files - use nextjsTemplates directly for type safety
+    const t = nextjsTemplates
+    files.push(["package.json", t["package.json"](name, database, withAuth)])
+    files.push(["tsconfig.json", t["tsconfig.json"]()])
+    files.push(["next.config.ts", t["next.config.ts"]()])
+    files.push([".gitignore", t[".gitignore"]()])
+    files.push([".env.local", t[".env.local"](database, withAuth)])
+    files.push(["README.md", t["README.md"](name)])
 
-  // Add auth plugin if enabled
-  if (withAuth) {
-    files.push(["src/plugins/auth.ts", baseTemplates["src/plugins/auth.ts"]()])
-    files.push(["src/plugins/index.ts", baseTemplates["src/plugins/index.ts"]()])
+    // App directory
+    files.push(["app/layout.tsx", t["app/layout.tsx"](name)])
+    files.push(["app/page.tsx", t["app/page.tsx"](name)])
+    files.push(["app/api/health/route.ts", t["app/api/health/route.ts"]()])
+    files.push(["app/api/[...nevr]/route.ts", t["app/api/[...nevr]/route.ts"](withAuth)])
+
+    // Lib directory
+    files.push(["lib/nevr.ts", t["lib/nevr.ts"](withAuth)])
+    files.push(["lib/nevr.config.ts", t["lib/nevr.config.ts"](database, withAuth)])
+    files.push(["lib/entities/index.ts", t["lib/entities/index.ts"]()])
+
+    // Middleware
+    files.push(["middleware.ts", t["middleware.ts"](withAuth)])
+
+    // Auth plugin
+    if (withAuth) {
+      files.push(["lib/plugins/index.ts", t["lib/plugins/index.ts"]()])
+      files.push(["lib/plugins/auth.ts", t["lib/plugins/auth.ts"]()])
+    }
+  } else {
+    // Express/Hono files - use templates directly
+    const frameworkTemplates = template === "express" ? expressTemplates : honoTemplates
+
+    files.push(["tsconfig.json", baseTemplates["tsconfig.json"]()])
+    files.push([".gitignore", baseTemplates[".gitignore"]()])
+    files.push([".env", baseTemplates[".env"](database, withAuth)])
+    files.push(["src/entities/index.ts", baseTemplates["src/entities/index.ts"]()])
+    files.push(["src/nevr.config.ts", baseTemplates["src/nevr.config.ts"](database, withAuth)])
+
+    // Add auth plugin if enabled
+    if (withAuth) {
+      files.push(["src/plugins/auth.ts", baseTemplates["src/plugins/auth.ts"]()])
+      files.push(["src/plugins/index.ts", baseTemplates["src/plugins/index.ts"]()])
+    }
+
+    // Add framework-specific templates
+    files.push(["package.json", frameworkTemplates["package.json"](name, database, withAuth)])
+    files.push(["src/server.ts", frameworkTemplates["src/server.ts"](withAuth)])
+    files.push(["README.md", frameworkTemplates["README.md"](name)])
   }
-
-  // Add framework-specific templates
-  files.push(["package.json", frameworkTemplates["package.json"](name, database, withAuth)])
-  files.push(["src/server.ts", frameworkTemplates["src/server.ts"](withAuth)])
-  files.push(["README.md", frameworkTemplates["README.md"](name)])
 
   // Write all files
   for (const [path, content] of files) {
@@ -224,21 +253,17 @@ function generateProject(config: ProjectConfig): void {
   }
 
   // Success message
-  const padName = name.padEnd(48)
   console.log(`
 ╔════════════════════════════════════════════════════════════╗
+║  ✅ Project created!                                       ║
+╠════════════════════════════════════════════════════════════╣
+║  Next steps:                                               ║
 ║                                                            ║
-║   ✅ Project created!                                      ║
-║                                                            ║
-║   Template: ${templateConfig[template].name.padEnd(43)}║
-║                                                            ║
-║   Next steps:                                              ║
-║                                                            ║
-║   cd ${padName}║
-║   ${config.install ? "" : `${packageManager} install`.padEnd(52)}${config.install ? "" : "║\n║   "}npm run generate     # Generate Prisma schema           ║
-║   npm run db:push      # Create database                   ║
-║   npm run dev          # Start server                      ║
-║                                                            ║
+║  cd ${name.padEnd(53)}║${config.install ? "" : `
+║  ${packageManager} install                                 ║`}
+║  npx nevr generate     # Generate schema from entities     ║
+║  npx nevr db:push      # Push schema to database           ║
+║  npm run dev           # Start dev server                  ║
 ╚════════════════════════════════════════════════════════════╝
 `)
 }
@@ -306,8 +331,9 @@ async function main() {
       name: "template",
       message: "Framework:",
       choices: [
-        { title: "Express (Recommended)", description: "Classic Node.js framework", value: "express" },
+        { title: "Express", description: "Classic Node.js framework", value: "express" },
         { title: "Hono", description: "Ultrafast, edge-ready", value: "hono" },
+        { title: "Next.js (Recommended)", description: "Full-stack React with App Router", value: "nextjs" },
       ],
     },
     {
@@ -363,6 +389,7 @@ async function main() {
 }
 
 function isValidName(name: string): boolean {
+  if (name === "." || name === "./") return true
   return /^[a-z0-9-]+$/.test(name)
 }
 

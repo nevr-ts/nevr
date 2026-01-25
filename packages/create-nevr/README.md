@@ -51,8 +51,6 @@ my-api/
 ├── src/
 │   ├── entities/          # Your domain models
 │   ├── plugins/           # Plugin configurations
-│   ├── hooks/             # Lifecycle hooks
-│   ├── routes/            # Custom endpoints
 │   ├── nevr.config.ts     # Main configuration
 │   └── server.ts          # Entry point
 ├── prisma/                # Database schema
@@ -123,7 +121,10 @@ auth({
 
 ## 🌐 Templates
 
-### Express (Recommended)
+### NextJs
+Full-featured React framework. Ideal for SSR and SSG.
+
+### Express 
 
 Battle-tested Node.js framework. Great for most projects.
 
@@ -148,8 +149,6 @@ Ultrafast, edge-ready. Perfect for Cloudflare Workers, Vercel Edge.
 | Package | Description |
 |---------|-------------|
 | [`nevr`](https://npmjs.com/package/nevr) | Core framework |
-| [`@nevr/cli`](https://npmjs.com/package/@nevr/cli) | CLI commands |
-| [`@nevr/generator`](https://npmjs.com/package/@nevr/generator) | Code generator |
 
 ---
 
