@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress'
+import { text } from '../../../packages/nevr/src'
 
 export default defineConfig({
   base: '/nevr/',
@@ -118,6 +119,7 @@ export default defineConfig({
           { text: 'Organization Plugin', link: '/plugins/organization' },
           { text: 'Payment Plugin', link: '/plugins/payment' },
           { text: 'Storage Plugin', link: '/plugins/storage' },
+          { text:'Ai Gateway Plugin', link: '/plugins/ai-gateway' }
         ]
       },
       {
@@ -137,6 +139,7 @@ export default defineConfig({
           { text: 'Overview', link: '/adapters/overview' },
           { text: 'Express', link: '/adapters/express' },
           { text: 'Hono', link: '/adapters/hono' },
+          { text: 'Next.js', link: '/adapters/nextjs' },
           { text: 'Custom Adapters', link: '/adapters/custom' }
         ]
       },
@@ -148,7 +151,10 @@ export default defineConfig({
           { text: 'Scaffolding', link: '/cli/scaffolding' },
           { text: 'Development', link: '/cli/development' },
           { text: 'Code Generation', link: '/cli/generate' },
-          { text: 'Database Management', link: '/cli/database' }
+          { text: 'Database Management', link: '/cli/database' },
+          { text: 'OpenAPI', link: '/cli/openapi' },
+          { text: 'Context', link: '/cli/context' },
+          { text: 'Introspect', link: '/cli/introspect' }
         ]
       },
       {

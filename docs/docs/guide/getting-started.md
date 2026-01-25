@@ -22,7 +22,7 @@ Install packages in an existing project:
 
 ```bash
 npm install nevr @prisma/client
-npm install -D prisma @nevr/generator
+npm install -D prisma tsx
 ```
 
 ### 1. Define Entities
@@ -57,11 +57,36 @@ export const post = entity("post", {
   })
 ```
 
-### 2. Create Nevr Instance
+### 2. Create Configuration (Required)
+
+Create `nevr.config.ts` with `defineConfig`:
+
+```typescript
+// nevr.config.ts (or src/nevr.config.ts)
+import { defineConfig } from "nevr"
+import { user } from "./entities/user"
+import { post } from "./entities/post"
+
+export default defineConfig({
+  database: "postgresql",  // or "sqlite", "mysql"
+  entities: [user, post],
+  plugins: [],
+})
+```
+
+The CLI automatically discovers this config file:
+
+```bash
+npx nevr generate    # Generates Prisma schema from config
+npx nevr db:push     # Push schema to database
+```
+
+### 3. Create Nevr Instance
 
 ```typescript
 // src/api.ts
-import { nevr, prisma } from "nevr"
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
 import { PrismaClient } from "@prisma/client"
 import { user } from "./entities/user"
 import { post } from "./entities/post"
@@ -74,7 +99,7 @@ export const api = nevr({
 })
 ```
 
-### 3. Connect to HTTP Framework
+### 4. Connect to HTTP Framework
 
 **Express:**
 
@@ -107,14 +132,26 @@ app.route("/api", honoAdapter(api))
 export default app
 ```
 
-### 4. Generate Database Schema
+### 5. Generate Database Schema
 
 ```bash
-# Generate Prisma schema
-npm run generate 
+# Generate Prisma schema (auto-loads nevr.config.ts)
+npx nevr generate
 
 # Push to database
-npm run db:push --schema=./prisma/schema.prisma
+npx nevr db:push
+```
+
+Or add to your `package.json` scripts:
+
+```json
+{
+  "scripts": {
+    "generate": "nevr generate",
+    "db:push": "nevr db:push",
+    "db:migrate": "nevr db:migrate"
+  }
+}
 ```
 
 ## Adding Custom Actions

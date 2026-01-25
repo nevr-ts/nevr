@@ -1,16 +1,11 @@
 // =============================================================================
 // GENERATOR TESTS
-// Tests for Prisma schema generation (primary) and OpenAPI spec generation
-//
-// NOTE: generateTypes and generateClient are DEPRECATED
-// Nevr now uses E2E type inference from server to client automatically.
-// These functions are kept for backwards compatibility only.
+// Tests for Prisma schema generation and OpenAPI spec generation
 // =============================================================================
 
 import { describe, it, expect, beforeAll } from "vitest"
-import { generatePrismaSchema, generateTypes, generateClient } from "./index.js"
-import { entity, string, text, int, bool, datetime, belongsTo, hasMany, action } from "nevr"
-
+import { generatePrismaSchema } from "./core.js"
+import { entity, string, text, int, bool, datetime, belongsTo, hasMany, action } from "../index.js"
 // =============================================================================
 // Test Entities
 // Note: timestamps are enabled by default in entity()
@@ -96,106 +91,6 @@ describe("generatePrismaSchema", () => {
 
     const mysqlSchema = generatePrismaSchema(entities, { provider: "mysql" })
     expect(mysqlSchema).toContain('provider = "mysql"')
-  })
-})
-
-// =============================================================================
-// TypeScript Types Tests
-// @deprecated - Types are now auto-inferred via E2E type system
-// These tests are kept for backwards compatibility only
-// =============================================================================
-
-describe("generateTypes (deprecated)", () => {
-  const types = generateTypes(entities)
-
-  it("generates User interface", () => {
-    expect(types).toContain("export interface User {")
-    expect(types).toContain("id: string")
-    expect(types).toContain("email: string")
-    expect(types).toContain("name: string")
-    expect(types).toContain("createdAt: Date")
-  })
-
-  it("generates Create input types", () => {
-    expect(types).toContain("export interface UserCreate {")
-    expect(types).toContain("export interface ProjectCreate {")
-    expect(types).toContain("export interface TaskCreate {")
-  })
-
-  it("generates Update input types", () => {
-    expect(types).toContain("export interface UserUpdate {")
-    expect(types).toContain("export interface ProjectUpdate {")
-    expect(types).toContain("export interface TaskUpdate {")
-  })
-
-  it("handles optional fields", () => {
-    expect(types).toContain("description?: string")
-    expect(types).toContain("dueDate?: Date")
-  })
-
-  it("handles defaults as optional in Create", () => {
-    // Fields with defaults should be optional in Create
-    expect(types).toMatch(/UserCreate[\s\S]*role\?: string/)
-    expect(types).toMatch(/TaskCreate[\s\S]*status\?: string/)
-  })
-
-  it("skips owner field in Create", () => {
-    // Owner field should be auto-set, not in Create input
-    const projectCreate = types.match(/export interface ProjectCreate \{[\s\S]*?\}/)?.[0] || ""
-    expect(projectCreate).not.toContain("ownerId")
-  })
-})
-
-// =============================================================================
-// API Client Tests
-// @deprecated - Client is now auto-synced via createClient({ plugins: [...] })
-// These tests are kept for backwards compatibility only
-// =============================================================================
-
-describe("generateClient (deprecated)", () => {
-  const client = generateClient(entities)
-
-  it("generates client factory", () => {
-    expect(client).toContain("export function createClient(config: ClientConfig)")
-  })
-
-  it("generates CRUD methods for each entity", () => {
-    // Users
-    expect(client).toContain("users: {")
-    expect(client).toContain('request<ListResponse<User>>(config, "GET", "/users"')
-    expect(client).toContain('request<User>(config, "POST", "/users"')
-
-    // Projects
-    expect(client).toContain("projects: {")
-
-    // Tasks
-    expect(client).toContain("tasks: {")
-  })
-
-  it("imports from types file", () => {
-    expect(client).toContain('import type {')
-    expect(client).toContain("User,")
-    expect(client).toContain("UserCreate,")
-    expect(client).toContain("UserUpdate,")
-  })
-
-  it("includes list options support", () => {
-    expect(client).toContain("interface ListOptions")
-    expect(client).toContain("filter?: Record<string, string | number | boolean>")
-    expect(client).toContain("sort?: string")
-    expect(client).toContain("limit?: number")
-    expect(client).toContain("offset?: number")
-  })
-
-  it("includes pagination in list response", () => {
-    expect(client).toContain("interface ListResponse<T>")
-    expect(client).toContain("pagination: {")
-    expect(client).toContain("total: number")
-  })
-
-  it("includes error handling", () => {
-    expect(client).toContain("interface ApiError")
-    expect(client).toContain("onError?: (error: ApiError) => void")
   })
 })
 

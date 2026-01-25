@@ -212,20 +212,9 @@ const post = entity("post", { ... })
 
 ---
 
-### noTimestamps()
+### timestamps()
 
 Disables automatic `createdAt` and `updatedAt` fields.
-
-```typescript
-const setting = entity("setting", {
-  key: string.unique(),
-  value: text,
-})
-  .noTimestamps()
-```
-:::warning
-`noTimestamps()` is deprecated. Use `timestamps(false)` instead.
-:::
 
 ```typescript
 const setting = entity("setting", {
@@ -355,7 +344,7 @@ type UserFields = typeof user.config.fields
 const client = createTypedClient<typeof api>()
 
 // Fully typed!
-const users = await client.user.findMany()
+const users = await client.user.list()
 // users: Array<{ id: string, name: string, email: string, age: number | null, ... }>
 ```
 

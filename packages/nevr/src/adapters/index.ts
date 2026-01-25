@@ -20,6 +20,7 @@ export {
   expressAdapter,
   devAuth as expressDevAuth,
   jwtAuth as expressJwtAuth,
+  sessionAuth as expressSessionAuth,
   type ExpressAdapterOptions,
 } from "./express.js"
 
@@ -32,3 +33,29 @@ export {
   cookieAuth,
   type HonoAdapterOptions,
 } from "./hono.js"
+
+// Next.js Adapter
+export {
+  toNextHandler,
+  createNextHandler,
+  nextCookies,
+  getServerSession,
+  requireSession,
+  getSessionFromRequest,
+  sessionAuth,
+  withNevrMiddleware,
+  createMatcher,
+  toApiHandler,
+  pagesSessionAuth,
+  type NextHandlerOptions,
+  type NextRouteHandler,
+  type NextRouteHandlers,
+  type NextCookiesOptions,
+  type Session,
+  type GetSessionOptions,
+  type RequireSessionOptions,
+  type MiddlewareOptions,
+  type NextApiRequest,
+  type NextApiResponse,
+  type ApiHandlerOptions,
+} from "./nextjs/index.js"
