@@ -58,25 +58,6 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
-  packages/generator:
-    dependencies:
-      nevr:
-        specifier: workspace:*
-        version: link:../nevr
-    devDependencies:
-      '@types/node':
-        specifier: ^22.0.0
-        version: 22.19.3
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(tsx@4.21.0)(typescript@5.9.3)
-      typescript:
-        specifier: ^5.7.0
-        version: 5.9.3
-      vitest:
-        specifier: ^3.0.0
-        version: 3.2.4(@types/node@22.19.3)
-
   packages/nevr:
     dependencies:
       nanostores:
