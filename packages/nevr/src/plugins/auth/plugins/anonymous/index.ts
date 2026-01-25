@@ -65,6 +65,39 @@ export interface AnonymousOptions {
             domain?: string
         }
     }
+
+    /**
+     * Rate limiting configuration
+     * Set to `false` to disable rate limiting
+     * @default { window: 60000, max: 10 }
+     */
+    rateLimit?: false | {
+        window?: number
+        max?: number
+    }
+}
+
+/**
+ * Anonymous user type
+ */
+export interface AnonymousUser {
+    id: string
+    email: string
+    name: string | null
+    isAnonymous: boolean
+    createdAt: Date
+    updatedAt: Date
+}
+
+/**
+ * Auth session type
+ */
+export interface AuthSession {
+    id: string
+    token: string
+    userId: string
+    expiresAt: Date
+    createdAt: Date
 }
 
 // =============================================================================
@@ -191,8 +224,8 @@ export const anonymous = (options?: AnonymousOptions) => {
             }),
         },
 
-        // Hook to handle account linking
-        hooks: {
+        // Request interceptors for account linking (unified pattern)
+        interceptors: {
             after: [
                 {
                     matcher: (ctx: any) => {
@@ -234,7 +267,17 @@ export const anonymous = (options?: AnonymousOptions) => {
             ],
         },
 
+        // Rate limiting for anonymous sign-in (developer-configurable)
+        rateLimit: options?.rateLimit === false ? [] : [
+            {
+                pathMatcher: (path: string) => path.startsWith("/sign-in/anonymous"),
+                window: options?.rateLimit?.window ?? 60 * 1000,
+                max: options?.rateLimit?.max ?? 10,
+            },
+        ],
+
         $ERROR_CODES: ANONYMOUS_ERROR_CODES,
+        $Infer: { User: {} as AnonymousUser, Session: {} as AuthSession },
     }
 }
 

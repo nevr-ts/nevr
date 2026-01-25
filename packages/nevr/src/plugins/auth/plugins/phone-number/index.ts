@@ -62,6 +62,40 @@ export interface PhoneNumberOptions {
             domain?: string
         }
     }
+
+    /**
+     * Rate limiting configuration
+     * Set to `false` to disable rate limiting
+     * @default { window: 60000, max: 10 }
+     */
+    rateLimit?: false | {
+        window?: number
+        max?: number
+    }
+}
+
+/**
+ * Phone number user type
+ */
+export interface PhoneNumberUser {
+    id: string
+    email?: string | null
+    name?: string | null
+    phoneNumber: string
+    phoneNumberVerified: boolean
+    createdAt: Date
+    updatedAt: Date
+}
+
+/**
+ * Phone session type
+ */
+export interface PhoneSession {
+    id: string
+    token: string
+    userId: string
+    expiresAt: Date
+    createdAt: Date
 }
 
 // =============================================================================
@@ -340,10 +374,180 @@ export const phoneNumber = (options: PhoneNumberOptions) => {
                     }
                 },
             }),
+
+            // =================================================================
+            // Request Password Reset via Phone
+            // POST /phone-number/request-password-reset
+            // =================================================================
+            requestPasswordResetPhoneNumber: endpoint("/phone-number/request-password-reset", {
+                method: "POST",
+                body: sendOTPSchema,
+                meta: {
+                    summary: "Request password reset via phone",
+                    tags: ["Authentication", "Phone Number"],
+                },
+                handler: async (ctx: any) => {
+                    const driver = ctx.context?.driver || ctx.driver
+                    const body = validateWithZod(sendOTPSchema, ctx.body || ctx.input || {})
+
+                    const { phoneNumber: phone } = body
+
+                    // Validate phone number
+                    if (options.phoneNumberValidator) {
+                        const isValid = await options.phoneNumberValidator(phone)
+                        if (!isValid) {
+                            throw new EndpointError("BAD_REQUEST", {
+                                message: PHONE_NUMBER_ERROR_CODES.INVALID_PHONE_NUMBER,
+                            })
+                        }
+                    }
+
+                    // Find user by phone
+                    const user = await driver.findOne("user", { phoneNumber: phone })
+                    if (!user) {
+                        // Don't reveal if user exists - return success anyway
+                        return {
+                            status: 200,
+                            body: { success: true },
+                        }
+                    }
+
+                    // Check if phone is verified
+                    if (!user.phoneNumberVerified) {
+                        throw new EndpointError("BAD_REQUEST", {
+                            message: PHONE_NUMBER_ERROR_CODES.PHONE_NUMBER_NOT_VERIFIED,
+                        })
+                    }
+
+                    // Generate OTP for password reset
+                    const otp = generateOTP(otpLength)
+                    const expiresAt = new Date(Date.now() + expiresIn * 1000)
+
+                    // Store OTP with password-reset prefix
+                    await driver.create("verification", {
+                        id: generateId(),
+                        identifier: `phone-password-reset:${phone}`,
+                        value: otp,
+                        expiresAt,
+                        createdAt: new Date(),
+                    })
+
+                    // Send OTP
+                    try {
+                        await options.sendOTP({ phoneNumber: phone, code: otp })
+                    } catch (error) {
+                        throw new EndpointError("INTERNAL_SERVER_ERROR", {
+                            message: PHONE_NUMBER_ERROR_CODES.SEND_OTP_FAILED,
+                        })
+                    }
+
+                    return {
+                        status: 200,
+                        body: { success: true },
+                    }
+                },
+            }),
+
+            // =================================================================
+            // Reset Password with OTP
+            // POST /phone-number/reset-password
+            // =================================================================
+            resetPasswordPhoneNumber: endpoint("/phone-number/reset-password", {
+                method: "POST",
+                body: z.object({
+                    phoneNumber: z.string().min(1, "Phone number is required"),
+                    otp: z.string().min(1, "OTP code is required"),
+                    newPassword: z.string().min(8, "Password must be at least 8 characters"),
+                }),
+                meta: {
+                    summary: "Reset password with OTP",
+                    tags: ["Authentication", "Phone Number"],
+                },
+                handler: async (ctx: any) => {
+                    const driver = ctx.context?.driver || ctx.driver
+                    const body = validateWithZod(
+                        z.object({
+                            phoneNumber: z.string().min(1),
+                            otp: z.string().min(1),
+                            newPassword: z.string().min(8),
+                        }),
+                        ctx.body || ctx.input || {}
+                    )
+
+                    const { phoneNumber: phone, otp, newPassword } = body
+
+                    // Find verification
+                    const verification = await driver.findOne("verification", {
+                        identifier: `phone-password-reset:${phone}`,
+                    })
+
+                    if (!verification) {
+                        throw new EndpointError("BAD_REQUEST", {
+                            message: PHONE_NUMBER_ERROR_CODES.PASSWORD_RESET_OTP_INVALID,
+                        })
+                    }
+
+                    // Check expiration
+                    if (new Date(verification.expiresAt) < new Date()) {
+                        await driver.delete("verification", { id: verification.id })
+                        throw new EndpointError("BAD_REQUEST", {
+                            message: PHONE_NUMBER_ERROR_CODES.PASSWORD_RESET_OTP_INVALID,
+                        })
+                    }
+
+                    // Verify code
+                    if (verification.value !== otp) {
+                        throw new EndpointError("BAD_REQUEST", {
+                            message: PHONE_NUMBER_ERROR_CODES.PASSWORD_RESET_OTP_INVALID,
+                        })
+                    }
+
+                    // Delete verification
+                    await driver.delete("verification", { id: verification.id })
+
+                    // Find user
+                    const user = await driver.findOne("user", { phoneNumber: phone })
+                    if (!user) {
+                        throw new EndpointError("BAD_REQUEST", {
+                            message: PHONE_NUMBER_ERROR_CODES.USER_NOT_FOUND,
+                        })
+                    }
+
+                    // Hash new password
+                    const hashedPassword = await hashPassword(newPassword)
+
+                    // Update account password
+                    const account = await driver.findOne("account", {
+                        userId: user.id,
+                        providerId: "credential",
+                    })
+
+                    if (account) {
+                        await driver.update("account", { id: account.id }, {
+                            password: hashedPassword,
+                        })
+                    } else {
+                        // Create credential account if doesn't exist
+                        await driver.create("account", {
+                            id: generateId(),
+                            userId: user.id,
+                            providerId: "credential",
+                            accountId: user.id,
+                            password: hashedPassword,
+                            createdAt: new Date(),
+                        })
+                    }
+
+                    return {
+                        status: 200,
+                        body: { success: true },
+                    }
+                },
+            }),
         },
 
-        // Block direct phone number updates
-        hooks: {
+        // Request interceptors to block direct phone updates (unified pattern)
+        interceptors: {
             before: [
                 {
                     matcher: (ctx: any) => ctx.path === "/update-user" && ctx.body?.phoneNumber,
@@ -356,7 +560,17 @@ export const phoneNumber = (options: PhoneNumberOptions) => {
             ],
         },
 
+        // Rate limiting for phone number endpoints (developer-configurable)
+        rateLimit: options.rateLimit === false ? [] : [
+            {
+                pathMatcher: (path: string) => path.startsWith("/phone-number") || path.startsWith("/sign-in/phone-number"),
+                window: options.rateLimit?.window ?? 60 * 1000,
+                max: options.rateLimit?.max ?? 10,
+            },
+        ],
+
         $ERROR_CODES: PHONE_NUMBER_ERROR_CODES,
+        $Infer: { User: {} as PhoneNumberUser, Session: {} as PhoneSession },
     }
 }
 

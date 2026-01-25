@@ -174,7 +174,7 @@ describe("Anonymous Plugin", () => {
 
         it("should trigger onLinkAccount and delete anonymous user", async () => {
             // @ts-ignore - access internal handler
-            const hookHandler = plugin.hooks!.after![0].handler
+            const hookHandler = plugin.interceptors!.after![0].handler
 
             // Seed anonymous user
             await driver.create("user", {
@@ -217,7 +217,7 @@ describe("Anonymous Plugin", () => {
                 disableDeleteAnonymousUser: true
             })
             // @ts-ignore - access internal handler
-            const hookHandler = plugin.hooks!.after![0].handler
+            const hookHandler = plugin.interceptors!.after![0].handler
 
             // Seed anonymous user
             await driver.create("user", {

@@ -26,14 +26,30 @@ anonymous({
 
   // Allow linking to full account (default: true)
   allowLinking: true,
-
-  // Rate limit anonymous user creation
-  rateLimit: {
-    maxPerHour: 100,
-    maxPerDay: 1000,
-  },
 })
 ```
+
+## Rate Limiting
+
+Built-in rate limiting protects against abuse. Fully configurable:
+
+```typescript
+// Custom limits
+anonymous({
+  rateLimit: { window: 30000, max: 5 }, // 5 per 30s (stricter)
+})
+
+// Disable (use external limiter)
+anonymous({
+  rateLimit: false,
+})
+```
+
+**Default:** 10 requests per 60 seconds
+
+| Endpoint | Window | Max |
+|----------|--------|-----|
+| `/sign-in/anonymous` | 60s | 10 |
 
 ## Endpoints
 
@@ -94,7 +110,7 @@ POST /auth/anonymous/link
 ```typescript
 import { anonymousClient } from "nevr/plugins/auth/plugins/anonymous/client"
 
-const client = createClient({
+const client = createTypedClient<API>({
   plugins: [authClient(), anonymousClient()],
 })
 

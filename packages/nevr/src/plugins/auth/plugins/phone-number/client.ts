@@ -59,6 +59,8 @@ export function phoneNumberClient(options?: PhoneNumberClientOptions): PhoneNumb
             [`${basePath}/sign-in/phone-number`]: "POST",
             [`${basePath}/phone-number/send-otp`]: "POST",
             [`${basePath}/phone-number/verify`]: "POST",
+            [`${basePath}/phone-number/request-password-reset`]: "POST",
+            [`${basePath}/phone-number/reset-password`]: "POST",
         },
 
         atomListeners: [
@@ -89,6 +91,20 @@ export function phoneNumberClient(options?: PhoneNumberClientOptions): PhoneNumb
 
                     verify: async (input: VerifyPhoneInput) => {
                         return $fetch(`${basePath}/phone-number/verify`, {
+                            method: "POST",
+                            body: input,
+                        })
+                    },
+
+                    requestPasswordReset: async (input: SendOTPInput) => {
+                        return $fetch(`${basePath}/phone-number/request-password-reset`, {
+                            method: "POST",
+                            body: input,
+                        })
+                    },
+
+                    resetPassword: async (input: { phoneNumber: string; otp: string; newPassword: string }) => {
+                        return $fetch(`${basePath}/phone-number/reset-password`, {
                             method: "POST",
                             body: input,
                         })

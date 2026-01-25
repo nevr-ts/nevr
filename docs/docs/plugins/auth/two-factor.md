@@ -1,6 +1,6 @@
 # Two-Factor Authentication
 
-TOTP, OTP, and backup codes for enhanced security.
+Multi-method 2FA: TOTP, OTP (email/SMS), and backup codes.
 
 ## Installation
 
@@ -11,11 +11,7 @@ import { twoFactor } from "nevr/plugins/auth/plugins/two-factor"
 const api = nevr({
   plugins: [
     auth({
-      plugins: [
-        twoFactor({
-          issuer: "My App",
-        }),
-      ],
+      plugins: [twoFactor()],
     }),
   ],
 })
@@ -25,22 +21,22 @@ const api = nevr({
 
 ```typescript
 twoFactor({
-  // App name for authenticator apps
+  // App name for authenticator
   issuer: "My App",
 
   // TOTP options
   totp: {
-    digits: 6,        // Code length
-    period: 30,       // Seconds per code
-    window: 1,        // Validation window
+    digits: 6,        // 6 or 8
+    period: 30,       // seconds
+    window: 1,        // validation window
   },
 
-  // Email OTP options (optional)
+  // Email/SMS OTP options
   otp: {
     expiresIn: 300,   // 5 minutes
     length: 6,
     sendOTP: async ({ email, code, userId }) => {
-      await sendEmail(email, `Your code: ${code}`)
+      await sendEmail({ to: email, code })
     },
   },
 
@@ -49,76 +45,75 @@ twoFactor({
     count: 10,
     length: 8,
   },
+
+  // Rate limiting (default: 3/10s)
+  rateLimit: { window: 10000, max: 3 },
+  // Set to `false` to disable
 })
 ```
 
 ## Endpoints
 
 ### Enable 2FA
-
 ```
-POST /auth/two-factor/enable
-```
-
-**Request:**
-```json
-{
-  "password": "current-password"
-}
-```
-
-**Response:**
-```json
-{
-  "totpUri": "otpauth://totp/MyApp:user@example.com?secret=...",
-  "backupCodes": ["CODE1234", "CODE5678", ...],
-  "secret": "BASE32SECRET"
-}
+POST /two-factor/enable
+{ "password": "...", "issuer": "..." }
+→ { "totpUri": "otpauth://...", "backupCodes": [...], "secret": "..." }
 ```
 
 ### Verify Setup
-
 ```
-POST /auth/two-factor/verify-setup
-```
-
-**Request:**
-```json
-{
-  "code": "123456"
-}
-```
-
-### Verify During Sign-in
-
-When signing in with 2FA enabled, you'll get:
-```json
-{
-  "twoFactorRedirect": true,
-  "message": "Two factor verification required"
-}
-```
-
-Then verify with TOTP:
-```
-POST /auth/two-factor/verify-totp
-```
-
-Or backup code:
-```
-POST /auth/two-factor/verify-backup-code
+POST /two-factor/verify-setup
+{ "code": "123456" }
+→ { "success": true, "twoFactorEnabled": true }
 ```
 
 ### Disable 2FA
-
 ```
-POST /auth/two-factor/disable
+POST /two-factor/disable
+{ "password": "..." }
+→ { "success": true, "twoFactorEnabled": false }
+```
+
+### Verify TOTP (Sign-in)
+```
+POST /two-factor/verify-totp
+{ "code": "123456" }
+→ { "token": "...", "user": {...} }
+```
+
+### Get TOTP URI
+```
+POST /two-factor/get-totp-uri
+{ "password": "..." }
+→ { "totpUri": "otpauth://..." }
+```
+
+### Send OTP
+```
+POST /two-factor/send-otp
+→ { "success": true }
+```
+
+### Verify OTP
+```
+POST /two-factor/verify-otp
+{ "code": "123456" }
+→ { "token": "...", "user": {...} }
+```
+
+### Verify Backup Code
+```
+POST /two-factor/verify-backup-code
+{ "code": "ABCD1234" }
+→ { "token": "...", "user": {...}, "remainingBackupCodes": 9 }
 ```
 
 ### Generate New Backup Codes
-
 ```
-POST /auth/two-factor/generate-backup-codes
+POST /two-factor/generate-backup-codes
+{ "password": "..." }
+→ { "backupCodes": [...] }
 ```
 
 ## Client Usage
@@ -126,33 +121,48 @@ POST /auth/two-factor/generate-backup-codes
 ```typescript
 import { twoFactorClient } from "nevr/plugins/auth/plugins/two-factor/client"
 
-const client = createClient({
-  plugins: [
-    authClient(),
-    twoFactorClient({
-      onTwoFactorRedirect: () => {
-        router.push("/verify-2fa")
-      },
-    }),
-  ],
+const client = createTypedClient({
+  plugins: [authClient(), twoFactorClient()],
 })
 
 // Enable 2FA
 const { data } = await client.twoFactor.enable({ password: "..." })
-// Show QR code from data.totpUri
-// Save data.backupCodes securely
+// Show QR code for data.totpUri
 
 // Verify setup
 await client.twoFactor.verifySetup({ code: "123456" })
 
-// During sign-in with 2FA
+// During sign-in (if twoFactorRedirect: true)
 await client.twoFactor.verifyTotp({ code: "123456" })
-// Or use backup code
-await client.twoFactor.verifyBackupCode({ code: "ABCD1234" })
 ```
 
-## Schema
+## Sign-in Flow
 
-The plugin adds:
-- `twoFactorEnabled` field to User
-- `twoFactor` entity for storing secrets
+1. User signs in with email/password
+2. If `twoFactorEnabled`, response: `{ twoFactorRedirect: true }`
+3. Client prompts for TOTP/OTP/backup code
+4. Call appropriate verify endpoint
+5. Returns session token
+
+## Rate Limiting
+
+Default: 3 requests per 10 seconds on all `/two-factor/*` endpoints.
+
+```typescript
+twoFactor({
+  rateLimit: { window: 5000, max: 2 }, // stricter
+  // or: rateLimit: false, // disable
+})
+```
+
+## Error Codes
+
+| Code | Description |
+|------|-------------|
+| `INVALID_PASSWORD` | Wrong password |
+| `TWO_FACTOR_NOT_ENABLED` | 2FA not set up |
+| `INVALID_TOTP_CODE` | Wrong TOTP code |
+| `INVALID_BACKUP_CODE` | Wrong backup code |
+| `INVALID_CODE` | Invalid OTP |
+| `OTP_EXPIRED` | OTP expired |
+| `INVALID_TWO_FACTOR_COOKIE` | Session expired |

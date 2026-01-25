@@ -65,6 +65,40 @@ export interface MagicLinkOptions {
             domain?: string
         }
     }
+
+    /**
+     * Rate limiting configuration
+     * Set to `false` to disable rate limiting
+     * @default { window: 60000, max: 5 }
+     */
+    rateLimit?: false | {
+        window?: number
+        max?: number
+    }
+}
+
+/**
+ * Magic link user type
+ */
+export interface MagicLinkUser {
+    id: string
+    email: string
+    emailVerified: boolean
+    name?: string | null
+    image?: string | null
+    createdAt: Date
+    updatedAt: Date
+}
+
+/**
+ * Magic link session type
+ */
+export interface MagicLinkSession {
+    id: string
+    token: string
+    userId: string
+    expiresAt: Date
+    createdAt: Date
 }
 
 // =============================================================================
@@ -305,7 +339,17 @@ export const magicLink = (options: MagicLinkOptions) => {
             }),
         },
 
+        // Rate limiting for magic link endpoints (developer-configurable)
+        rateLimit: options.rateLimit === false ? [] : [
+            {
+                pathMatcher: (path: string) => path.startsWith("/sign-in/magic-link") || path.startsWith("/magic-link/verify"),
+                window: options.rateLimit?.window ?? 60 * 1000,
+                max: options.rateLimit?.max ?? 5,
+            },
+        ],
+
         $ERROR_CODES: MAGIC_LINK_ERROR_CODES,
+        $Infer: { User: {} as MagicLinkUser, Session: {} as MagicLinkSession },
     }
 }
 

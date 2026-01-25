@@ -130,16 +130,15 @@ describe("Username Plugin", () => {
             expect(plugin.schema?.extend?.user?.displayUsername).toBeDefined()
         })
 
-        it("should have init function with database hooks", () => {
+        it("should have entityHooks for username normalization (unified pattern)", () => {
             const plugin = username()
 
-            expect(plugin.init).toBeDefined()
-
-            const initResult = plugin.init({})
-            expect(initResult.options.databaseHooks).toBeDefined()
-            expect(initResult.options.databaseHooks.user).toBeDefined()
-            expect(initResult.options.databaseHooks.user.create).toBeDefined()
-            expect(initResult.options.databaseHooks.user.update).toBeDefined()
+            expect(plugin.entityHooks).toBeDefined()
+            expect(plugin.entityHooks.user).toBeDefined()
+            expect(plugin.entityHooks.user.create).toBeDefined()
+            expect(plugin.entityHooks.user.create?.before).toBeDefined()
+            expect(plugin.entityHooks.user.update).toBeDefined()
+            expect(plugin.entityHooks.user.update?.before).toBeDefined()
         })
     })
 

@@ -12,6 +12,10 @@ export const PHONE_NUMBER_ERROR_CODES = {
     INVALID_OTP: "Invalid OTP code",
     SEND_OTP_FAILED: "Failed to send OTP",
     UNEXPECTED_ERROR: "An unexpected error occurred",
+    // Password reset errors
+    USER_NOT_FOUND: "User not found",
+    PASSWORD_RESET_OTP_INVALID: "Invalid or expired password reset code",
+    PASSWORD_TOO_WEAK: "Password does not meet requirements",
 } as const
 
 export type PhoneNumberErrorCode = keyof typeof PHONE_NUMBER_ERROR_CODES

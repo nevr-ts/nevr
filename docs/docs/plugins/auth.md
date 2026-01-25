@@ -403,6 +403,49 @@ registerAuthHooks({
 
 ---
 
+## Rate Limiting
+
+Built-in rate limiting protects against brute-force and credential stuffing attacks. Fully configurable per endpoint type.
+
+### Configuration
+
+```typescript
+auth({
+  // Default rate limiting (enabled by default)
+  rateLimit: {
+    signIn: { window: 60000, max: 10 },      // 10/min
+    signUp: { window: 60000, max: 10 },      // 10/min
+    passwordReset: { window: 60000, max: 5 }, // 5/min
+    emailVerification: { window: 60000, max: 5 },
+  },
+})
+
+// Stricter limits for high-security apps
+auth({
+  rateLimit: {
+    signIn: { window: 60000, max: 5 },       // 5/min
+    signUp: { window: 300000, max: 3 },      // 3/5min
+    passwordReset: { window: 60000, max: 3 },
+  },
+})
+
+// Disable rate limiting (use external WAF/Cloudflare)
+auth({
+  rateLimit: false,
+})
+```
+
+### Default Limits
+
+| Endpoint Type | Window | Max Requests |
+|:--------------|:-------|:-------------|
+| `signIn` | 60s | 10 |
+| `signUp` | 60s | 10 |
+| `passwordReset` | 60s | 5 |
+| `emailVerification` | 60s | 5 |
+
+---
+
 ## Security Features
 
 - **PKCE** for OAuth (RFC 7636)
