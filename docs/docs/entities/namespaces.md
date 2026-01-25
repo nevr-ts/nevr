@@ -76,16 +76,18 @@ Namespaces affect how schemas are generated:
 
 ```
 prisma/
-├── schema.prisma          # Main schema (no namespace)
-├── schema.auth.prisma     # Auth namespace
-├── schema.catalog.prisma  # Catalog namespace
-└── schema.orders.prisma   # Orders namespace
+  schema/
+  ├── models.prisma   # Main schema (no namespace)
+  ├── auth.prisma     # Auth namespace
+  ├── catalog.prisma  # Catalog namespace
+  └── orders.prisma   # Orders namespace
+  ├── schema.prisma   # Combined schema
 ```
 
 ### Generated Files
 
 ```prisma
-// schema.auth.prisma
+// auth.prisma
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -99,25 +101,7 @@ model Session {
 }
 ```
 
-## API Routes
 
-Namespaces can optionally prefix API routes:
-
-```typescript
-// Default behavior - flat routes
-// GET /api/users
-// GET /api/products
-
-// With namespaced routes (optional)
-const api = nevr({
-  entities: [user, product],
-  routes: {
-    namespaced: true,  // Enable namespaced routes
-  },
-})
-// GET /api/auth/users
-// GET /api/catalog/products
-```
 
 ## Cross-Namespace Relations
 
@@ -170,94 +154,7 @@ const order = entity("order", {
 .namespace("order-service")
 .namespace("notification-service")
 ```
-
-## Organization Patterns
-
-### E-commerce Example
-
-```typescript
-// Authentication
-entity("user", { ... }).namespace("auth")
-entity("session", { ... }).namespace("auth")
-entity("passwordReset", { ... }).namespace("auth")
-
-// Product Catalog
-entity("product", { ... }).namespace("catalog")
-entity("category", { ... }).namespace("catalog")
-entity("productVariant", { ... }).namespace("catalog")
-entity("productImage", { ... }).namespace("catalog")
-entity("review", { ... }).namespace("catalog")
-
-// Shopping Cart
-entity("cart", { ... }).namespace("cart")
-entity("cartItem", { ... }).namespace("cart")
-
-// Orders
-entity("order", { ... }).namespace("orders")
-entity("orderItem", { ... }).namespace("orders")
-entity("shipment", { ... }).namespace("orders")
-entity("return", { ... }).namespace("orders")
-
-// Payments
-entity("payment", { ... }).namespace("payments")
-entity("refund", { ... }).namespace("payments")
-entity("invoice", { ... }).namespace("payments")
-
-// Customers
-entity("customer", { ... }).namespace("customers")
-entity("address", { ... }).namespace("customers")
-entity("wishlist", { ... }).namespace("customers")
-```
-
-### SaaS Application
-
-```typescript
-// Multi-tenancy
-entity("organization", { ... }).namespace("tenants")
-entity("workspace", { ... }).namespace("tenants")
-entity("membership", { ... }).namespace("tenants")
-
-// Users
-entity("user", { ... }).namespace("users")
-entity("profile", { ... }).namespace("users")
-entity("preferences", { ... }).namespace("users")
-
-// Core Features
-entity("project", { ... }).namespace("projects")
-entity("task", { ... }).namespace("projects")
-entity("comment", { ... }).namespace("projects")
-
-// Billing
-entity("subscription", { ... }).namespace("billing")
-entity("invoice", { ... }).namespace("billing")
-entity("usage", { ... }).namespace("billing")
-
-// Notifications
-entity("notification", { ... }).namespace("notifications")
-entity("notificationPreference", { ... }).namespace("notifications")
-```
-
-## File Organization
-
-Organize entity files by namespace:
-
-```
-src/
-├── entities/
-│   ├── auth/
-│   │   ├── user.ts
-│   │   ├── session.ts
-│   │   └── index.ts
-│   ├── catalog/
-│   │   ├── product.ts
-│   │   ├── category.ts
-│   │   └── index.ts
-│   ├── orders/
-│   │   ├── order.ts
-│   │   ├── orderItem.ts
-│   │   └── index.ts
-│   └── index.ts
-```
+## Example Structure
 
 **entities/auth/user.ts:**
 ```typescript

@@ -127,7 +127,6 @@ const api = nevr({
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
-    maxAge: 86400,
   },
 })
 ```
@@ -141,16 +140,7 @@ const api = nevr({
   entities: [user],
   driver: prisma(db),
   security: {
-    // Rate limiting
-    rateLimit: {
-      windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 100,
-    },
-    // Helmet-style headers
-    headers: {
-      xFrameOptions: "DENY",
-      contentSecurityPolicy: true,
-    },
+    helmet: true,
   },
 })
 ```

@@ -12,12 +12,23 @@ Express Request → Adapter → NevrRequest → Core → NevrResponse → Adapte
 
 ## Available Adapters
 
-| Adapter | Framework |
-|---------|-----------|
-| `expressAdapter` | Express.js |
-| `honoAdapter` | Hono |
+| Adapter | Framework | Best For |
+|---------|-----------|----------|
+| `toNextHandler` | Next.js | Full-stack React apps |
+| `expressAdapter` | Express.js | REST APIs, traditional Node.js |
+| `honoAdapter` | Hono | Edge, Cloudflare Workers |
 
 ## Usage
+
+### Next.js (Recommended)
+
+```typescript
+// app/api/[...nevr]/route.ts
+import { toNextHandler } from "nevr/adapters/nextjs"
+import { api } from "@/lib/nevr"
+
+export const { GET, POST, PUT, PATCH, DELETE } = toNextHandler(api)
+```
 
 ### Express
 
@@ -35,7 +46,7 @@ app.use("/api", expressAdapter(api))
 
 ```typescript
 import { Hono } from "hono"
-import { honoAdapter} from "nevr/adapters/hono"
+import { honoAdapter } from "nevr/adapters/hono"
 import { api } from "./config"
 
 const app = new Hono()
@@ -59,6 +70,7 @@ expressAdapter(api, {
 
 ## Next Steps
 
+- [Next.js Adapter](/adapters/nextjs) (Recommended)
 - [Express Adapter](/adapters/express)
 - [Hono Adapter](/adapters/hono)
 - [Custom Adapters](/adapters/custom)

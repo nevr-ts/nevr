@@ -47,15 +47,16 @@ const app = new Hono()
 app.route("/api", honoAdapter(nevrInstance))
 ```
 
-### Node.js HTTP Adapter
+### NextJs HTTP Adapter
 
-A raw adapter for the standard `http` module (useful for testing or zero-dependency setups).
+A Next.js API Route adapter for Nevr.
 
 ```typescript
-import { nodeAdapter } from "nevr/adapters/node"
-import { createServer } from "http"
+// app/api/[...nevr]/route.ts
+import { toNextHandler } from "nevr/adapters/nextjs"
+import { api } from "@/lib/nevr"
 
-const server = createServer(nodeAdapter(nevrInstance))
+export const { GET, POST, PUT, PATCH, DELETE } = toNextHandler(api)
 ```
 
 ## Creating Custom Adapters

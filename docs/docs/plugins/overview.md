@@ -69,6 +69,10 @@ const api = nevr({
 |--------|---------|-------------|--------|
 | **Auth** | `nevr/plugins/auth` | Complete authentication system | ✅ Ready |
 | **Timestamps** | `nevr/plugins/timestamps` | Auto `createdAt`/`updatedAt` | ✅ Ready |
+| **Payments** | `nevr/plugins/payments` | Stripe payment integration | ✅ Ready|
+| **Storage** | `nevr/plugins/storage` | File upload and management | ✅ Ready |
+| **AI-Gateway** | `nevr/plugins/ai-gateway` | AI model integration | ✅ Ready |
+| **RAG** | `nevr/plugins/rag` | Retrieval-Augmented Generation | ✅ Ready | 
 
 ---
 

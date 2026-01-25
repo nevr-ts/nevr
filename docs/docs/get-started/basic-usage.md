@@ -43,8 +43,8 @@ Nevr automatically generates a client SDK for your frontend or other services.
 import { client } from "./client" // Generated client
 
 // 100% Type-Safe!
-const posts = await client.post.findMany({
-  where: { published: true },
+const posts = await client.posts.list({
+  filter: { published: true },
   select: { title: true } 
 })
 ```

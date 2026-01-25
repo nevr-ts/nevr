@@ -29,7 +29,7 @@ const driver = createEnhancedDriver(baseDriver, {
 })
 ```
 
-Or let Nevr create it automatically:
+<!-- Or let Nevr create it automatically:
 
 ```typescript
 import { nevr } from "nevr"
@@ -41,7 +41,7 @@ const api = nevr({
     encryptionKey: process.env.ENCRYPTION_KEY,
   },
 })
-```
+``` -->
 
 ---
 
