@@ -5,10 +5,12 @@
 
 export * from "./types.js"
 export { InMemoryVectorStore } from "./memory.js"
+export { PrismaPgvectorStore, type PrismaPgvectorConfig } from "./prisma-pgvector.js"
 
 import type { VectorStore, VectorStoreConfig } from "./types.js"
 import { VectorStoreError } from "./types.js"
 import { InMemoryVectorStore } from "./memory.js"
+import { PrismaPgvectorStore, type PrismaPgvectorConfig } from "./prisma-pgvector.js"
 
 /**
  * Custom store registry for user-defined stores
@@ -55,10 +57,7 @@ export function getVectorStore(config: VectorStoreConfig): VectorStore {
         case "memory":
             return new InMemoryVectorStore(config)
         case "prisma-pgvector":
-            throw new VectorStoreError(
-                "prisma-pgvector store requires @nevr/prisma-pgvector package. Install with: npm install @nevr/prisma-pgvector",
-                type
-            )
+            return new PrismaPgvectorStore(config as PrismaPgvectorConfig)
         case "pinecone":
             throw new VectorStoreError(
                 "pinecone store requires @nevr/pinecone package. Install with: npm install @nevr/pinecone",
@@ -82,12 +81,12 @@ export function getVectorStore(config: VectorStoreConfig): VectorStore {
  * Check if a store type is available
  */
 export function hasStore(type: string): boolean {
-    return type === "memory" || customStores.has(type)
+    return type === "memory" || type === "prisma-pgvector" || customStores.has(type)
 }
 
 /**
  * List available stores
  */
 export function listStores(): string[] {
-    return ["memory", ...customStores.keys()]
+    return ["memory", "prisma-pgvector", ...customStores.keys()]
 }

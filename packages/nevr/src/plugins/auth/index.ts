@@ -181,6 +181,34 @@ export const auth = createPlugin<AuthPluginOptions>({
                 },
             },
 
+            // Rate limiting for auth endpoints (developer-configurable)
+            rateLimit: options.rateLimit === false ? [] : [
+                {
+                    // Sign-in protection
+                    pathMatcher: (path: string) => path.startsWith("/sign-in"),
+                    window: options.rateLimit?.signIn?.window ?? 60 * 1000,
+                    max: options.rateLimit?.signIn?.max ?? 10,
+                },
+                {
+                    // Sign-up protection
+                    pathMatcher: (path: string) => path.startsWith("/sign-up"),
+                    window: options.rateLimit?.signUp?.window ?? 60 * 1000,
+                    max: options.rateLimit?.signUp?.max ?? 10,
+                },
+                {
+                    // Password reset protection
+                    pathMatcher: (path: string) => path.includes("password"),
+                    window: options.rateLimit?.passwordReset?.window ?? 60 * 1000,
+                    max: options.rateLimit?.passwordReset?.max ?? 5,
+                },
+                {
+                    // Email verification protection
+                    pathMatcher: (path: string) => path.includes("verification") || path.includes("verify-email"),
+                    window: options.rateLimit?.emailVerification?.window ?? 60 * 1000,
+                    max: options.rateLimit?.emailVerification?.max ?? 5,
+                },
+            ],
+
             $Infer: { User: {} as AuthUser, Session: {} as AuthSession },
             $ERROR_CODES: {} as typeof import("./error-codes.js").AUTH_ERROR_CODES,
         }

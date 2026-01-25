@@ -46,6 +46,41 @@ export {
     extractSnippets,
 } from "./search.js"
 
+// Re-export hybrid search
+export {
+    type HybridSearchConfig,
+    type HybridSearchOptions,
+    type HybridSearchResult,
+    createHybridSearch,
+    mergeResultsWeighted,
+} from "./hybrid.js"
+
+// Re-export plugin
+export { rag, type RAGPluginOptions } from "./plugin.js"
+
+// Re-export error codes
+export {
+    RAG_ERROR_CODES,
+    RAGError,
+    isRAGError,
+    isRAGErrorCode,
+    type RAGErrorCode,
+} from "./error-codes.js"
+
+// Re-export client
+export {
+    ragClient,
+    type RAGClientPlugin,
+    type RAGClientOptions,
+    type RAGClientMethods,
+    type SearchParams,
+    type SearchResult,
+    type IndexParams,
+    type IndexResult,
+    type RAGStats,
+    type SearchState,
+} from "./client.js"
+
 import type { Entity, FieldDef } from "../types.js"
 import type { EmbeddingProvider, EmbeddingProviderConfig } from "./providers/index.js"
 import type { VectorStore, VectorStoreConfig, VectorMetadata, VectorSearchResult, VectorSearchOptions } from "./stores/index.js"

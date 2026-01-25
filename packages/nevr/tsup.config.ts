@@ -3,8 +3,12 @@ import { defineConfig } from "tsup"
 export default defineConfig({
   entry: {
     index: "src/index.ts",
+    // Config
+    config: "src/config.ts",
     // CLI (builds with shebang via esbuild banner)
     "cli/index": "src/cli/index.ts",
+    // Generator
+    "generator/index": "src/generator/index.ts",
     // Client
     "client/index": "src/client/index.ts",
     "client/react": "src/client/react.ts",
@@ -12,6 +16,7 @@ export default defineConfig({
     "adapters/index": "src/adapters/index.ts",
     "adapters/express": "src/adapters/express.ts",
     "adapters/hono": "src/adapters/hono.ts",
+    "adapters/nextjs/index": "src/adapters/nextjs/index.ts",
     // Drivers
     "drivers/index": "src/drivers/index.ts",
     "drivers/prisma": "src/drivers/prisma.ts",
@@ -22,6 +27,11 @@ export default defineConfig({
     "plugins/auth/plugins/username/index": "src/plugins/auth/plugins/username/index.ts",
     "plugins/auth/plugins/username/client": "src/plugins/auth/plugins/username/client.ts",
     "plugins/timestamps": "src/plugins/timestamps.ts",
+    // RAG
+    "rag/index": "src/rag/index.ts",
+    // AI Gateway
+    "ai-gateway/index": "src/ai-gateway/index.ts",
+    "ai-gateway/client": "src/ai-gateway/client.ts",
   },
   format: ["esm"],
   dts: true,
@@ -31,6 +41,10 @@ export default defineConfig({
   external: [
     "express",
     "hono",
+    "next",
+    "next/server",
+    "next/headers",
+    "next/navigation",
     "@prisma/client",
     "react",
     "@nanostores/react",

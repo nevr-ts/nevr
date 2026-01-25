@@ -1,7 +1,6 @@
 // =============================================================================
 // ORGANIZATION PLUGIN TYPES
 // Multi-tenant organization/workspace support
-// Follows better-auth patterns with nevr conventions
 // =============================================================================
 
 import type { EndpointContext } from "../unified/endpoint.js"

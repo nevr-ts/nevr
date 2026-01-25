@@ -4,7 +4,6 @@
 // Extends auth plugin with username-based authentication
 // =============================================================================
 
-import { createPlugin } from "../../../unified/facade.js"
 import { getLogger } from "../../../../logger.js"
 
 // Use unified endpoint system
@@ -107,6 +106,16 @@ export interface UsernamePluginOptions {
             domain?: string
         }
     }
+
+    /**
+     * Rate limiting configuration
+     * Set to `false` to disable rate limiting
+     * @default { window: 60000, max: 10 }
+     */
+    rateLimit?: false | {
+        window?: number
+        max?: number
+    }
 }
 
 /**
@@ -195,44 +204,40 @@ export const username = (options?: UsernamePluginOptions) => {
     return {
         id: "username",
 
-        // Database hooks for normalization
-        init(ctx: any) {
-            return {
-                options: {
-                    databaseHooks: {
-                        user: {
-                            create: {
-                                async before(user: any) {
-                                    const username = "username" in user ? user.username : null
-                                    const displayUsername = "displayUsername" in user ? user.displayUsername : null
+        // Entity hooks for username normalization (unified pattern)
+        entityHooks: {
+            user: {
+                create: {
+                    before: async (ctx: any) => {
+                        const user = ctx.data
+                        const username = "username" in user ? user.username : null
+                        const displayUsername = "displayUsername" in user ? user.displayUsername : null
 
-                                    return {
-                                        data: {
-                                            ...user,
-                                            ...(username ? { username: normalizer(username) } : {}),
-                                            ...(displayUsername ? { displayUsername: displayUsernameNormalizer(displayUsername) } : {}),
-                                        },
-                                    }
-                                },
+                        return {
+                            data: {
+                                ...user,
+                                ...(username ? { username: normalizer(username) } : {}),
+                                ...(displayUsername ? { displayUsername: displayUsernameNormalizer(displayUsername) } : {}),
                             },
-                            update: {
-                                async before(user: any) {
-                                    const username = "username" in user ? user.username : null
-                                    const displayUsername = "displayUsername" in user ? user.displayUsername : null
-
-                                    return {
-                                        data: {
-                                            ...user,
-                                            ...(username ? { username: normalizer(username) } : {}),
-                                            ...(displayUsername ? { displayUsername: displayUsernameNormalizer(displayUsername) } : {}),
-                                        },
-                                    }
-                                },
-                            },
-                        },
+                        }
                     },
                 },
-            }
+                update: {
+                    before: async (ctx: any) => {
+                        const user = ctx.data
+                        const username = "username" in user ? user.username : null
+                        const displayUsername = "displayUsername" in user ? user.displayUsername : null
+
+                        return {
+                            data: {
+                                ...user,
+                                ...(username ? { username: normalizer(username) } : {}),
+                                ...(displayUsername ? { displayUsername: displayUsernameNormalizer(displayUsername) } : {}),
+                            },
+                        }
+                    },
+                },
+            },
         },
 
         endpoints: {
@@ -406,13 +411,11 @@ export const username = (options?: UsernamePluginOptions) => {
             displayUsername: displayUsernameNormalizer,
         }),
 
-        // Hooks for validation on sign-up and update-user
-        hooks: {
+        // Request interceptors for validation (unified pattern)
+        interceptors: {
             before: [
                 {
-                    matcher: (context: any) => {
-                        return context.path === "/sign-up/email" || context.path === "/update-user"
-                    },
+                    matcher: (ctx: any) => ctx.path === "/sign-up/email" || ctx.path === "/update-user",
                     handler: async (ctx: any) => {
                         const body = ctx.body || {}
 
@@ -481,11 +484,9 @@ export const username = (options?: UsernamePluginOptions) => {
                         }
                     },
                 },
-                // Second hook: Set defaults for username/displayUsername
+                // Second interceptor: Set defaults for username/displayUsername
                 {
-                    matcher: (context: any) => {
-                        return context.path === "/sign-up/email" || context.path === "/update-user"
-                    },
+                    matcher: (ctx: any) => ctx.path === "/sign-up/email" || ctx.path === "/update-user",
                     handler: async (ctx: any) => {
                         if (ctx.body.username && !ctx.body.displayUsername) {
                             ctx.body.displayUsername = ctx.body.username
@@ -500,6 +501,15 @@ export const username = (options?: UsernamePluginOptions) => {
 
         $ERROR_CODES: USERNAME_ERROR_CODES,
         $Infer: { User: {} as UsernameUser, Session: {} as AuthSession },
+
+        // Rate limiting for username endpoints (developer-configurable)
+        rateLimit: options?.rateLimit === false ? [] : [
+            {
+                pathMatcher: (path: string) => path.startsWith("/sign-in/username") || path.startsWith("/is-username-available"),
+                window: options?.rateLimit?.window ?? 60 * 1000,
+                max: options?.rateLimit?.max ?? 10,
+            },
+        ],
     }
 }
 

@@ -423,7 +423,7 @@ const user = await client.users.create({ email: "..." })
 |---------|-------------|
 | [`nevr`](https://www.npmjs.com/package/nevr) | Core framework (this package) |
 | [`@nevr/cli`](https://www.npmjs.com/package/@nevr/cli) | CLI for schema generation |
-| [`@nevr/generator`](https://www.npmjs.com/package/@nevr/generator) | Prisma/TypeScript generator |
+| [`nevr/generator`](https://www.npmjs.com/package/nevr/generator) | Prisma/TypeScript generator |
 | [`create-nevr`](https://www.npmjs.com/package/create-nevr) | Project scaffolder |
 
 ---

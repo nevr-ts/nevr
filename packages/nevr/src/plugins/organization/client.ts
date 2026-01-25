@@ -1,8 +1,18 @@
 // =============================================================================
-// ORGANIZATION CLIENT
-// Client-side helpers for organization management
+// ORGANIZATION CLIENT PLUGIN
+// Client-side organization management with reactive state
+// Follows auth plugin pattern for SDK type inference
 // =============================================================================
 
+import { atom, type WritableAtom } from "nanostores"
+import type {
+    NevrClientPlugin,
+    NevrFetch,
+    NevrFetchResponse,
+    NevrFetchError,
+    ClientStore,
+    ClientAtomListener,
+} from "../../client/types.js"
 import type {
     Organization,
     Member,
@@ -14,19 +24,53 @@ import type {
     CreateOrganizationInput,
     UpdateOrganizationInput,
     InviteMemberInput,
+    RoleDefinition,
 } from "./types.js"
+import { ORGANIZATION_ERROR_CODES } from "./error-codes.js"
+
+// =============================================================================
+// STATE TYPES
+// =============================================================================
+
+/**
+ * Active organization state
+ */
+export interface OrganizationState {
+    /** Currently active organization */
+    organization: Organization | null
+    /** Current user's membership in active org */
+    member: Member | null
+    /** Error if any */
+    error: NevrFetchError | null
+    /** Loading state */
+    isPending: boolean
+}
+
+/**
+ * Organizations list state
+ */
+export interface OrganizationsState {
+    /** List of user's organizations */
+    data: Organization[]
+    /** Error if any */
+    error: NevrFetchError | null
+    /** Loading state */
+    isPending: boolean
+}
 
 // =============================================================================
 // CLIENT OPTIONS
 // =============================================================================
 
 export interface OrganizationClientOptions {
-    /** Base URL for API calls */
-    baseUrl?: string
-    /** Custom fetch function */
-    fetch?: typeof fetch
-    /** Get auth token */
-    getToken?: () => string | Promise<string> | null
+    /** Base path for organization endpoints (default: /organization) */
+    basePath?: string
+    /** Auto-refresh active org on window focus */
+    refreshOnWindowFocus?: boolean
+    /** Storage for persisting active org ID */
+    storage?: Storage | null
+    /** Storage key */
+    storageKey?: string
 }
 
 // =============================================================================
@@ -35,252 +79,676 @@ export interface OrganizationClientOptions {
 
 export interface OrganizationClientMethods {
     // Organization CRUD
-    create(data: CreateOrganizationInput): Promise<{ organization: Organization; member: Member }>
-    update(organizationId: string, data: UpdateOrganizationInput): Promise<Organization>
-    delete(organizationId: string): Promise<void>
-    get(organizationId: string): Promise<FullOrganization>
-    list(): Promise<Organization[]>
-    checkSlug(slug: string): Promise<{ available: boolean }>
+    create(data: CreateOrganizationInput): Promise<NevrFetchResponse<{ organization: Organization; member: Member }>>
+    update(organizationId: string, data: UpdateOrganizationInput): Promise<NevrFetchResponse<Organization>>
+    delete(organizationId: string): Promise<NevrFetchResponse<{ success: boolean }>>
+    get(organizationId: string): Promise<NevrFetchResponse<FullOrganization>>
+    list(): Promise<NevrFetchResponse<Organization[]>>
+    checkSlug(slug: string): Promise<NevrFetchResponse<{ available: boolean }>>
 
     // Active organization
-    setActive(organizationId: string): Promise<void>
-    getActive(): Promise<Organization | null>
+    setActive(organizationId: string | null): Promise<NevrFetchResponse<{ organization: Organization | null; member: Member | null }>>
+    getActive(): Promise<NevrFetchResponse<{ organization: Organization | null; member: Member | null }>>
 
     // Members
-    listMembers(organizationId: string): Promise<MemberWithUser[]>
-    addMember(organizationId: string, userId: string, role?: string): Promise<Member>
-    removeMember(organizationId: string, memberId: string): Promise<void>
-    updateMemberRole(organizationId: string, memberId: string, role: string): Promise<Member>
-    leave(organizationId: string): Promise<void>
-    getMyMembership(organizationId: string): Promise<Member | null>
+    listMembers(organizationId: string): Promise<NevrFetchResponse<MemberWithUser[]>>
+    addMember(data: { organizationId: string; userId: string; role?: string }): Promise<NevrFetchResponse<Member>>
+    removeMember(data: { organizationId: string; memberId: string }): Promise<NevrFetchResponse<{ success: boolean }>>
+    updateMemberRole(data: { organizationId: string; memberId: string; role: string }): Promise<NevrFetchResponse<Member>>
+    leave(organizationId: string): Promise<NevrFetchResponse<{ success: boolean }>>
+    getMyMembership(organizationId: string): Promise<NevrFetchResponse<Member | null>>
+    getMyRole(organizationId?: string): Promise<NevrFetchResponse<{ role: string; permissions: RoleDefinition["permissions"] }>>
 
     // Invitations
-    invite(organizationId: string, data: InviteMemberInput): Promise<Invitation>
-    cancelInvitation(invitationId: string): Promise<void>
-    listInvitations(organizationId: string): Promise<Invitation[]>
-    getMyInvitations(): Promise<InvitationWithDetails[]>
-    acceptInvitation(invitationId: string): Promise<{ organization: Organization; member: Member }>
-    rejectInvitation(invitationId: string): Promise<void>
+    invite(data: { organizationId: string } & InviteMemberInput): Promise<NevrFetchResponse<Invitation>>
+    cancelInvitation(invitationId: string): Promise<NevrFetchResponse<{ success: boolean }>>
+    listInvitations(organizationId: string): Promise<NevrFetchResponse<Invitation[]>>
+    getMyInvitations(): Promise<NevrFetchResponse<InvitationWithDetails[]>>
+    acceptInvitation(invitationId: string): Promise<NevrFetchResponse<{ organization: Organization; member: Member }>>
+    rejectInvitation(invitationId: string): Promise<NevrFetchResponse<{ success: boolean }>>
 
     // Teams (if enabled)
-    createTeam(organizationId: string, name: string): Promise<Team>
-    updateTeam(teamId: string, name: string): Promise<Team>
-    deleteTeam(teamId: string): Promise<void>
-    listTeams(organizationId: string): Promise<Team[]>
-    addTeamMember(teamId: string, userId: string): Promise<void>
-    removeTeamMember(teamId: string, userId: string): Promise<void>
-    setActiveTeam(teamId: string): Promise<void>
+    createTeam(data: { organizationId: string; name: string }): Promise<NevrFetchResponse<Team>>
+    updateTeam(data: { teamId: string; name: string }): Promise<NevrFetchResponse<Team>>
+    deleteTeam(teamId: string): Promise<NevrFetchResponse<{ success: boolean }>>
+    listTeams(organizationId: string): Promise<NevrFetchResponse<Team[]>>
+    addTeamMember(data: { teamId: string; userId: string }): Promise<NevrFetchResponse<{ success: boolean }>>
+    removeTeamMember(data: { teamId: string; userId: string }): Promise<NevrFetchResponse<{ success: boolean }>>
+    setActiveTeam(teamId: string | null): Promise<NevrFetchResponse<{ success: boolean }>>
 
     // Permissions
-    hasPermission(permission: Record<string, string[]>, organizationId?: string): Promise<boolean>
+    hasPermission(data: { permission: Record<string, string[]>; organizationId?: string }): Promise<NevrFetchResponse<{ allowed: boolean }>>
+
+    // Roles
+    listRoles(organizationId: string): Promise<NevrFetchResponse<Array<{ id: string; name: string; permissions: RoleDefinition["permissions"] }>>>
+    createRole(data: { organizationId: string; name: string; permissions: RoleDefinition["permissions"] }): Promise<NevrFetchResponse<{ id: string; name: string }>>
+    updateRole(data: { roleId: string; name?: string; permissions?: RoleDefinition["permissions"] }): Promise<NevrFetchResponse<{ success: boolean }>>
+    deleteRole(roleId: string): Promise<NevrFetchResponse<{ success: boolean }>>
 }
 
 // =============================================================================
-// CLIENT FACTORY
+// CLIENT PLUGIN TYPE
 // =============================================================================
 
 /**
- * Create organization client for frontend usage
+ * Organization client plugin type with server inference
+ */
+export type OrganizationClientPlugin = NevrClientPlugin & {
+    /**
+     * Type-only property for SDK type inference
+     */
+    readonly $InferTypes: {
+        endpoints: OrganizationClientMethods
+        $ERROR_CODES: typeof ORGANIZATION_ERROR_CODES
+        Organization: Organization
+        Member: Member
+        Team: Team
+        Invitation: Invitation
+        RoleDefinition: RoleDefinition
+    }
+}
+
+// =============================================================================
+// ATOMS
+// =============================================================================
+
+function createOrganizationAtom(): WritableAtom<OrganizationState> {
+    return atom<OrganizationState>({
+        organization: null,
+        member: null,
+        error: null,
+        isPending: true,
+    })
+}
+
+function createOrganizationsAtom(): WritableAtom<OrganizationsState> {
+    return atom<OrganizationsState>({
+        data: [],
+        error: null,
+        isPending: true,
+    })
+}
+
+// =============================================================================
+// CLIENT PLUGIN FACTORY
+// =============================================================================
+
+/**
+ * Create organization client plugin for frontend usage
  *
  * @example
  * ```typescript
- * import { organizationClient } from "nevr/plugins/organization"
+ * import { createClient } from "nevr/client"
+ * import { organizationClient } from "nevr/plugins/organization/client"
  *
- * const org = organizationClient({
- *   getToken: () => localStorage.getItem("token"),
+ * const client = createClient({
+ *   baseURL: "http://localhost:3000",
+ *   plugins: [organizationClient()]
  * })
  *
  * // Create organization
- * const { organization } = await org.create({ name: "My Workspace" })
+ * const { data, error } = await client.organization.create({
+ *   name: "My Workspace"
+ * })
  *
- * // List my organizations
- * const orgs = await org.list()
+ * // Reactive state
+ * client.$store.atoms.activeOrganization.subscribe(({ organization }) => {
+ *   console.log("Active org:", organization?.name)
+ * })
  *
- * // Invite member
- * await org.invite(orgId, { email: "user@example.com", role: "member" })
- *
- * // Check permission
- * const canDelete = await org.hasPermission({ organization: ["delete"] })
+ * // Set active organization
+ * await client.organization.setActive(orgId)
  * ```
  */
-export function organizationClient(options: OrganizationClientOptions = {}): OrganizationClientMethods {
-    const baseUrl = options.baseUrl || (typeof window !== "undefined" ? window.location.origin : "")
-    const fetchFn = options.fetch || fetch
+export function organizationClient(options?: OrganizationClientOptions): OrganizationClientPlugin {
+    const basePath = options?.basePath || "/organization"
+    const refreshOnWindowFocus = options?.refreshOnWindowFocus !== false
+    const storageKey = options?.storageKey || "nevr.organization.activeId"
 
-    async function request<T>(
-        method: string,
-        path: string,
-        body?: Record<string, unknown>
-    ): Promise<T> {
-        const url = `${baseUrl}/organization${path}`
-        const headers: Record<string, string> = {
-            "Content-Type": "application/json",
-        }
-
-        if (options.getToken) {
-            const token = await options.getToken()
-            if (token) {
-                headers["Authorization"] = `Bearer ${token}`
-            }
-        }
-
-        const response = await fetchFn(url, {
-            method,
-            headers,
-            body: body ? JSON.stringify(body) : undefined,
-            credentials: "include",
-        })
-
-        const data = await response.json()
-
-        if (!response.ok) {
-            const error = new Error(data.message || "Request failed") as any
-            error.code = data.error || data.code
-            error.status = response.status
-            error.data = data
-            throw error
-        }
-
-        return data
-    }
+    // Atoms
+    let $activeOrganization: WritableAtom<OrganizationState>
+    let $organizations: WritableAtom<OrganizationsState>
+    let $orgSignal: WritableAtom<boolean>
 
     return {
-        // =================================================================
-        // Organization CRUD
-        // =================================================================
+        id: "organization-client",
 
-        async create(data) {
-            return request("POST", "/create", data as unknown as Record<string, unknown>)
+        /**
+         * Path methods for endpoint proxy
+         */
+        pathMethods: {
+            // Organization CRUD
+            [`${basePath}/create-organization`]: "POST",
+            [`${basePath}/update-organization`]: "POST",
+            [`${basePath}/delete-organization`]: "POST",
+            [`${basePath}/get-full-organization`]: "GET",
+            [`${basePath}/list-organizations`]: "GET",
+            [`${basePath}/check-organization-slug`]: "GET",
+            [`${basePath}/set-active-organization`]: "POST",
+            [`${basePath}/get-active-member`]: "GET",
+            [`${basePath}/get-active-member-role`]: "GET",
+            // Members
+            [`${basePath}/add-member`]: "POST",
+            [`${basePath}/remove-member`]: "POST",
+            [`${basePath}/update-member-role`]: "POST",
+            [`${basePath}/list-members`]: "GET",
+            [`${basePath}/leave-organization`]: "POST",
+            // Invitations
+            [`${basePath}/create-invitation`]: "POST",
+            [`${basePath}/accept-invitation`]: "POST",
+            [`${basePath}/reject-invitation`]: "POST",
+            [`${basePath}/cancel-invitation`]: "POST",
+            [`${basePath}/get-invitation`]: "GET",
+            [`${basePath}/list-invitations`]: "GET",
+            [`${basePath}/list-user-invitations`]: "GET",
+            // Teams
+            [`${basePath}/create-team`]: "POST",
+            [`${basePath}/remove-team`]: "POST",
+            [`${basePath}/update-team`]: "POST",
+            [`${basePath}/list-organization-teams`]: "GET",
+            [`${basePath}/set-active-team`]: "POST",
+            [`${basePath}/list-user-teams`]: "GET",
+            [`${basePath}/list-team-members`]: "GET",
+            [`${basePath}/add-team-member`]: "POST",
+            [`${basePath}/remove-team-member`]: "POST",
+            // Access control
+            [`${basePath}/create-org-role`]: "POST",
+            [`${basePath}/delete-org-role`]: "POST",
+            [`${basePath}/list-org-roles`]: "GET",
+            [`${basePath}/get-org-role`]: "GET",
+            [`${basePath}/update-org-role`]: "POST",
+            [`${basePath}/has-permission`]: "POST",
         },
 
-        async update(organizationId, data) {
-            return request("POST", "/update", { organizationId, ...data })
+        /**
+         * Get reactive atoms
+         */
+        getAtoms($fetch: NevrFetch) {
+            $activeOrganization = createOrganizationAtom()
+            $organizations = createOrganizationsAtom()
+            $orgSignal = atom<boolean>(false)
+
+            // Initial fetch
+            fetchActiveOrganization($fetch)
+            fetchOrganizations($fetch)
+
+            // Window focus refresh
+            if (refreshOnWindowFocus && typeof window !== "undefined") {
+                window.addEventListener("focus", () => {
+                    fetchActiveOrganization($fetch)
+                })
+            }
+
+            // Storage sync
+            if (typeof window !== "undefined" && options?.storage !== null) {
+                window.addEventListener("storage", (event) => {
+                    if (event.key === storageKey) {
+                        fetchActiveOrganization($fetch)
+                    }
+                })
+            }
+
+            return {
+                activeOrganization: $activeOrganization,
+                organizations: $organizations,
+                $orgSignal,
+            }
+
+            async function fetchActiveOrganization(fetch: NevrFetch) {
+                $activeOrganization.set({ ...$activeOrganization.get(), isPending: true })
+
+                try {
+                    const result = await fetch(`${basePath}/get-active-member`, { method: "GET" })
+
+                    if (result.error) {
+                        $activeOrganization.set({
+                            organization: null,
+                            member: null,
+                            error: result.error,
+                            isPending: false,
+                        })
+                    } else {
+                        const data = result.data as { organization: Organization | null; member: Member | null } | null
+                        $activeOrganization.set({
+                            organization: data?.organization || null,
+                            member: data?.member || null,
+                            error: null,
+                            isPending: false,
+                        })
+                    }
+                } catch (error) {
+                    $activeOrganization.set({
+                        organization: null,
+                        member: null,
+                        error: error as any,
+                        isPending: false,
+                    })
+                }
+            }
+
+            async function fetchOrganizations(fetch: NevrFetch) {
+                $organizations.set({ ...$organizations.get(), isPending: true })
+
+                try {
+                    const result = await fetch(`${basePath}/list-organizations`, { method: "GET" })
+
+                    if (result.error) {
+                        $organizations.set({
+                            data: [],
+                            error: result.error,
+                            isPending: false,
+                        })
+                    } else {
+                        $organizations.set({
+                            data: (result.data as Organization[]) || [],
+                            error: null,
+                            isPending: false,
+                        })
+                    }
+                } catch (error) {
+                    $organizations.set({
+                        data: [],
+                        error: error as any,
+                        isPending: false,
+                    })
+                }
+            }
         },
 
-        async delete(organizationId) {
-            return request("POST", "/delete", { organizationId })
+        /**
+         * Atom listeners for triggering refreshes
+         */
+        atomListeners: [
+            {
+                matcher: (path: string) => {
+                    return (
+                        path === `${basePath}/create-organization` ||
+                        path === `${basePath}/set-active-organization` ||
+                        path === `${basePath}/leave-organization` ||
+                        path === `${basePath}/accept-invitation`
+                    )
+                },
+                signal: "$orgSignal",
+            },
+        ] as ClientAtomListener[],
+
+        /**
+         * Get action methods
+         */
+        getActions($fetch: NevrFetch, $store: ClientStore) {
+            // Helper to update active org state
+            const updateActiveOrg = async () => {
+                if ($activeOrganization) {
+                    $activeOrganization.set({ ...$activeOrganization.get(), isPending: true })
+                    try {
+                        const result = await $fetch(`${basePath}/get-active-member`, { method: "GET" })
+                        const data = result.data as { organization: Organization | null; member: Member | null } | null
+                        $activeOrganization.set({
+                            organization: data?.organization || null,
+                            member: data?.member || null,
+                            error: result.error || null,
+                            isPending: false,
+                        })
+                    } catch (error) {
+                        $activeOrganization.set({
+                            organization: null,
+                            member: null,
+                            error: error as any,
+                            isPending: false,
+                        })
+                    }
+                }
+            }
+
+            // Helper to update organizations list
+            const updateOrganizations = async () => {
+                if ($organizations) {
+                    $organizations.set({ ...$organizations.get(), isPending: true })
+                    try {
+                        const result = await $fetch(`${basePath}/list-organizations`, { method: "GET" })
+                        $organizations.set({
+                            data: (result.data as Organization[]) || [],
+                            error: result.error || null,
+                            isPending: false,
+                        })
+                    } catch (error) {
+                        $organizations.set({
+                            data: [],
+                            error: error as any,
+                            isPending: false,
+                        })
+                    }
+                }
+            }
+
+            return {
+                // ============================================================
+                // Organization CRUD
+                // ============================================================
+
+                create: async (data: CreateOrganizationInput) => {
+                    const result = await $fetch(`${basePath}/create-organization`, {
+                        method: "POST",
+                        body: data,
+                    })
+                    if (!result.error) {
+                        await updateOrganizations()
+                    }
+                    return result as NevrFetchResponse<{ organization: Organization; member: Member }>
+                },
+
+                update: async (organizationId: string, data: UpdateOrganizationInput) => {
+                    const result = await $fetch(`${basePath}/update-organization`, {
+                        method: "POST",
+                        body: { organizationId, ...data },
+                    })
+                    if (!result.error) {
+                        await updateOrganizations()
+                        await updateActiveOrg()
+                    }
+                    return result as NevrFetchResponse<Organization>
+                },
+
+                delete: async (organizationId: string) => {
+                    const result = await $fetch(`${basePath}/delete-organization`, {
+                        method: "POST",
+                        body: { organizationId },
+                    })
+                    if (!result.error) {
+                        await updateOrganizations()
+                        // Clear active if we deleted the active org
+                        const current = $activeOrganization?.get()
+                        if (current?.organization?.id === organizationId) {
+                            $activeOrganization?.set({
+                                organization: null,
+                                member: null,
+                                error: null,
+                                isPending: false,
+                            })
+                        }
+                    }
+                    return result as NevrFetchResponse<{ success: boolean }>
+                },
+
+                get: async (organizationId: string) => {
+                    return $fetch(`${basePath}/get-full-organization`, {
+                        method: "GET",
+                        query: { organizationId },
+                    }) as Promise<NevrFetchResponse<FullOrganization>>
+                },
+
+                list: async () => {
+                    const result = await $fetch(`${basePath}/list-organizations`, { method: "GET" })
+                    return result as NevrFetchResponse<Organization[]>
+                },
+
+                checkSlug: async (slug: string) => {
+                    return $fetch(`${basePath}/check-organization-slug`, {
+                        method: "GET",
+                        query: { slug },
+                    }) as Promise<NevrFetchResponse<{ available: boolean }>>
+                },
+
+                // ============================================================
+                // Active Organization
+                // ============================================================
+
+                setActive: async (organizationId: string | null) => {
+                    const result = await $fetch(`${basePath}/set-active-organization`, {
+                        method: "POST",
+                        body: { organizationId },
+                    })
+                    if (!result.error) {
+                        const data = result.data as { organization: Organization | null; member: Member | null }
+                        $activeOrganization?.set({
+                            organization: data.organization,
+                            member: data.member,
+                            error: null,
+                            isPending: false,
+                        })
+                        // Persist to storage
+                        if (typeof window !== "undefined" && options?.storage !== null) {
+                            const storage = options?.storage || window.localStorage
+                            if (storage) {
+                                try {
+                                    if (organizationId) {
+                                        storage.setItem(storageKey, organizationId)
+                                    } else {
+                                        storage.removeItem(storageKey)
+                                    }
+                                } catch { /* ignored */ }
+                            }
+                        }
+                    }
+                    return result as NevrFetchResponse<{ organization: Organization | null; member: Member | null }>
+                },
+
+                getActive: async () => {
+                    const result = await $fetch(`${basePath}/get-active-member`, { method: "GET" })
+                    return result as NevrFetchResponse<{ organization: Organization | null; member: Member | null }>
+                },
+
+                // ============================================================
+                // Members
+                // ============================================================
+
+                listMembers: async (organizationId: string) => {
+                    return $fetch(`${basePath}/list-members`, {
+                        method: "GET",
+                        query: { organizationId },
+                    }) as Promise<NevrFetchResponse<MemberWithUser[]>>
+                },
+
+                addMember: async (data: { organizationId: string; userId: string; role?: string }) => {
+                    return $fetch(`${basePath}/add-member`, {
+                        method: "POST",
+                        body: data,
+                    }) as Promise<NevrFetchResponse<Member>>
+                },
+
+                removeMember: async (data: { organizationId: string; memberId: string }) => {
+                    return $fetch(`${basePath}/remove-member`, {
+                        method: "POST",
+                        body: data,
+                    }) as Promise<NevrFetchResponse<{ success: boolean }>>
+                },
+
+                updateMemberRole: async (data: { organizationId: string; memberId: string; role: string }) => {
+                    return $fetch(`${basePath}/update-member-role`, {
+                        method: "POST",
+                        body: data,
+                    }) as Promise<NevrFetchResponse<Member>>
+                },
+
+                leave: async (organizationId: string) => {
+                    const result = await $fetch(`${basePath}/leave-organization`, {
+                        method: "POST",
+                        body: { organizationId },
+                    })
+                    if (!result.error) {
+                        await updateOrganizations()
+                        // Clear active if we left the active org
+                        const current = $activeOrganization?.get()
+                        if (current?.organization?.id === organizationId) {
+                            $activeOrganization?.set({
+                                organization: null,
+                                member: null,
+                                error: null,
+                                isPending: false,
+                            })
+                        }
+                    }
+                    return result as NevrFetchResponse<{ success: boolean }>
+                },
+
+                getMyMembership: async (organizationId: string) => {
+                    return $fetch(`${basePath}/get-active-member`, {
+                        method: "GET",
+                        query: { organizationId },
+                    }) as Promise<NevrFetchResponse<Member | null>>
+                },
+
+                getMyRole: async (organizationId?: string) => {
+                    return $fetch(`${basePath}/get-active-member-role`, {
+                        method: "GET",
+                        query: organizationId ? { organizationId } : undefined,
+                    }) as Promise<NevrFetchResponse<{ role: string; permissions: RoleDefinition["permissions"] }>>
+                },
+
+                // ============================================================
+                // Invitations
+                // ============================================================
+
+                invite: async (data: { organizationId: string } & InviteMemberInput) => {
+                    return $fetch(`${basePath}/create-invitation`, {
+                        method: "POST",
+                        body: data,
+                    }) as Promise<NevrFetchResponse<Invitation>>
+                },
+
+                cancelInvitation: async (invitationId: string) => {
+                    return $fetch(`${basePath}/cancel-invitation`, {
+                        method: "POST",
+                        body: { invitationId },
+                    }) as Promise<NevrFetchResponse<{ success: boolean }>>
+                },
+
+                listInvitations: async (organizationId: string) => {
+                    return $fetch(`${basePath}/list-invitations`, {
+                        method: "GET",
+                        query: { organizationId },
+                    }) as Promise<NevrFetchResponse<Invitation[]>>
+                },
+
+                getMyInvitations: async () => {
+                    return $fetch(`${basePath}/list-user-invitations`, {
+                        method: "GET",
+                    }) as Promise<NevrFetchResponse<InvitationWithDetails[]>>
+                },
+
+                acceptInvitation: async (invitationId: string) => {
+                    const result = await $fetch(`${basePath}/accept-invitation`, {
+                        method: "POST",
+                        body: { invitationId },
+                    })
+                    if (!result.error) {
+                        await updateOrganizations()
+                    }
+                    return result as NevrFetchResponse<{ organization: Organization; member: Member }>
+                },
+
+                rejectInvitation: async (invitationId: string) => {
+                    return $fetch(`${basePath}/reject-invitation`, {
+                        method: "POST",
+                        body: { invitationId },
+                    }) as Promise<NevrFetchResponse<{ success: boolean }>>
+                },
+
+                // ============================================================
+                // Teams
+                // ============================================================
+
+                createTeam: async (data: { organizationId: string; name: string }) => {
+                    return $fetch(`${basePath}/create-team`, {
+                        method: "POST",
+                        body: data,
+                    }) as Promise<NevrFetchResponse<Team>>
+                },
+
+                updateTeam: async (data: { teamId: string; name: string }) => {
+                    return $fetch(`${basePath}/update-team`, {
+                        method: "POST",
+                        body: data,
+                    }) as Promise<NevrFetchResponse<Team>>
+                },
+
+                deleteTeam: async (teamId: string) => {
+                    return $fetch(`${basePath}/remove-team`, {
+                        method: "POST",
+                        body: { teamId },
+                    }) as Promise<NevrFetchResponse<{ success: boolean }>>
+                },
+
+                listTeams: async (organizationId: string) => {
+                    return $fetch(`${basePath}/list-organization-teams`, {
+                        method: "GET",
+                        query: { organizationId },
+                    }) as Promise<NevrFetchResponse<Team[]>>
+                },
+
+                addTeamMember: async (data: { teamId: string; userId: string }) => {
+                    return $fetch(`${basePath}/add-team-member`, {
+                        method: "POST",
+                        body: data,
+                    }) as Promise<NevrFetchResponse<{ success: boolean }>>
+                },
+
+                removeTeamMember: async (data: { teamId: string; userId: string }) => {
+                    return $fetch(`${basePath}/remove-team-member`, {
+                        method: "POST",
+                        body: data,
+                    }) as Promise<NevrFetchResponse<{ success: boolean }>>
+                },
+
+                setActiveTeam: async (teamId: string | null) => {
+                    return $fetch(`${basePath}/set-active-team`, {
+                        method: "POST",
+                        body: { teamId },
+                    }) as Promise<NevrFetchResponse<{ success: boolean }>>
+                },
+
+                // ============================================================
+                // Permissions & Roles
+                // ============================================================
+
+                hasPermission: async (data: { permission: Record<string, string[]>; organizationId?: string }) => {
+                    return $fetch(`${basePath}/has-permission`, {
+                        method: "POST",
+                        body: data,
+                    }) as Promise<NevrFetchResponse<{ allowed: boolean }>>
+                },
+
+                listRoles: async (organizationId: string) => {
+                    return $fetch(`${basePath}/list-org-roles`, {
+                        method: "GET",
+                        query: { organizationId },
+                    }) as Promise<NevrFetchResponse<Array<{ id: string; name: string; permissions: RoleDefinition["permissions"] }>>>
+                },
+
+                createRole: async (data: { organizationId: string; name: string; permissions: RoleDefinition["permissions"] }) => {
+                    return $fetch(`${basePath}/create-org-role`, {
+                        method: "POST",
+                        body: data,
+                    }) as Promise<NevrFetchResponse<{ id: string; name: string }>>
+                },
+
+                updateRole: async (data: { roleId: string; name?: string; permissions?: RoleDefinition["permissions"] }) => {
+                    return $fetch(`${basePath}/update-org-role`, {
+                        method: "POST",
+                        body: data,
+                    }) as Promise<NevrFetchResponse<{ success: boolean }>>
+                },
+
+                deleteRole: async (roleId: string) => {
+                    return $fetch(`${basePath}/delete-org-role`, {
+                        method: "POST",
+                        body: { roleId },
+                    }) as Promise<NevrFetchResponse<{ success: boolean }>>
+                },
+            }
         },
 
-        async get(organizationId) {
-            return request("GET", `/get?organizationId=${organizationId}`)
+        // Type inference for SDK
+        $InferTypes: {
+            endpoints: {} as OrganizationClientMethods,
+            $ERROR_CODES: ORGANIZATION_ERROR_CODES,
+            Organization: {} as Organization,
+            Member: {} as Member,
+            Team: {} as Team,
+            Invitation: {} as Invitation,
+            RoleDefinition: {} as RoleDefinition,
         },
-
-        async list() {
-            return request("GET", "/list")
-        },
-
-        async checkSlug(slug) {
-            return request("GET", `/check-slug?slug=${encodeURIComponent(slug)}`)
-        },
-
-        // =================================================================
-        // Active Organization
-        // =================================================================
-
-        async setActive(organizationId) {
-            return request("POST", "/set-active", { organizationId })
-        },
-
-        async getActive() {
-            return request("GET", "/active")
-        },
-
-        // =================================================================
-        // Members
-        // =================================================================
-
-        async listMembers(organizationId) {
-            return request("GET", `/members?organizationId=${organizationId}`)
-        },
-
-        async addMember(organizationId, userId, role = "member") {
-            return request("POST", "/add-member", { organizationId, userId, role })
-        },
-
-        async removeMember(organizationId, memberId) {
-            return request("POST", "/remove-member", { organizationId, memberId })
-        },
-
-        async updateMemberRole(organizationId, memberId, role) {
-            return request("POST", "/update-member-role", { organizationId, memberId, role })
-        },
-
-        async leave(organizationId) {
-            return request("POST", "/leave", { organizationId })
-        },
-
-        async getMyMembership(organizationId) {
-            return request("GET", `/my-membership?organizationId=${organizationId}`)
-        },
-
-        // =================================================================
-        // Invitations
-        // =================================================================
-
-        async invite(organizationId, data) {
-            return request("POST", "/invite", { organizationId, ...data })
-        },
-
-        async cancelInvitation(invitationId) {
-            return request("POST", "/cancel-invitation", { invitationId })
-        },
-
-        async listInvitations(organizationId) {
-            return request("GET", `/invitations?organizationId=${organizationId}`)
-        },
-
-        async getMyInvitations() {
-            return request("GET", "/my-invitations")
-        },
-
-        async acceptInvitation(invitationId) {
-            return request("POST", "/accept-invitation", { invitationId })
-        },
-
-        async rejectInvitation(invitationId) {
-            return request("POST", "/reject-invitation", { invitationId })
-        },
-
-        // =================================================================
-        // Teams
-        // =================================================================
-
-        async createTeam(organizationId, name) {
-            return request("POST", "/create-team", { organizationId, name })
-        },
-
-        async updateTeam(teamId, name) {
-            return request("POST", "/update-team", { teamId, name })
-        },
-
-        async deleteTeam(teamId) {
-            return request("POST", "/delete-team", { teamId })
-        },
-
-        async listTeams(organizationId) {
-            return request("GET", `/teams?organizationId=${organizationId}`)
-        },
-
-        async addTeamMember(teamId, userId) {
-            return request("POST", "/add-team-member", { teamId, userId })
-        },
-
-        async removeTeamMember(teamId, userId) {
-            return request("POST", "/remove-team-member", { teamId, userId })
-        },
-
-        async setActiveTeam(teamId) {
-            return request("POST", "/set-active-team", { teamId })
-        },
-
-        // =================================================================
-        // Permissions
-        // =================================================================
-
-        async hasPermission(permission, organizationId) {
-            return request("POST", "/has-permission", { permission, organizationId })
-        },
-    }
+    } as OrganizationClientPlugin
 }
 
 // =============================================================================
@@ -289,9 +757,8 @@ export function organizationClient(options: OrganizationClientOptions = {}): Org
 
 export interface UseOrganizationResult {
     organization: Organization | null
+    member: Member | null
     organizations: Organization[]
-    members: MemberWithUser[]
-    myMembership: Member | null
     isLoading: boolean
     error: Error | null
 

@@ -1,7 +1,6 @@
 // =============================================================================
 // PAYMENT PLUGIN TYPES
 // Provider-based payment integration (Stripe, LemonSqueezy, Paddle, etc.)
-// Follows better-auth patterns with nevr plugin conventions
 // =============================================================================
 
 import type { Driver } from "../../types.js"

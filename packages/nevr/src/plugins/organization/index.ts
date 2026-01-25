@@ -1,7 +1,6 @@
 // =============================================================================
 // ORGANIZATION PLUGIN
 // Multi-tenant organization/workspace support
-// Follows better-auth patterns with nevr conventions
 // =============================================================================
 
 import { createPlugin } from "../unified/index.js"
@@ -20,6 +19,49 @@ import type {
 import { getOrganizationSchema } from "./schema.js"
 import { createOrganizationAdapter } from "./api/internal-adapter.js"
 import { checkPermission } from "./api/middleware.js"
+import {
+    // Organization CRUD
+    createOrganization,
+    updateOrganization,
+    deleteOrganization,
+    setActiveOrganization,
+    getFullOrganization,
+    listOrganizations,
+    checkOrganizationSlug,
+    // Member management
+    addMember,
+    removeMember,
+    updateMemberRole,
+    getActiveMember,
+    getActiveMemberRole,
+    listMembers,
+    leaveOrganization,
+    // Invitation management
+    createInvitation,
+    acceptInvitation,
+    rejectInvitation,
+    cancelInvitation,
+    getInvitation,
+    listInvitations,
+    listUserInvitations,
+    // Team management
+    createTeam,
+    removeTeam,
+    updateTeam,
+    listOrganizationTeams,
+    setActiveTeam,
+    listUserTeams,
+    listTeamMembers,
+    addTeamMember,
+    removeTeamMember,
+    // Access control
+    createOrgRole,
+    deleteOrgRole,
+    listOrgRoles,
+    getOrgRole,
+    updateOrgRole,
+    hasPermissionEndpoint,
+} from "./api/routes/index.js"
 
 // =============================================================================
 // RE-EXPORTS
@@ -190,8 +232,49 @@ export const organization = createPlugin<OrganizationPluginOptions>({
             schema: getOrganizationSchema({ teams: teamsEnabled }),
 
             endpoints: {
-                // Endpoints will be added here
-                // For now, using inline handlers
+                // Organization CRUD
+                createOrganization: createOrganization(routeConfig),
+                updateOrganization: updateOrganization(routeConfig),
+                deleteOrganization: deleteOrganization(routeConfig),
+                setActiveOrganization: setActiveOrganization(routeConfig),
+                getFullOrganization: getFullOrganization(routeConfig),
+                listOrganizations: listOrganizations(routeConfig),
+                checkOrganizationSlug: checkOrganizationSlug(routeConfig),
+                // Member management
+                addMember: addMember(routeConfig),
+                removeMember: removeMember(routeConfig),
+                updateMemberRole: updateMemberRole(routeConfig),
+                getActiveMember: getActiveMember(routeConfig),
+                getActiveMemberRole: getActiveMemberRole(routeConfig),
+                listMembers: listMembers(routeConfig),
+                leaveOrganization: leaveOrganization(routeConfig),
+                // Invitation management
+                createInvitation: createInvitation(routeConfig),
+                acceptInvitation: acceptInvitation(routeConfig),
+                rejectInvitation: rejectInvitation(routeConfig),
+                cancelInvitation: cancelInvitation(routeConfig),
+                getInvitation: getInvitation(routeConfig),
+                listInvitations: listInvitations(routeConfig),
+                listUserInvitations: listUserInvitations(routeConfig),
+                // Team management (conditional)
+                ...(teamsEnabled ? {
+                    createTeam: createTeam(routeConfig),
+                    removeTeam: removeTeam(routeConfig),
+                    updateTeam: updateTeam(routeConfig),
+                    listOrganizationTeams: listOrganizationTeams(routeConfig),
+                    setActiveTeam: setActiveTeam(routeConfig),
+                    listUserTeams: listUserTeams(routeConfig),
+                    listTeamMembers: listTeamMembers(routeConfig),
+                    addTeamMember: addTeamMember(routeConfig),
+                    removeTeamMember: removeTeamMember(routeConfig),
+                } : {}),
+                // Access control
+                createOrgRole: createOrgRole(routeConfig),
+                deleteOrgRole: deleteOrgRole(routeConfig),
+                listOrgRoles: listOrgRoles(routeConfig),
+                getOrgRole: getOrgRole(routeConfig),
+                updateOrgRole: updateOrgRole(routeConfig),
+                hasPermission: hasPermissionEndpoint(routeConfig),
             } as any,
 
             lifecycle: {
@@ -226,6 +309,9 @@ export const organization = createPlugin<OrganizationPluginOptions>({
             $Infer: {
                 Organization: {} as Organization,
                 Member: {} as Member,
+                Team: {} as import("./types.js").Team,
+                Invitation: {} as import("./types.js").Invitation,
+                RoleDefinition: {} as RoleDefinition,
             },
             $ERROR_CODES: {} as typeof import("./error-codes.js").ORGANIZATION_ERROR_CODES,
         }

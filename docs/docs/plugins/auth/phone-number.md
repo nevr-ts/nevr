@@ -107,30 +107,95 @@ For adding phone to existing account:
 POST /auth/phone-number/verify
 ```
 
+### Request Password Reset
+
+```
+POST /auth/phone-number/request-password-reset
+```
+
+**Request:**
+```json
+{
+  "phoneNumber": "+1234567890"
+}
+```
+
+### Reset Password
+
+```
+POST /auth/phone-number/reset-password
+```
+
+**Request:**
+```json
+{
+  "phoneNumber": "+1234567890",
+  "otp": "123456",
+  "newPassword": "new-secure-password"
+}
+```
+
 ## Client Usage
 
 ```typescript
 import { phoneNumberClient } from "nevr/plugins/auth/plugins/phone-number/client"
 
-const client = createClient({
+const client = createTypedClient<API>({
   plugins: [authClient(), phoneNumberClient()],
 })
 
 // Request OTP
-await client.phoneNumber.sendOTP({
-  phoneNumber: "+1234567890",
-})
+await client.phoneNumber.sendOTP({ phoneNumber: "+1234567890" })
 
-// Sign in with OTP
-const { data } = await client.phoneNumber.signIn({
+// Verify phone
+await client.phoneNumber.verify({ phoneNumber: "+1234567890", code: "123456" })
+
+// Sign in with phone
+await client.signIn.phoneNumber({ phoneNumber: "+1234567890", password: "..." })
+
+// Password reset flow
+await client.phoneNumber.requestPasswordReset({ phoneNumber: "+1234567890" })
+await client.phoneNumber.resetPassword({
   phoneNumber: "+1234567890",
-  code: "123456",
+  otp: "123456",
+  newPassword: "new-pass",
 })
 ```
+
+## Rate Limiting
+
+Built-in rate limiting protects against OTP spam. Fully configurable:
+
+```typescript
+// Custom limits
+phoneNumber({
+  sendOTP: async ({ phoneNumber, code }) => {...},
+  rateLimit: { window: 30000, max: 3 }, // 3 per 30s (stricter)
+})
+
+// Higher limits for high-traffic
+phoneNumber({
+  sendOTP: async ({ phoneNumber, code }) => {...},
+  rateLimit: { window: 60000, max: 50 }, // 50/min
+})
+
+// Disable (use external limiter)
+phoneNumber({
+  sendOTP: async ({ phoneNumber, code }) => {...},
+  rateLimit: false,
+})
+```
+
+**Default:** 10 requests per 60 seconds
+
+| Endpoints | Window | Max |
+|-----------|--------|-----|
+| `/phone-number/*`, `/sign-in/phone-number` | 60s | 10 |
 
 ## Schema
 
 The plugin adds:
 - `phoneNumber` field to User (optional, unique)
 - `phoneNumberVerified` field to User
-- `phoneVerification` entity for OTP storage
+- Uses `verification` entity for OTP storage
+

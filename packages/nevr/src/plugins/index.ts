@@ -186,6 +186,29 @@ export { storage } from "./storage/index.js"
 // Payment Plugin
 export { payment } from "./payment/index.js"
 
+// RAG Plugin
+export { rag } from "../rag/plugin.js"
+export type {
+    RAGPluginOptions,
+    HybridSearchOptions,
+    HybridSearchResult,
+} from "../rag/plugin.js"
+
+// AI Gateway Plugin
+export { aiGateway } from "../ai-gateway/plugin.js"
+export type {
+    AIGatewayPluginOptions,
+    AIProviderType,
+    ChatParams,
+    ChatResponse,
+    ChatChunk,
+    TokenUsage,
+    UsageSummary,
+    PlanLimits,
+    ModelInfo,
+} from "../ai-gateway/types.js"
+export { AI_GATEWAY_ERROR_CODES } from "../ai-gateway/error-codes.js"
+
 // Auth Sub-plugins (for use with auth({ plugins: [...] }))
 export { magicLink } from "./auth/plugins/magic-link/index.js"
 export { twoFactor } from "./auth/plugins/two-factor/index.js"

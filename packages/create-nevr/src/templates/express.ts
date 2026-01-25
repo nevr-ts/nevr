@@ -13,15 +13,14 @@ export const expressTemplates = {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "generate": "tsx src/generate.ts",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "generate": "nevr generate",
+    "db:push": "nevr db:push",
+    "db:migrate": "nevr db:migrate",
+    "db:studio": "nevr db:studio"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
-    "@nevr/generator": "^0.3.0",
-    "nevr": "^0.3.0",
+    "nevr": "^0.5.0",
     "dotenv": "^16.4.0",
     "express": "^4.21.0"
   },
@@ -91,41 +90,59 @@ process.on("SIGINT", async () => {
 
   "README.md": (name: string) => `# ${name}
 
-A REST API powered by [NEVR](https://github.com/nevr-ts/nevr) + Express.
+REST API powered by [Nevr](https://github.com/nevr-ts/nevr) + Express.
 
 ## Quick Start
 
 \`\`\`bash
-npm install
-npm run generate
-npm run db:push
-npm run dev
+npm install          # Install dependencies
+npx nevr generate    # Generate Prisma schema
+npx nevr db:push     # Push to database
+npm run dev          # Start server
 \`\`\`
 
-Your API is running at \`http://localhost:3000/api\`
+API: \`http://localhost:3000/api\`
 
-## Project Structure
+## Structure
 
 \`\`\`
-${name}/
-├── src/
-│   ├── entities/      # Entity definitions
-│   ├── plugins/       # Plugin configs
-│   ├── nevr.config.ts # Configuration
-│   ├── generate.ts    # Generator script
-│   └── server.ts      # Express server
-├── prisma/
-│   └── schema.prisma  # Database schema
-└── package.json
+src/
+├── entities/        # Your data models
+├── plugins/         # Plugin configs (if auth enabled)
+├── nevr.config.ts   # Nevr configuration
+└── server.ts        # Express server
 \`\`\`
 
-## Scripts
+## Commands
 
-| Script | Description |
-|--------|-------------|
-| \`npm run dev\` | Start dev server |
-| \`npm run generate\` | Generate Prisma schema |
-| \`npm run db:push\` | Push schema to database |
-| \`npm run db:studio\` | Open Prisma Studio |
+| Command | Alias | Description |
+|---------|-------|-------------|
+| \`npm run generate\` | \`npx nevr generate\` | Generate Prisma schema |
+| \`npm run db:push\` | \`npx nevr db:push\` | Push schema to database |
+| \`npm run db:studio\` | \`npx nevr db:studio\` | Open Prisma Studio |
+| \`npm run dev\` | - | Start dev server |
+
+## Add an Entity
+
+1. Create \`src/entities/post.ts\`:
+\`\`\`typescript
+import { entity, string, text, bool } from "nevr"
+
+export const post = entity("post", {
+  title: string.min(1).max(200),
+  content: text,
+  published: bool.default(false),
+})
+\`\`\`
+
+2. Export in \`src/entities/index.ts\`:
+\`\`\`typescript
+export { post } from "./post.js"
+\`\`\`
+
+3. Regenerate:
+\`\`\`bash
+npx nevr generate && npx nevr db:push
+\`\`\`
 `,
 }

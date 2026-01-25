@@ -1,21 +1,42 @@
 // =============================================================================
 // STORAGE CLIENT
-// Frontend helpers for file upload/download
+// Unified client with plugin pattern + helper utilities
+// Simplifies file uploads to 5 lines of code
 // =============================================================================
 
-import type { RequestUploadInput } from "./api/routes/upload.js"
+import { atom, type WritableAtom } from "nanostores"
+import type {
+    NevrClientPlugin,
+    NevrFetch,
+    NevrFetchResponse,
+    ClientStore,
+} from "../../client/types.js"
+import type { StorageFile } from "./types.js"
+import { STORAGE_ERROR_CODES } from "./error-codes.js"
 
-// -----------------------------------------------------------------------------
-// Types
-// -----------------------------------------------------------------------------
+// =============================================================================
+// TYPES
+// =============================================================================
 
 export interface StorageClientOptions {
-    /** Base URL for the API */
-    baseUrl?: string
-    /** Custom fetch function */
-    fetch?: typeof fetch
-    /** Authorization header getter */
-    getAuthHeader?: () => Promise<string | undefined>
+    /** Base path for storage endpoints (default: /storage) */
+    basePath?: string
+    /** Auto-refresh files after upload/delete */
+    autoRefresh?: boolean
+}
+
+export interface UploadProgress {
+    loaded: number
+    total: number
+    percentage: number
+}
+
+export interface UploadParams {
+    name: string
+    mimeType: string
+    size: number
+    visibility?: "public" | "private"
+    metadata?: Record<string, string>
 }
 
 export interface UploadUrlResponse {
@@ -30,13 +51,20 @@ export interface DownloadUrlResponse {
     url: string
     method: string
     expiresAt: string | null
-    file: {
-        id: string
-        key: string
-        name: string
-        mimeType: string
-        size: number
-    }
+    file: StorageFile
+}
+
+export interface FileListResult {
+    files: StorageFile[]
+    pagination: { limit: number; offset: number; hasMore: boolean }
+}
+
+export interface StorageStats {
+    totalFiles: number
+    totalSize: number
+    byType: Record<string, { count: number; size: number }>
+    publicFiles: number
+    privateFiles: number
 }
 
 export interface FileMetadata {
@@ -51,335 +79,513 @@ export interface FileMetadata {
     updatedAt: string
 }
 
-export interface UploadProgress {
-    loaded: number
-    total: number
-    percentage: number
+// =============================================================================
+// FILES STATE (Reactive)
+// =============================================================================
+
+export interface FilesState {
+    files: StorageFile[]
+    isLoading: boolean
+    error: Error | null
 }
 
-// -----------------------------------------------------------------------------
-// Storage Client
-// -----------------------------------------------------------------------------
+// =============================================================================
+// CLIENT METHODS INTERFACE
+// =============================================================================
+
+export interface StorageClientMethods {
+    /** Request presigned upload URL */
+    requestUpload(params: UploadParams): Promise<NevrFetchResponse<UploadUrlResponse>>
+
+    /** Confirm file upload */
+    confirmUpload(params: { key: string }): Promise<NevrFetchResponse<{ file: StorageFile }>>
+
+    /** Get presigned download URL */
+    getDownloadUrl(params: { key: string; expiresIn?: number }): Promise<NevrFetchResponse<DownloadUrlResponse>>
+
+    /** Get file by ID */
+    getFile(id: string): Promise<NevrFetchResponse<{ file: StorageFile }>>
+
+    /** Delete file by key */
+    deleteFile(params: { key: string }): Promise<NevrFetchResponse<{ success: boolean }>>
+
+    /** List files with pagination */
+    listFiles(params?: { limit?: number; offset?: number; visibility?: string }): Promise<NevrFetchResponse<FileListResult>>
+
+    /** Search files by name */
+    searchFiles(params: { query: string; limit?: number; mimeType?: string }): Promise<NevrFetchResponse<{ files: StorageFile[] }>>
+
+    /** Bulk delete files */
+    bulkDeleteFiles(params: { keys: string[] }): Promise<NevrFetchResponse<{ deleted: string[]; failed: { key: string; reason: string }[] }>>
+
+    /** Get storage stats */
+    getStats(): Promise<NevrFetchResponse<StorageStats>>
+
+    // =========================================================================
+    // SIMPLIFIED HELPERS (5 lines of code!)
+    // =========================================================================
+
+    /**
+     * Upload a file in one call (handles all 3 steps)
+     * 
+     * @example
+     * ```ts
+     * // Just 1 line to upload!
+     * const file = await client.storage.upload(fileInput.files[0], { visibility: "public" })
+     * ```
+     */
+    upload(file: File, options?: {
+        visibility?: "public" | "private"
+        metadata?: Record<string, string>
+        onProgress?: (progress: UploadProgress) => void
+    }): Promise<StorageFile>
+
+    /**
+     * Download a file (opens in new tab or returns blob)
+     * 
+     * @example
+     * ```ts
+     * // Open file in new tab
+     * await client.storage.download(fileKey)
+     * 
+     * // Get as blob
+     * const blob = await client.storage.download(fileKey, { asBlob: true })
+     * ```
+     */
+    download(key: string, options?: { asBlob?: boolean }): Promise<Blob | void>
+
+    /**
+     * Delete a file by key
+     * 
+     * @example
+     * ```ts
+     * await client.storage.delete(fileKey)
+     * ```
+     */
+    delete(key: string): Promise<void>
+}
+
+// =============================================================================
+// CLIENT PLUGIN TYPE
+// =============================================================================
+
+export type StorageClientPlugin = NevrClientPlugin & {
+    readonly $InferTypes: {
+        endpoints: StorageClientMethods
+        $ERROR_CODES: typeof STORAGE_ERROR_CODES
+        File: StorageFile
+    }
+}
+
+// =============================================================================
+// UTILITY FUNCTIONS
+// =============================================================================
 
 /**
- * Create a storage client for frontend usage
+ * Format file size to human readable string
+ * @example formatSize(1024) => "1.0 KB"
+ */
+export function formatSize(bytes: number): string {
+    const units = ["B", "KB", "MB", "GB", "TB"]
+    let unitIndex = 0
+    let size = bytes
+
+    while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024
+        unitIndex++
+    }
+
+    return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`
+}
+
+/** Check if MIME type is an image */
+export function isImage(mimeType: string): boolean {
+    return mimeType.startsWith("image/")
+}
+
+/** Check if MIME type is a video */
+export function isVideo(mimeType: string): boolean {
+    return mimeType.startsWith("video/")
+}
+
+/** Check if MIME type is audio */
+export function isAudio(mimeType: string): boolean {
+    return mimeType.startsWith("audio/")
+}
+
+/** Check if MIME type is a document */
+export function isDocument(mimeType: string): boolean {
+    return (
+        mimeType.startsWith("application/pdf") ||
+        mimeType.startsWith("application/msword") ||
+        mimeType.startsWith("application/vnd.openxmlformats") ||
+        mimeType.startsWith("text/")
+    )
+}
+
+/** Get file extension from name */
+export function getExtension(filename: string): string {
+    return filename.split(".").pop()?.toLowerCase() || ""
+}
+
+/** Get icon name for file type */
+export function getFileIcon(mimeType: string): string {
+    if (isImage(mimeType)) return "image"
+    if (isVideo(mimeType)) return "video"
+    if (isAudio(mimeType)) return "audio"
+    if (mimeType.includes("pdf")) return "pdf"
+    if (mimeType.includes("word") || mimeType.includes("document")) return "doc"
+    if (mimeType.includes("sheet") || mimeType.includes("excel")) return "spreadsheet"
+    if (mimeType.includes("zip") || mimeType.includes("archive")) return "archive"
+    return "file"
+}
+
+// =============================================================================
+// CLIENT PLUGIN FACTORY
+// =============================================================================
+
+/**
+ * Create storage client plugin
  *
  * @example
  * ```ts
- * const storage = createStorageClient({
- *   baseUrl: "/api",
- *   getAuthHeader: async () => `Bearer ${token}`,
+ * import { createTypedClient } from "nevr/client"
+ * import { storageClient } from "nevr/plugins/storage"
+ *
+ * const client = createTypedClient<API>({
+ *   plugins: [storageClient()]
  * })
  *
- * // Upload a file
- * const file = fileInput.files[0]
- * const result = await storage.upload(file, {
- *   visibility: "public",
- *   onProgress: (progress) => console.log(`${progress.percentage}%`),
- * })
+ * // Upload in 1 line!
+ * const file = await client.storage.upload(fileInput.files[0])
  *
- * // Download a file
- * const downloadUrl = await storage.getDownloadUrl(result.key)
- * window.open(downloadUrl.url)
+ * // Download
+ * await client.storage.download(file.key)
  *
- * // Delete a file
- * await storage.delete(result.key)
+ * // Delete
+ * await client.storage.delete(file.key)
  * ```
  */
-export function createStorageClient(options: StorageClientOptions = {}) {
-    const baseUrl = options.baseUrl || ""
-    const customFetch = options.fetch || globalThis.fetch
+export function storageClient(options?: StorageClientOptions): StorageClientPlugin {
+    const basePath = options?.basePath || "/storage"
 
-    async function getHeaders(): Promise<Record<string, string>> {
-        const headers: Record<string, string> = {
-            "Content-Type": "application/json",
-        }
-
-        if (options.getAuthHeader) {
-            const auth = await options.getAuthHeader()
-            if (auth) {
-                headers["Authorization"] = auth
-            }
-        }
-
-        return headers
-    }
-
-    async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-        const headers = await getHeaders()
-        const response = await customFetch(`${baseUrl}/storage${path}`, {
-            ...init,
-            headers: {
-                ...headers,
-                ...init.headers,
-            },
-        })
-
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ message: "Request failed" }))
-            throw new Error(error.message || `Request failed with status ${response.status}`)
-        }
-
-        return response.json()
-    }
+    // Atoms for reactive state
+    let $files: WritableAtom<FilesState>
 
     return {
-        /**
-         * Upload a file
-         */
-        async upload(
-            file: File,
-            options: {
-                visibility?: "public" | "private"
-                metadata?: Record<string, string>
-                onProgress?: (progress: UploadProgress) => void
-            } = {}
-        ): Promise<FileMetadata> {
-            // Step 1: Request upload URL
-            const uploadRequest: RequestUploadInput = {
-                name: file.name,
-                mimeType: file.type || "application/octet-stream",
-                size: file.size,
-                visibility: options.visibility,
-                metadata: options.metadata,
-            }
+        id: "storage-client",
 
-            const { body: uploadData } = await request<{ body: UploadUrlResponse }>("/upload", {
-                method: "POST",
-                body: JSON.stringify(uploadRequest),
+        /**
+         * Path methods for endpoint proxy
+         */
+        pathMethods: {
+            [`${basePath}/upload`]: "POST",
+            [`${basePath}/upload/confirm`]: "POST",
+            [`${basePath}/download`]: "POST",
+            [`${basePath}/file`]: "DELETE",
+            [`${basePath}/files`]: "GET",
+            [`${basePath}/search`]: "POST",
+            [`${basePath}/stats`]: "GET",
+        },
+
+        /**
+         * Get reactive atoms
+         */
+        getAtoms($fetch: NevrFetch) {
+            $files = atom<FilesState>({
+                files: [],
+                isLoading: true,
+                error: null,
             })
 
-            // Step 2: Upload directly to storage (with progress if supported)
-            if (options.onProgress && typeof XMLHttpRequest !== "undefined") {
-                // Use XHR for progress tracking
-                await new Promise<void>((resolve, reject) => {
-                    const xhr = new XMLHttpRequest()
-                    xhr.open(uploadData.method, uploadData.uploadUrl)
+            // Initial fetch
+            refreshFiles($fetch)
 
-                    // Set headers
-                    for (const [key, value] of Object.entries(uploadData.headers)) {
-                        xhr.setRequestHeader(key, value)
+            return {
+                files: $files,
+            }
+
+            async function refreshFiles(fetch: NevrFetch) {
+                $files.set({ ...$files.get(), isLoading: true })
+                try {
+                    const result = await fetch(`${basePath}/files`, { method: "GET" })
+                    if (result.error) {
+                        $files.set({ files: [], error: result.error as any, isLoading: false })
+                    } else {
+                        const data = result.data as FileListResult
+                        $files.set({ files: data?.files || [], error: null, isLoading: false })
                     }
+                } catch (error) {
+                    $files.set({ files: [], error: error as Error, isLoading: false })
+                }
+            }
+        },
 
-                    xhr.upload.onprogress = (event) => {
-                        if (event.lengthComputable && options.onProgress) {
-                            options.onProgress({
-                                loaded: event.loaded,
-                                total: event.total,
-                                percentage: Math.round((event.loaded / event.total) * 100),
-                            })
-                        }
-                    }
-
-                    xhr.onload = () => {
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                            resolve()
-                        } else {
-                            reject(new Error(`Upload failed with status ${xhr.status}`))
-                        }
-                    }
-
-                    xhr.onerror = () => reject(new Error("Upload failed"))
-                    xhr.send(file)
-                })
-            } else {
-                // Use fetch without progress
-                const uploadResponse = await customFetch(uploadData.uploadUrl, {
-                    method: uploadData.method,
-                    headers: uploadData.headers,
-                    body: file,
-                })
-
-                if (!uploadResponse.ok) {
-                    throw new Error(`Upload failed with status ${uploadResponse.status}`)
+        /**
+         * Get action methods
+         */
+        getActions($fetch: NevrFetch, $store: ClientStore) {
+            // Helper to refresh files
+            const refreshFiles = async () => {
+                if ($files) {
+                    $files.set({ ...$files.get(), isLoading: true })
+                    const result = await $fetch(`${basePath}/files`, { method: "GET" })
+                    const data = result.data as FileListResult
+                    $files.set({
+                        files: data?.files || [],
+                        error: result.error as any,
+                        isLoading: false,
+                    })
                 }
             }
 
-            // Step 3: Confirm upload
-            const { body: confirmData } = await request<{ body: { file: FileMetadata } }>("/upload/confirm", {
-                method: "POST",
-                body: JSON.stringify({ key: uploadData.key }),
-            })
+            return {
+                storage: {
+                    // =========================================================
+                    // SIMPLIFIED METHODS (User-facing API)
+                    // =========================================================
 
-            return confirmData.file
-        },
+                    /**
+                     * Upload a file in one call
+                     */
+                    upload: async (
+                        file: File,
+                        opts?: {
+                            visibility?: "public" | "private"
+                            metadata?: Record<string, string>
+                            onProgress?: (progress: UploadProgress) => void
+                        }
+                    ): Promise<StorageFile> => {
+                        // Step 1: Request upload URL
+                        const { data: uploadData, error: uploadError } = await $fetch(
+                            `${basePath}/upload`,
+                            {
+                                method: "POST",
+                                body: {
+                                    name: file.name,
+                                    mimeType: file.type || "application/octet-stream",
+                                    size: file.size,
+                                    visibility: opts?.visibility,
+                                    metadata: opts?.metadata,
+                                },
+                            }
+                        )
 
-        /**
-         * Get a download URL for a file
-         */
-        async getDownloadUrl(key: string, expiresIn?: number): Promise<DownloadUrlResponse> {
-            const { body } = await request<{ body: DownloadUrlResponse }>("/download", {
-                method: "POST",
-                body: JSON.stringify({ key, expiresIn }),
-            })
-            return body
-        },
+                        if (uploadError || !uploadData) {
+                            throw new Error((uploadError as any)?.message || "Failed to get upload URL")
+                        }
 
-        /**
-         * Get file metadata
-         */
-        async getFile(id: string): Promise<FileMetadata> {
-            const { body } = await request<{ body: { file: FileMetadata } }>(`/file/${id}`, {
-                method: "GET",
-            })
-            return body.file
-        },
+                        const upload = uploadData as UploadUrlResponse
 
-        /**
-         * List files with pagination
-         */
-        async listFiles(options?: {
-            limit?: number
-            offset?: number
-            visibility?: "public" | "private"
-        }): Promise<{
-            files: FileMetadata[]
-            pagination: { limit: number; offset: number; hasMore: boolean }
-        }> {
-            const params = new URLSearchParams()
-            if (options?.limit) params.set("limit", String(options.limit))
-            if (options?.offset) params.set("offset", String(options.offset))
-            if (options?.visibility) params.set("visibility", options.visibility)
+                        // Step 2: Upload to presigned URL
+                        if (opts?.onProgress && typeof XMLHttpRequest !== "undefined") {
+                            await new Promise<void>((resolve, reject) => {
+                                const xhr = new XMLHttpRequest()
+                                xhr.open(upload.method, upload.uploadUrl)
 
-            const query = params.toString()
-            const { body } = await request<{ body: { files: FileMetadata[]; pagination: any } }>(
-                `/files${query ? `?${query}` : ""}`,
-                { method: "GET" }
-            )
-            return body
-        },
+                                for (const [key, value] of Object.entries(upload.headers)) {
+                                    xhr.setRequestHeader(key, value)
+                                }
 
-        /**
-         * Search files by name
-         */
-        async searchFiles(query: string, options?: {
-            limit?: number
-            mimeType?: string
-        }): Promise<FileMetadata[]> {
-            const { body } = await request<{ body: { files: FileMetadata[] } }>("/search", {
-                method: "POST",
-                body: JSON.stringify({ query, ...options }),
-            })
-            return body.files
-        },
+                                xhr.upload.onprogress = (event) => {
+                                    if (event.lengthComputable && opts.onProgress) {
+                                        opts.onProgress({
+                                            loaded: event.loaded,
+                                            total: event.total,
+                                            percentage: Math.round((event.loaded / event.total) * 100),
+                                        })
+                                    }
+                                }
 
-        /**
-         * Delete a file
-         */
-        async delete(key: string): Promise<void> {
-            await request("/file", {
-                method: "DELETE",
-                body: JSON.stringify({ key }),
-            })
-        },
+                                xhr.onload = () => {
+                                    if (xhr.status >= 200 && xhr.status < 300) {
+                                        resolve()
+                                    } else {
+                                        reject(new Error(`Upload failed with status ${xhr.status}`))
+                                    }
+                                }
 
-        /**
-         * Delete multiple files
-         */
-        async bulkDelete(keys: string[]): Promise<{
-            deleted: string[]
-            failed: { key: string; reason: string }[]
-        }> {
-            const { body } = await request<{ body: { deleted: string[]; failed: any[] } }>("/files", {
-                method: "DELETE",
-                body: JSON.stringify({ keys }),
-            })
-            return body
-        },
+                                xhr.onerror = () => reject(new Error("Upload failed"))
+                                xhr.send(file)
+                            })
+                        } else {
+                            const response = await fetch(upload.uploadUrl, {
+                                method: upload.method,
+                                headers: upload.headers,
+                                body: file,
+                            })
 
-        /**
-         * Get storage usage statistics
-         */
-        async getStats(): Promise<{
-            totalFiles: number
-            totalSize: number
-            byType: Record<string, { count: number; size: number }>
-            publicFiles: number
-            privateFiles: number
-        }> {
-            const { body } = await request<{ body: any }>("/stats", { method: "GET" })
-            return body
-        },
+                            if (!response.ok) {
+                                throw new Error(`Upload failed with status ${response.status}`)
+                            }
+                        }
 
-        /**
-         * Helper to format file size
-         */
-        formatSize(bytes: number): string {
-            const units = ["B", "KB", "MB", "GB", "TB"]
-            let unitIndex = 0
-            let size = bytes
+                        // Step 3: Confirm upload
+                        const { data: confirmData, error: confirmError } = await $fetch(
+                            `${basePath}/upload/confirm`,
+                            {
+                                method: "POST",
+                                body: { key: upload.key },
+                            }
+                        )
 
-            while (size >= 1024 && unitIndex < units.length - 1) {
-                size /= 1024
-                unitIndex++
+                        if (confirmError || !confirmData) {
+                            throw new Error((confirmError as any)?.message || "Failed to confirm upload")
+                        }
+
+                        // Refresh files list
+                        if (options?.autoRefresh !== false) {
+                            await refreshFiles()
+                        }
+
+                        return (confirmData as { file: StorageFile }).file
+                    },
+
+                    /**
+                     * Download a file
+                     */
+                    download: async (key: string, opts?: { asBlob?: boolean }): Promise<Blob | void> => {
+                        const { data, error } = await $fetch(`${basePath}/download`, {
+                            method: "POST",
+                            body: { key },
+                        })
+
+                        if (error || !data) {
+                            throw new Error((error as any)?.message || "Failed to get download URL")
+                        }
+
+                        const downloadData = data as DownloadUrlResponse
+
+                        if (opts?.asBlob) {
+                            const response = await fetch(downloadData.url)
+                            return response.blob()
+                        } else {
+                            window.open(downloadData.url, "_blank")
+                        }
+                    },
+
+                    /**
+                     * Delete a file
+                     */
+                    delete: async (key: string): Promise<void> => {
+                        const { error } = await $fetch(`${basePath}/file`, {
+                            method: "DELETE",
+                            body: { key },
+                        })
+
+                        if (error) {
+                            throw new Error((error as any)?.message || "Failed to delete file")
+                        }
+
+                        // Refresh files list
+                        if (options?.autoRefresh !== false) {
+                            await refreshFiles()
+                        }
+                    },
+
+                    // =========================================================
+                    // LOW-LEVEL METHODS (For advanced usage)
+                    // =========================================================
+
+                    requestUpload: async (params: UploadParams) => {
+                        return $fetch(`${basePath}/upload`, {
+                            method: "POST",
+                            body: params,
+                        }) as Promise<NevrFetchResponse<UploadUrlResponse>>
+                    },
+
+                    confirmUpload: async (params: { key: string }) => {
+                        const result = await $fetch(`${basePath}/upload/confirm`, {
+                            method: "POST",
+                            body: params,
+                        })
+                        if (options?.autoRefresh !== false) await refreshFiles()
+                        return result as NevrFetchResponse<{ file: StorageFile }>
+                    },
+
+                    getDownloadUrl: async (params: { key: string; expiresIn?: number }) => {
+                        return $fetch(`${basePath}/download`, {
+                            method: "POST",
+                            body: params,
+                        }) as Promise<NevrFetchResponse<DownloadUrlResponse>>
+                    },
+
+                    getFile: async (id: string) => {
+                        return $fetch(`${basePath}/file/${id}`, {
+                            method: "GET",
+                        }) as Promise<NevrFetchResponse<{ file: StorageFile }>>
+                    },
+
+                    deleteFile: async (params: { key: string }) => {
+                        const result = await $fetch(`${basePath}/file`, {
+                            method: "DELETE",
+                            body: params,
+                        })
+                        if (options?.autoRefresh !== false) await refreshFiles()
+                        return result as NevrFetchResponse<{ success: boolean }>
+                    },
+
+                    listFiles: async (params?: { limit?: number; offset?: number; visibility?: string }) => {
+                        return $fetch(`${basePath}/files`, {
+                            method: "GET",
+                            query: params as Record<string, string> | undefined,
+                        }) as Promise<NevrFetchResponse<FileListResult>>
+                    },
+
+                    searchFiles: async (params: { query: string; limit?: number; mimeType?: string }) => {
+                        return $fetch(`${basePath}/search`, {
+                            method: "POST",
+                            body: params,
+                        }) as Promise<NevrFetchResponse<{ files: StorageFile[] }>>
+                    },
+
+                    bulkDeleteFiles: async (params: { keys: string[] }) => {
+                        const result = await $fetch(`${basePath}/files`, {
+                            method: "DELETE",
+                            body: params,
+                        })
+                        if (options?.autoRefresh !== false) await refreshFiles()
+                        return result as NevrFetchResponse<{ deleted: string[]; failed: { key: string; reason: string }[] }>
+                    },
+
+                    getStats: async () => {
+                        return $fetch(`${basePath}/stats`, {
+                            method: "GET",
+                        }) as Promise<NevrFetchResponse<StorageStats>>
+                    },
+                },
             }
-
-            return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`
         },
 
-        /**
-         * Helper to check if MIME type is an image
-         */
-        isImage(mimeType: string): boolean {
-            return mimeType.startsWith("image/")
+        // Type inference for SDK
+        $InferTypes: {
+            endpoints: {} as StorageClientMethods,
+            $ERROR_CODES: STORAGE_ERROR_CODES,
+            File: {} as StorageFile,
         },
-
-        /**
-         * Helper to check if MIME type is a video
-         */
-        isVideo(mimeType: string): boolean {
-            return mimeType.startsWith("video/")
-        },
-
-        /**
-         * Helper to check if MIME type is audio
-         */
-        isAudio(mimeType: string): boolean {
-            return mimeType.startsWith("audio/")
-        },
-
-        /**
-         * Helper to check if MIME type is a document
-         */
-        isDocument(mimeType: string): boolean {
-            return (
-                mimeType.startsWith("application/pdf") ||
-                mimeType.startsWith("application/msword") ||
-                mimeType.startsWith("application/vnd.openxmlformats") ||
-                mimeType.startsWith("text/")
-            )
-        },
-    }
+    } as StorageClientPlugin
 }
 
-// -----------------------------------------------------------------------------
-// React Hooks (if React is available)
-// -----------------------------------------------------------------------------
+// =============================================================================
+// REACT HOOKS
+// =============================================================================
 
 /**
- * React hook for file uploads with progress tracking
+ * React hook factory for file uploads with progress
  *
  * @example
  * ```tsx
- * function UploadButton() {
- *   const { upload, progress, isUploading, error } = useFileUpload({
- *     baseUrl: "/api",
- *   })
+ * const useFileUpload = createUseFileUpload(React)
+ *
+ * function UploadButton({ client }) {
+ *   const { upload, progress, isUploading } = useFileUpload(client)
  *
  *   return (
- *     <div>
- *       <input
- *         type="file"
- *         onChange={(e) => {
- *           if (e.target.files?.[0]) {
- *             upload(e.target.files[0], { visibility: "public" })
- *           }
- *         }}
- *         disabled={isUploading}
- *       />
- *       {isUploading && <progress value={progress} max={100} />}
- *       {error && <p>Error: {error.message}</p>}
- *     </div>
+ *     <input
+ *       type="file"
+ *       onChange={(e) => upload(e.target.files[0])}
+ *       disabled={isUploading}
+ *     />
  *   )
  * }
  * ```
@@ -390,18 +596,16 @@ export function createUseFileUpload(React: {
 }) {
     const { useState, useCallback } = React
 
-    return function useFileUpload(options: StorageClientOptions = {}) {
+    return function useFileUpload(client: { storage: StorageClientMethods }) {
         const [isUploading, setIsUploading] = useState(false)
         const [progress, setProgress] = useState(0)
         const [error, setError] = useState(null as Error | null)
-        const [uploadedFile, setUploadedFile] = useState(null as FileMetadata | null)
-
-        const client = createStorageClient(options)
+        const [uploadedFile, setUploadedFile] = useState(null as StorageFile | null)
 
         const upload = useCallback(
             async (
                 file: File,
-                uploadOptions?: {
+                options?: {
                     visibility?: "public" | "private"
                     metadata?: Record<string, string>
                 }
@@ -412,8 +616,8 @@ export function createUseFileUpload(React: {
                 setUploadedFile(null)
 
                 try {
-                    const result = await client.upload(file, {
-                        ...uploadOptions,
+                    const result = await client.storage.upload(file, {
+                        ...options,
                         onProgress: (p) => setProgress(p.percentage),
                     })
                     setUploadedFile(result)
@@ -447,8 +651,8 @@ export function createUseFileUpload(React: {
     }
 }
 
-// -----------------------------------------------------------------------------
-// Exports
-// -----------------------------------------------------------------------------
+// =============================================================================
+// EXPORTS
+// =============================================================================
 
-export default createStorageClient
+export default storageClient

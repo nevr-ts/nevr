@@ -84,11 +84,11 @@ Redirects to callback URL with session cookie set.
 ## Client Usage
 
 ```typescript
-import { createClient } from "nevr/client"
+import { createTypedClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
 import { magicLinkClient } from "nevr/plugins/auth/plugins/magic-link/client"
 
-const client = createClient({
+const client = createTypedClient<API>({
   baseURL: "/api",
   plugins: [authClient(), magicLinkClient()],
 })
@@ -105,4 +105,28 @@ await client.auth.sendMagicLink({
 
 - Tokens are single-use and expire after configured time
 - Links are cryptographically signed
-- Rate limiting recommended on send endpoint
+
+## Rate Limiting
+
+Built-in rate limiting protects against abuse. Fully configurable:
+
+```typescript
+// Custom limits
+magicLink({
+  sendMagicLink: async ({ email, url }) => {...},
+  rateLimit: { window: 60000, max: 3 }, // 3/min (stricter)
+})
+
+// Disable (use external limiter)
+magicLink({
+  sendMagicLink: async ({ email, url }) => {...},
+  rateLimit: false,
+})
+```
+
+**Default:** 5 requests per 60 seconds
+
+| Endpoints | Window | Max |
+|-----------|--------|-----|
+| `/sign-in/magic-link`, `/magic-link/verify` | 60s | 5 |
+

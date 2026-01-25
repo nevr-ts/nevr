@@ -15,18 +15,18 @@ export type {
   EntityConfig,
   Operation,
 
-  // Entity Actions (Pillar 1 integration)
+  // Entity Actions 
   EntityAction,
   EntityActionContext,
   EntityWorkflowConfig,
   EntityWorkflowStep,
 
-  // Cross-Field Validation (Tier 2)
+  // Cross-Field Validation 
   EntityValidator,
   EntityValidatorFn,
   EntityValidatorContext,
 
-  // Field-Level Access Policies (Tier 2)
+  // Field-Level Access Policies 
   FieldAccessPolicy,
   FieldAccessPolicyRule,
   FieldAccessPolicyFn,
@@ -589,13 +589,20 @@ export type {
 // Direct imports avoid loading optional dependencies when not needed
 
 // =============================================================================
+// CONFIG (For nevr.config.ts files)
+// =============================================================================
+
+export { defineConfig } from "./config.js"
+export type { NevrConfig as DefineConfigType, ConfigPlugin } from "./config.js"
+
+// =============================================================================
 // TYPE INFERENCE (E2E Type Safety)
 // =============================================================================
 // These exports enable end-to-end type inference from server to client
 // Similar to better-auth's $Infer pattern or tRPC's type inference
 
 export {
-  defineConfig,
+  defineConfig as defineServerConfig, // Renamed to avoid conflict with CLI config
 } from "./plugins/core/inference.js"
 
 export type {

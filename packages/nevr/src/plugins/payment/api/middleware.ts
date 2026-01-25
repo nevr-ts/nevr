@@ -1,7 +1,6 @@
 // =============================================================================
 // PAYMENT MIDDLEWARE
 // Reference authorization and session middleware
-// Follows better-auth patterns
 // =============================================================================
 
 import { createMiddleware, EndpointError } from "../../unified/endpoint.js"

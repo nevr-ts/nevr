@@ -234,6 +234,45 @@ export interface AuthPluginOptions {
      * ```
      */
     plugins?: AuthSubPlugin[]
+
+    /**
+     * Rate limiting configuration
+     * Set to `false` to disable all rate limiting
+     * 
+     * @example
+     * ```ts
+     * auth({
+     *   rateLimit: {
+     *     // Adjust limits per endpoint type
+     *     signIn: { window: 60000, max: 5 },  // 5 attempts per minute
+     *     signUp: { window: 300000, max: 3 }, // 3 signups per 5 minutes
+     *     passwordReset: { window: 60000, max: 3 },
+     *   }
+     * })
+     * ```
+     */
+    rateLimit?: false | {
+        /**
+         * Rate limit for sign-in endpoints
+         * @default { window: 60000, max: 10 }
+         */
+        signIn?: { window?: number; max?: number }
+        /**
+         * Rate limit for sign-up endpoints
+         * @default { window: 60000, max: 10 }
+         */
+        signUp?: { window?: number; max?: number }
+        /**
+         * Rate limit for password reset endpoints
+         * @default { window: 60000, max: 5 }
+         */
+        passwordReset?: { window?: number; max?: number }
+        /**
+         * Rate limit for email verification endpoints
+         * @default { window: 60000, max: 5 }
+         */
+        emailVerification?: { window?: number; max?: number }
+    }
 }
 
 /**

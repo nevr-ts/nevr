@@ -1,7 +1,6 @@
 // =============================================================================
 // ORGANIZATION PLUGIN SCHEMA
 // Entity definitions for multi-tenant organization support
-// Follows better-auth patterns with nevr conventions
 // =============================================================================
 
 import { string, datetime, json } from "../../index.js"

@@ -13,12 +13,7 @@ export const baseTemplates = {
     "strict": true,
     "skipLibCheck": true,
     "outDir": "./dist",
-    "rootDir": "./src",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"],
-      "@entities/*": ["./src/entities/*"]
-    }
+    "rootDir": "./src"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
@@ -63,128 +58,71 @@ prisma/migrations
   },
 
   "src/entities/index.ts": () => `// =============================================================================
+  // EXAMPLE ENTITY
+// =============================================================================
+// Example: post.ts
+
+// import { entity, string, text, bool } from "nevr"
+
+// export const post = entity("post", {
+//   title: string.min(1).max(200),
+//   content: text,
+//   published: bool.default(false),
+// })
+//   .rules({
+//     list: ["everyone"],
+//     create: ["authenticated"],
+//     update: ["owner"],
+//     delete: ["owner"],
+//   })
+// =============================================================================
 // ENTITY EXPORTS
 // Add your entities here after creating them
 // =============================================================================
-
-// Example: Create src/entities/post.ts and export it here
+// Export your entities:
 // export { post } from "./post.js"
 `,
 
-  "src/entities/.gitkeep": () => `# Your custom entities go here
-# Example: post.ts
-
-# import { entity, string, text, bool, belongsTo } from "nevr"
-#
-# export const post = entity("post", {
-#   title: string.min(1).max(200),
-#   body: text,
-#   published: bool.default(false),
-# })
-`,
-
-  "src/hooks/.gitkeep": () => `# Custom lifecycle hooks go here`,
-
-  "src/routes/.gitkeep": () => `# Custom routes go here (non-CRUD endpoints)`,
-
-  "src/middleware/.gitkeep": () => `# Custom middleware go here`,
-
-  "src/utils/.gitkeep": () => `# Utility functions go here`,
-
   "src/plugins/auth.ts": () => `// =============================================================================
-// AUTH PLUGIN CONFIGURATION
-// Auth entities (User, Session, Account, Verification) are auto-registered!
+// AUTH PLUGIN
+// Provides: User, Session, Account, Verification entities + auth endpoints
 // =============================================================================
 
 import { auth } from "nevr/plugins/auth"
 
 export const authPlugin = auth({
-  // Secret for signing session tokens (from .env)
   secret: process.env.AUTH_SECRET || "dev-secret-change-in-production",
-  
-  // Email/Password authentication
+
   emailAndPassword: {
     enabled: true,
-    // minPasswordLength: 8,
-    // requireEmailVerification: false,
   },
-  
-  // Session configuration
+
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days
     updateAge: 60 * 60 * 24,     // 1 day
   },
-  
-  // OAuth providers (uncomment and add credentials to enable)
-  // socialProviders: {
-  //   google: {
-  //     clientId: process.env.GOOGLE_CLIENT_ID || "",
-  //     clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-  //   },
-  //   github: {
-  //     clientId: process.env.GITHUB_CLIENT_ID || "",
-  //     clientSecret: process.env.GITHUB_CLIENT_SECRET || "",
-  //   },
-  // },
 })
 `,
 
   "src/plugins/index.ts": () => `// =============================================================================
-// PLUGIN EXPORTS
+// PLUGINS
 // =============================================================================
 
 export { authPlugin } from "./auth.js"
 `,
 
   "src/nevr.config.ts": (db: string, withAuth: boolean) => `// =============================================================================
-// NEVR CONFIGURATION
-// Auth plugin entities are auto-registered when the plugin is imported!
+// NEVR CONFIG
+// Run: npx nevr generate
 // =============================================================================
 
+import { defineConfig } from "nevr"
 import * as entities from "./entities/index.js"
 ${withAuth ? `import { authPlugin } from "./plugins/index.js"\n` : ""}
-const entityArray = Object.values(entities).filter(e => e && typeof e === "object")
-
-export const config = {
-  database: "${db}" as const,
-  entities: entityArray,
-  plugins: [${withAuth ? `
-    authPlugin,` : ""}
-  ],
-}
-
-export default config
-`,
-
-  "src/generate.ts": (db: string, withAuth: boolean) => `// =============================================================================
-// GENERATOR SCRIPT
-// Run: npm run generate
-// =============================================================================
-
-import "dotenv/config"
-import { generate } from "@nevr/generator"
-import { config } from "./nevr.config.js"
-${withAuth ? `
-// Import auth entities directly (auto-registered when auth module is imported)
-import { userEntity, sessionEntity, accountEntity, verificationEntity } from "nevr/plugins/auth"
-const authEntities = [userEntity, sessionEntity, accountEntity, verificationEntity]
-` : "const authEntities: any[] = []"}
-
-const allEntities = [...config.entities, ...authEntities]
-
-const entityNames = allEntities.map((e: any) => e.name || e._name)
-const duplicates = entityNames.filter((name: string, i: number) => entityNames.indexOf(name) !== i)
-if (duplicates.length > 0) {
-  console.error(\`❌ Entity name collision: \${duplicates.join(", ")}\`)
-  process.exit(1)
-}
-
-console.log("📦 Generating schema for entities:")
-entityNames.forEach((name: string) => console.log(\`   - \${name}\`))
-
-generate(allEntities, {
-  outDir: "./prisma",
-  prismaProvider: "${db}",
+export default defineConfig({
+  database: "${db}",
+  entities: Object.values(entities).filter(e => e && typeof e === "object"),
+  plugins: [${withAuth ? "authPlugin" : ""}],
 })
 `,
 }

@@ -1,7 +1,6 @@
 // =============================================================================
 // PAYMENT HOOKS
 // Hook system for payment plugin extensibility
-// Follows better-auth patterns
 // =============================================================================
 
 import type {

@@ -1,6 +1,6 @@
 # Storage Plugin
 
-File storage with S3-compatible and local filesystem providers.
+File storage with S3-compatible providers (AWS S3, Cloudflare R2, MinIO) and local filesystem.
 
 ## Installation
 
@@ -13,19 +13,21 @@ const api = nevr({
     storage({
       provider: "s3",
       s3: {
-        bucket: process.env.S3_BUCKET,
-        region: process.env.S3_REGION,
-        accessKeyId: process.env.S3_ACCESS_KEY,
-        secretAccessKey: process.env.S3_SECRET_KEY,
+        bucket: process.env.S3_BUCKET!,
+        region: process.env.S3_REGION!,
+        accessKeyId: process.env.S3_ACCESS_KEY!,
+        secretAccessKey: process.env.S3_SECRET_KEY!,
       },
     }),
   ],
 })
+
+export type API = typeof api
 ```
 
 ## Configuration
 
-### S3 Provider
+### AWS S3
 
 ```typescript
 storage({
@@ -35,34 +37,10 @@ storage({
     region: "us-east-1",
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    endpoint: "https://s3.amazonaws.com", // Optional, for S3-compatible
   },
-
-  // File restrictions
   maxFileSize: 10 * 1024 * 1024, // 10MB
   allowedMimeTypes: ["image/*", "application/pdf"],
-
-  // Path prefix
-  pathPrefix: "uploads",
-
-  // Public or private files
-  public: false,
-
-  // Signed URL expiration (for private files)
-  signedUrlExpiration: 3600, // 1 hour
-})
-```
-
-### Local Provider
-
-```typescript
-storage({
-  provider: "local",
-  local: {
-    directory: "./uploads",
-    baseUrl: "/files",
-  },
-  maxFileSize: 10 * 1024 * 1024,
+  defaultVisibility: "private",
 })
 ```
 
@@ -77,128 +55,210 @@ storage({
     endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,
     accessKeyId: process.env.R2_ACCESS_KEY,
     secretAccessKey: process.env.R2_SECRET_KEY,
+    publicUrlBase: "https://pub-xxx.r2.dev",
+  },
+})
+```
+
+### Local Provider (Development)
+
+```typescript
+storage({
+  provider: "local",
+  local: {
+    basePath: "./uploads",
+    publicUrlBase: "http://localhost:3000/files",
+  },
+})
+```
+
+## Client Usage
+
+### Setup
+
+```typescript
+import { createTypedClient } from "nevr/client"
+import { storageClient } from "nevr/plugins/storage"
+import type { API } from "./api"
+
+export const client = createTypedClient<API>({
+  baseURL: "http://localhost:3000",
+  plugins: [storageClient()],
+})
+```
+
+### Upload a File (1 Line!)
+
+```typescript
+// Upload with automatic 3-step flow
+const file = await client.storage.upload(fileInput.files[0], {
+  visibility: "public",
+})
+
+console.log(file.url) // Public URL
+```
+
+### Upload with Progress
+
+```typescript
+const file = await client.storage.upload(fileInput.files[0], {
+  visibility: "public",
+  onProgress: (progress) => {
+    console.log(`${progress.percentage}%`)
+  },
+})
+```
+
+### Download a File
+
+```typescript
+// Open in new tab
+await client.storage.download(file.key)
+
+// Get as blob
+const blob = await client.storage.download(file.key, { asBlob: true })
+```
+
+### Delete a File
+
+```typescript
+await client.storage.delete(file.key)
+```
+
+### List Files
+
+```typescript
+const { data } = await client.storage.listFiles({
+  limit: 20,
+  offset: 0,
+  visibility: "public",
+})
+
+for (const file of data.files) {
+  console.log(file.name, formatSize(file.size))
+}
+```
+
+### Search Files
+
+```typescript
+const { data } = await client.storage.searchFiles({
+  query: "avatar",
+  mimeType: "image/*",
+})
+```
+
+### Get Stats
+
+```typescript
+const { data } = await client.storage.getStats()
+console.log(`Total: ${formatSize(data.totalSize)}`)
+```
+
+## Reactive State
+
+The storage client provides reactive state via nanostores:
+
+```typescript
+import { useStore } from "@nanostores/react"
+
+function FileList() {
+  const { files, isLoading } = useStore(client.$atoms.files)
+
+  if (isLoading) return <Loading />
+
+  return (
+    <ul>
+      {files.map((file) => (
+        <li key={file.id}>{file.name}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+## React Hook
+
+```typescript
+import { createUseFileUpload } from "nevr/plugins/storage"
+import React from "react"
+
+const useFileUpload = createUseFileUpload(React)
+
+function UploadButton() {
+  const { upload, progress, isUploading, uploadedFile } = useFileUpload(client)
+
+  return (
+    <div>
+      <input
+        type="file"
+        onChange={(e) => upload(e.target.files[0], { visibility: "public" })}
+        disabled={isUploading}
+      />
+      {isUploading && <progress value={progress} max={100} />}
+      {uploadedFile && <p>Uploaded: {uploadedFile.name}</p>}
+    </div>
+  )
+}
+```
+
+## Utility Functions
+
+```typescript
+import { 
+  formatSize, 
+  isImage, 
+  isVideo, 
+  isAudio, 
+  isDocument,
+  getFileIcon,
+} from "nevr/plugins/storage"
+
+formatSize(1048576)       // "1.0 MB"
+isImage("image/png")      // true
+isVideo("video/mp4")      // true
+isDocument("application/pdf") // true
+getFileIcon("image/png")  // "image"
+```
+
+## Hooks (Server-side)
+
+```typescript
+storage({
+  hooks: {
+    beforeUpload: async (file, userId) => {
+      if (file.size > 5 * 1024 * 1024) {
+        return null // Reject
+      }
+      return file
+    },
+    
+    afterUpload: async (file, driver) => {
+      // Generate thumbnail, notify user, etc.
+      console.log(`Uploaded: ${file.key}`)
+    },
+    
+    beforeDelete: async (file, userId) => {
+      // Return false to prevent deletion
+      return true
+    },
   },
 })
 ```
 
 ## Endpoints
 
-### Upload File
-
-```
-POST /storage/upload
-Content-Type: multipart/form-data
-```
-
-**Form Data:**
-- `file`: The file to upload
-- `path`: Optional path/filename
-
-**Response:**
-```json
-{
-  "id": "file_abc123",
-  "key": "uploads/image.png",
-  "url": "https://bucket.s3.amazonaws.com/uploads/image.png",
-  "size": 12345,
-  "mimeType": "image/png",
-  "createdAt": "..."
-}
-```
-
-### Get Signed URL
-
-For private files:
-
-```
-POST /storage/signed-url
-```
-
-**Request:**
-```json
-{
-  "key": "uploads/private-doc.pdf",
-  "expiresIn": 3600
-}
-```
-
-**Response:**
-```json
-{
-  "url": "https://bucket.s3.amazonaws.com/uploads/private-doc.pdf?X-Amz-...",
-  "expiresAt": "..."
-}
-```
-
-### Delete File
-
-```
-DELETE /storage/files/:key
-```
-
-### List Files
-
-```
-GET /storage/files?prefix=uploads/&limit=20
-```
-
-## Client Usage
-
-```typescript
-import { createClient } from "nevr/client"
-import { storageClient } from "nevr/plugins/storage/client"
-
-const client = createClient({
-  baseURL: "/api",
-  plugins: [storageClient()],
-})
-
-// Upload file
-const file = document.getElementById("fileInput").files[0]
-const { data } = await client.storage.upload(file, {
-  path: "avatars/user-123.png",
-})
-console.log(data.url)
-
-// Get signed URL for private file
-const { data: signed } = await client.storage.getSignedUrl({
-  key: "documents/contract.pdf",
-  expiresIn: 3600,
-})
-
-// Delete file
-await client.storage.delete("avatars/old-avatar.png")
-
-// List files
-const { data: files } = await client.storage.list({
-  prefix: "avatars/",
-  limit: 20,
-})
-```
-
-## Hooks
-
-```typescript
-storage({
-  // Before upload validation
-  onBeforeUpload: async ({ file, user }) => {
-    if (file.size > 5 * 1024 * 1024) {
-      throw new Error("File too large")
-    }
-  },
-
-  // After upload processing
-  onAfterUpload: async ({ file, key, url }) => {
-    // Generate thumbnail, update database, etc.
-    await processImage(key)
-  },
-
-  // Before delete validation
-  onBeforeDelete: async ({ key, user }) => {
-    // Check permissions
-  },
-})
-```
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/storage/upload` | POST | Request presigned upload URL |
+| `/storage/upload/confirm` | POST | Confirm upload completed |
+| `/storage/download` | POST | Get presigned download URL |
+| `/storage/file/:id` | GET | Get file metadata |
+| `/storage/file` | DELETE | Delete a file |
+| `/storage/files` | GET | List files |
+| `/storage/files` | DELETE | Bulk delete files |
+| `/storage/search` | POST | Search files |
+| `/storage/stats` | GET | Get storage stats |
 
 ## Schema
 
@@ -208,17 +268,22 @@ storage({
 |-------|------|-------------|
 | id | string | Unique identifier |
 | key | string | Storage key/path |
-| bucket | string | Bucket name |
-| size | number | File size in bytes |
+| name | string | Original filename |
 | mimeType | string | MIME type |
-| url | string | Public URL (if public) |
+| size | number | Size in bytes |
+| visibility | string | "public" or "private" |
+| url | string? | Public URL (if public) |
 | userId | string? | Uploader reference |
 | metadata | json? | Custom metadata |
 | createdAt | datetime | Upload timestamp |
+| updatedAt | datetime | Last modified |
 
-## Security
+## Type Inference
 
-- Files are validated before upload (size, type)
-- Private files require signed URLs
-- User authentication recommended for uploads
-- Consider rate limiting upload endpoints
+```typescript
+// Get plugin types
+type File = typeof api.$Infer.storage.File
+
+// Access error codes
+import { STORAGE_ERROR_CODES } from "nevr/plugins/storage"
+```

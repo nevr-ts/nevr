@@ -1,7 +1,6 @@
 // =============================================================================
 // PAYMENT PLUGIN SCHEMA
 // Entity definitions for payment/subscription management
-// Follows better-auth stripe schema patterns
 // =============================================================================
 
 import { string, int, bool, datetime, json } from "../../index.js"
