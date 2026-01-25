@@ -286,7 +286,7 @@ Nevr works with your favorite tools:
 |---------|-------------|
 | [`nevr`](https://www.npmjs.com/package/nevr) | Core framework |
 | [`@nevr/cli`](https://www.npmjs.com/package/@nevr/cli) | CLI for development |
-| [`@nevr/generator`](https://www.npmjs.com/package/@nevr/generator) | Schema & type generator |
+| [`nevr/generator`](https://www.npmjs.com/package/nevr/generator) | Schema & type generator |
 | [`create-nevr`](https://www.npmjs.com/package/create-nevr) | Project scaffolder |
 
 ---

@@ -15,7 +15,7 @@ OpenAPI (formerly Swagger) provides:
 ## Quick Start
 
 ```typescript
-import { generateOpenAPI } from "@nevr/generator"
+import { generateOpenAPI } from "nevr/generator"
 import { user, post, order } from "./entities"
 
 const spec = generateOpenAPI([user, post, order], {
@@ -184,8 +184,37 @@ const spec = generateOpenAPI(entities, {
 Generate from command line:
 
 ```bash
-npx nevr generate:openapi --out ./docs/openapi.json
+# Generate JSON (default)
+npx nevr openapi
+
+# Generate YAML
+npx nevr openapi --format yaml
+
+# Custom output path
+npx nevr openapi -o ./docs/api-spec.json
+
+# With custom title and version
+npx nevr openapi --title "My API" --version "2.0.0"
+
+# Full example
+npx nevr openapi \
+  --format yaml \
+  -o ./docs/openapi.yaml \
+  --title "E-Commerce API" \
+  --base-path "/v1"
 ```
+
+### CLI Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-o, --output <path>` | `openapi.json` | Output file path |
+| `--format <fmt>` | `json` | Format: `json` or `yaml` |
+| `--title <title>` | `Nevr API` | API title |
+| `--version <ver>` | `1.0.0` | API version |
+| `--base-path <path>` | `/api` | Base path for routes |
+
+See [CLI Reference](/cli/openapi) for more details.
 
 ---
 

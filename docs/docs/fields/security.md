@@ -1,6 +1,6 @@
 # Field Security
 
-Nevr provides built-in security features for sensitive data: password hashing, field omission from responses, and encryption at rest. These features are applied automatically during read/write operations.
+> Nevr provides built-in security features for sensitive data: password hashing, field omission from responses, and encryption at rest. These features are applied automatically during read/write operations.
 
 ## Password Hashing
 

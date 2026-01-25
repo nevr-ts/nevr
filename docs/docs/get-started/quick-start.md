@@ -11,7 +11,7 @@ cd my-api
 
 Follow the prompts to select your preferred:
 - **Database**: SQLite (default), PostgreSQL, or MySQL
-- **HTTP Framework**: Express (default) or Hono
+- **HTTP Framework**: NextJs, Express, or Hono
 
 ### CLI Options Reference
 
@@ -34,9 +34,8 @@ After creation, you'll have:
 ```
 my-api/
 ├── src/
-│   ├── entities/
-│   │   └── user.ts          # Your entity definitions
-│   ├── config.ts             # Nevr configuration
+│   ├── entities/ # Your entity definitions
+│   ├── nevr_config.ts             # Nevr configuration
 │   └── server.ts             # HTTP server entry point
 ├── prisma/
 │   └── schema.prisma         # Generated Prisma schema
@@ -49,8 +48,8 @@ my-api/
 | File | Purpose |
 |------|---------|
 | `src/entities/*.ts` | Entity definitions (source of truth) |
-| `src/config.ts` | Nevr instance configuration |
-| `src/server.ts` | HTTP adapter setup |
+| `src/nevr_config.ts` | Nevr configuration for generating Prisma schema |
+| `src/server.ts` | HTTP adapter setup and Nevr instance initialization |
 | `prisma/schema.prisma` | Auto-generated database schema |
 
 ## Start Development
@@ -140,6 +139,7 @@ curl "http://localhost:3000/api/users?include=posts"
 | `filter` | `?filter` | Filter conditions |
 | `sort` | `?sort` | Sort order |
 | `include` | `?include=relation` | Include related records |
+| `select` | `?select=field1,field2` | Select specific fields |
 ### Get a Single User
 
 ```bash
@@ -191,18 +191,16 @@ export const post = entity("post", {
 | `hasMany` | `hasMany(() => Entity)` | One-to-many relation |
 | `hasOne` | `hasOne(() => Entity)` | One-to-one relation |
 
-Register it in `src/config.ts`:
+Register it in `src/nevr_config.ts`:
 
 ```typescript
-import { nevr } from "nevr"
-import { prisma } from "nevr/drivers/prisma"
-import { PrismaClient } from "@prisma/client"
+import { defineConfig } from "nevr"
 import { user } from "./entities/user"
 import { post } from "./entities/post"  // [!code ++]
 
-export const api = nevr({
+export default defineConfig({
+  db: "sqlite",
   entities: [user, post],  // [!code highlight]
-  driver: prisma(new PrismaClient()),
 })
 ```
 
