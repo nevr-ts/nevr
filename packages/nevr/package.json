@@ -38,6 +38,10 @@
       "import": "./dist/adapters/hono.js",
       "types": "./dist/adapters/hono.d.ts"
     },
+    "./adapters/nextjs": {
+      "import": "./dist/adapters/nextjs/index.js",
+      "types": "./dist/adapters/nextjs/index.d.ts"
+    },
     "./drivers": {
       "import": "./dist/drivers/index.js",
       "types": "./dist/drivers/index.d.ts"
@@ -113,6 +117,38 @@
     "./plugins/payment": {
       "import": "./dist/plugins/payment/index.js",
       "types": "./dist/plugins/payment/index.d.ts"
+    },
+    "./plugins/rag": {
+      "import": "./dist/rag/index.js",
+      "types": "./dist/rag/index.d.ts"
+    },
+    "./rag": {
+      "import": "./dist/rag/index.js",
+      "types": "./dist/rag/index.d.ts"
+    },
+    "./plugins/ai-gateway": {
+      "import": "./dist/ai-gateway/index.js",
+      "types": "./dist/ai-gateway/index.d.ts"
+    },
+    "./plugins/ai-gateway/client": {
+      "import": "./dist/ai-gateway/client.js",
+      "types": "./dist/ai-gateway/client.d.ts"
+    },
+    "./ai-gateway": {
+      "import": "./dist/ai-gateway/index.js",
+      "types": "./dist/ai-gateway/index.d.ts"
+    },
+    "./ai-gateway/client": {
+      "import": "./dist/ai-gateway/client.js",
+      "types": "./dist/ai-gateway/client.d.ts"
+    },
+    "./generator": {
+      "import": "./dist/generator/index.js",
+      "types": "./dist/generator/index.d.ts"
+    },
+    "./config": {
+      "import": "./dist/config.js",
+      "types": "./dist/config.d.ts"
     }
   },
   "scripts": {
@@ -150,6 +186,7 @@
     "@prisma/client": ">=5.0.0",
     "express": ">=4.0.0",
     "hono": ">=4.0.0",
+    "next": ">=13.0.0",
     "react": ">=18.0.0",
     "stripe": "^20.1.2"
   },
@@ -164,6 +201,9 @@
       "optional": true
     },
     "hono": {
+      "optional": true
+    },
+    "next": {
       "optional": true
     },
     "react": {
