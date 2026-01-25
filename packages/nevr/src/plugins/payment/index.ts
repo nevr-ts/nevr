@@ -1,7 +1,6 @@
 // =============================================================================
 // PAYMENT PLUGIN
 // Provider-based payment integration (Stripe, LemonSqueezy, Paddle)
-// Follows better-auth stripe patterns with nevr plugin conventions
 // =============================================================================
 
 import { createPlugin } from "../unified/facade.js"
@@ -18,6 +17,16 @@ import { getPaymentSchema } from "./schema.js"
 import { createStripeProvider, createMockStripeProvider } from "./providers/stripe.js"
 import { createPaymentAdapter, updateUserStripeCustomerId } from "./api/internal-adapter.js"
 import { PAYMENT_ERROR_CODES } from "./error-codes.js"
+import {
+    upgradeSubscription,
+    cancelSubscription,
+    cancelSubscriptionCallback,
+    restoreSubscription,
+    listActiveSubscriptions,
+    subscriptionSuccess,
+    createBillingPortal,
+    stripeWebhook,
+} from "./api/routes/index.js"
 
 // =============================================================================
 // RE-EXPORTS
@@ -206,12 +215,13 @@ export const payment = createPlugin<PaymentPluginOptions>({
 
         // Build subscription endpoints conditionally (better-auth pattern)
         const subscriptionEndpoints = subscriptionOptions ? {
-            // TODO: Add subscription endpoints when routes are updated
-            // upgradeSubscription: upgradeSubscription(routeConfig),
-            // cancelSubscription: cancelSubscription(routeConfig),
-            // restoreSubscription: restoreSubscription(routeConfig),
-            // listSubscriptions: listSubscriptions(routeConfig),
-            // createBillingPortal: createBillingPortal(routeConfig),
+            upgradeSubscription: upgradeSubscription(routeConfig),
+            cancelSubscription: cancelSubscription(routeConfig),
+            cancelSubscriptionCallback: cancelSubscriptionCallback(routeConfig),
+            restoreSubscription: restoreSubscription(routeConfig),
+            listActiveSubscriptions: listActiveSubscriptions(routeConfig),
+            subscriptionSuccess: subscriptionSuccess(routeConfig),
+            createBillingPortal: createBillingPortal(routeConfig),
         } : {}
 
         return {
@@ -221,7 +231,7 @@ export const payment = createPlugin<PaymentPluginOptions>({
 
             endpoints: {
                 // Webhook is always available
-                // webhook: handleWebhook(routeConfig),
+                stripeWebhook: stripeWebhook(routeConfig),
                 // Subscription endpoints only if enabled
                 ...subscriptionEndpoints,
             } as any,
@@ -330,6 +340,7 @@ export const payment = createPlugin<PaymentPluginOptions>({
 
             $Infer: {
                 Subscription: {} as Subscription,
+                PaymentPlan: {} as PaymentPlan,
             },
             $ERROR_CODES: PAYMENT_ERROR_CODES,
         }

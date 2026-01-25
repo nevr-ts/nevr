@@ -1,7 +1,6 @@
 // =============================================================================
 // PAYMENT INTERNAL ADAPTER
 // Database operations for payment plugin
-// Follows better-auth referenceId patterns
 // =============================================================================
 
 import type { Driver } from "../../../types.js"

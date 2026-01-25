@@ -1,304 +1,349 @@
 // =============================================================================
-// PAYMENT CLIENT
-// Client-side helpers for Stripe payment integration
+// PAYMENT CLIENT PLUGIN
+// Client-side payment management with proper plugin pattern
+// Follows auth/organization plugin dual pattern for SDK type inference
 // =============================================================================
 
-// -----------------------------------------------------------------------------
-// Types
-// -----------------------------------------------------------------------------
+import { atom, type WritableAtom } from "nanostores"
+import type {
+    NevrClientPlugin,
+    NevrFetch,
+    NevrFetchResponse,
+    NevrFetchError,
+    ClientStore,
+    ClientAtomListener,
+} from "../../client/types.js"
+import type { Subscription, PaymentPlan } from "./types.js"
+import { PAYMENT_ERROR_CODES } from "./error-codes.js"
+
+// =============================================================================
+// STATE TYPES
+// =============================================================================
+
+/**
+ * Subscription state
+ */
+export interface SubscriptionState {
+    /** Active subscriptions */
+    subscriptions: Subscription[]
+    /** Error if any */
+    error: NevrFetchError | null
+    /** Loading state */
+    isPending: boolean
+}
+
+// =============================================================================
+// CLIENT OPTIONS
+// =============================================================================
 
 export interface PaymentClientOptions {
-    /** Base URL for API calls (default: auto-detect from window.location) */
-    baseUrl?: string
-    /** Custom fetch function */
-    fetch?: typeof fetch
-    /** Get auth token for requests */
-    getToken?: () => string | Promise<string> | null
+    /** Base path for payment endpoints (default: /payment) */
+    basePath?: string
+    /** Auto-refresh on window focus */
+    refreshOnWindowFocus?: boolean
+}
+
+// =============================================================================
+// CLIENT METHODS
+// =============================================================================
+
+export interface UpgradeParams {
+    plan: string
+    annual?: boolean
+    referenceId?: string
+    subscriptionId?: string
+    seats?: number
+    metadata?: Record<string, any>
+    successUrl?: string
+    cancelUrl?: string
+    returnUrl?: string
+    disableRedirect?: boolean
+}
+
+export interface CancelParams {
+    referenceId?: string
+    subscriptionId?: string
+    returnUrl: string
+}
+
+export interface RestoreParams {
+    referenceId?: string
+    subscriptionId?: string
+}
+
+export interface ListParams {
+    referenceId?: string
+}
+
+export interface BillingPortalParams {
+    locale?: string
+    referenceId?: string
+    returnUrl?: string
 }
 
 export interface PaymentClientMethods {
-    /** Create a checkout session and redirect to Stripe */
-    checkout(params: CheckoutParams): Promise<CheckoutResult>
-    /** Get current subscription */
-    getSubscription(): Promise<SubscriptionResult>
-    /** List all subscriptions */
-    listSubscriptions(): Promise<SubscriptionsResult>
-    /** Cancel subscription */
-    cancelSubscription(subscriptionId: string, cancelAtPeriodEnd?: boolean): Promise<CancelResult>
-    /** Resume subscription (undo cancel at period end) */
-    resumeSubscription(subscriptionId: string): Promise<ResumeResult>
-    /** Change subscription plan */
-    changePlan(subscriptionId: string, newPriceId: string): Promise<ChangePlanResult>
-    /** Open billing portal */
-    openPortal(returnUrl?: string): Promise<PortalResult>
-    /** Get payment customer */
-    getCustomer(): Promise<CustomerResult>
-    /** Create payment customer */
-    createCustomer(params?: CreateCustomerParams): Promise<CustomerResult>
-}
-
-export interface CheckoutParams {
-    priceId: string
-    mode?: "payment" | "subscription" | "setup"
-    quantity?: number
-    successUrl?: string
-    cancelUrl?: string
-    metadata?: Record<string, string>
-    /** If true, redirect to checkout automatically */
-    redirect?: boolean
-}
-
-export interface CheckoutResult {
-    sessionId: string
-    url: string
-}
-
-export interface SubscriptionResult {
     subscription: {
-        id: string
-        plan: string
-        status: string
-        currentPeriodStart: string
-        currentPeriodEnd: string
-        cancelAtPeriodEnd: boolean
-        trialEnd?: string
-    } | null
+        upgrade(params: UpgradeParams): Promise<NevrFetchResponse<{ url: string; redirect: boolean }>>
+        cancel(params: CancelParams): Promise<NevrFetchResponse<{ url: string; redirect: boolean }>>
+        restore(params?: RestoreParams): Promise<NevrFetchResponse<{ id: string; status: string }>>
+        list(params?: ListParams): Promise<NevrFetchResponse<Subscription[]>>
+        billingPortal(params?: BillingPortalParams): Promise<NevrFetchResponse<{ url: string; redirect: boolean }>>
+    }
 }
 
-export interface SubscriptionsResult {
-    subscriptions: Array<{
-        id: string
-        plan: string
-        status: string
-        currentPeriodStart: string
-        currentPeriodEnd: string
-        cancelAtPeriodEnd: boolean
-        canceledAt?: string
-        trialEnd?: string
-        createdAt: string
-    }>
-}
-
-export interface CancelResult {
-    success: boolean
-    cancelAtPeriodEnd: boolean
-    message: string
-}
-
-export interface ResumeResult {
-    success: boolean
-    message: string
-}
-
-export interface ChangePlanResult {
-    success: boolean
-    message: string
-    newPlan: string
-}
-
-export interface PortalResult {
-    url: string
-}
-
-export interface CustomerResult {
-    customer: {
-        id: string
-        email: string
-        name?: string
-        createdAt: string
-    } | null
-}
-
-export interface CreateCustomerParams {
-    name?: string
-    metadata?: Record<string, string>
-}
-
-// -----------------------------------------------------------------------------
-// Client Factory
-// -----------------------------------------------------------------------------
+// =============================================================================
+// CLIENT PLUGIN TYPE
+// =============================================================================
 
 /**
- * Create a payment client for frontend usage
+ * Payment client plugin type with server inference
+ */
+export type PaymentClientPlugin = NevrClientPlugin & {
+    readonly $InferTypes: {
+        endpoints: PaymentClientMethods
+        $ERROR_CODES: typeof PAYMENT_ERROR_CODES
+        Subscription: Subscription
+        PaymentPlan: PaymentPlan
+    }
+}
+
+// =============================================================================
+// ATOMS
+// =============================================================================
+
+function createSubscriptionAtom(): WritableAtom<SubscriptionState> {
+    return atom<SubscriptionState>({
+        subscriptions: [],
+        error: null,
+        isPending: true,
+    })
+}
+
+// =============================================================================
+// CLIENT PLUGIN FACTORY
+// =============================================================================
+
+/**
+ * Create payment client plugin for frontend usage
  *
  * @example
  * ```typescript
- * import { paymentClient } from "@nevr/payment"
+ * import { createTypedClient } from "nevr/client"
+ * import { paymentClient } from "nevr/plugins/payment/client"
+ * import type { API } from "./api"
  *
- * const payment = paymentClient({
- *   getToken: () => localStorage.getItem("token"),
+ * const client = createTypedClient<API>({
+ *   baseURL: "http://localhost:3000",
+ *   plugins: [paymentClient()]
  * })
  *
- * // Create checkout and redirect
- * await payment.checkout({
- *   priceId: "price_xxx",
- *   redirect: true,
+ * // Upgrade subscription
+ * const { data } = await client.payment.subscription.upgrade({
+ *   plan: "pro",
+ *   successUrl: "/dashboard",
  * })
  *
- * // Get subscription
- * const { subscription } = await payment.getSubscription()
- *
- * // Open billing portal
- * const { url } = await payment.openPortal()
- * window.location.href = url
+ * // Reactive state
+ * client.$store.atoms.subscriptions.subscribe(({ subscriptions }) => {
+ *   console.log("Active subs:", subscriptions.length)
+ * })
  * ```
  */
-export function paymentClient(options: PaymentClientOptions = {}): PaymentClientMethods {
-    const baseUrl = options.baseUrl || (typeof window !== "undefined" ? window.location.origin : "")
-    const fetchFn = options.fetch || fetch
+export function paymentClient(options?: PaymentClientOptions): PaymentClientPlugin {
+    const basePath = options?.basePath || "/payment"
+    const refreshOnWindowFocus = options?.refreshOnWindowFocus !== false
 
-    async function request<T>(
-        method: string,
-        path: string,
-        body?: Record<string, unknown>
-    ): Promise<T> {
-        const url = `${baseUrl}/payment${path}`
-        const headers: Record<string, string> = {
-            "Content-Type": "application/json",
-        }
-
-        // Add auth token if available
-        if (options.getToken) {
-            const token = await options.getToken()
-            if (token) {
-                headers["Authorization"] = `Bearer ${token}`
-            }
-        }
-
-        const response = await fetchFn(url, {
-            method,
-            headers,
-            body: body ? JSON.stringify(body) : undefined,
-            credentials: "include",
-        })
-
-        const data = await response.json()
-
-        if (!response.ok) {
-            const error = new Error(data.message || "Request failed") as any
-            error.code = data.error || data.code
-            error.status = response.status
-            error.data = data
-            throw error
-        }
-
-        return data
-    }
+    // Atoms
+    let $subscriptions: WritableAtom<SubscriptionState>
+    let $subSignal: WritableAtom<boolean>
 
     return {
-        async checkout(params) {
-            const result = await request<CheckoutResult>("POST", "/checkout", {
-                priceId: params.priceId,
-                mode: params.mode || "subscription",
-                quantity: params.quantity || 1,
-                successUrl: params.successUrl,
-                cancelUrl: params.cancelUrl,
-                metadata: params.metadata,
-            })
+        id: "payment-client",
 
-            if (params.redirect && typeof window !== "undefined") {
-                window.location.href = result.url
+        /**
+         * Path methods for endpoint proxy
+         */
+        pathMethods: {
+            [`${basePath}/subscription/upgrade`]: "POST",
+            [`${basePath}/subscription/cancel`]: "POST",
+            [`${basePath}/subscription/cancel-callback`]: "POST",
+            [`${basePath}/subscription/restore`]: "POST",
+            [`${basePath}/subscription/list`]: "GET",
+            [`${basePath}/subscription/success`]: "GET",
+            [`${basePath}/subscription/billing-portal`]: "POST",
+            [`${basePath}/webhook/stripe`]: "POST",
+        },
+
+        /**
+         * Get reactive atoms
+         */
+        getAtoms($fetch: NevrFetch) {
+            $subscriptions = createSubscriptionAtom()
+            $subSignal = atom<boolean>(false)
+
+            // Initial fetch
+            fetchSubscriptions($fetch)
+
+            // Window focus refresh
+            if (refreshOnWindowFocus && typeof window !== "undefined") {
+                window.addEventListener("focus", () => {
+                    fetchSubscriptions($fetch)
+                })
             }
 
-            return result
-        },
-
-        async getSubscription() {
-            return request<SubscriptionResult>("GET", "/subscription")
-        },
-
-        async listSubscriptions() {
-            return request<SubscriptionsResult>("GET", "/subscriptions")
-        },
-
-        async cancelSubscription(subscriptionId, cancelAtPeriodEnd = true) {
-            return request<CancelResult>("POST", "/subscription/cancel", {
-                subscriptionId,
-                cancelAtPeriodEnd,
-            })
-        },
-
-        async resumeSubscription(subscriptionId) {
-            return request<ResumeResult>("POST", "/subscription/resume", {
-                subscriptionId,
-            })
-        },
-
-        async changePlan(subscriptionId, newPriceId) {
-            return request<ChangePlanResult>("POST", "/subscription/change-plan", {
-                subscriptionId,
-                newPriceId,
-            })
-        },
-
-        async openPortal(returnUrl) {
-            const result = await request<PortalResult>("POST", "/portal", {
-                returnUrl,
-            })
-
-            // Optionally redirect
-            if (typeof window !== "undefined" && result.url) {
-                window.location.href = result.url
+            return {
+                subscriptions: $subscriptions,
+                $subSignal,
             }
 
-            return result
+            async function fetchSubscriptions(fetch: NevrFetch) {
+                $subscriptions.set({ ...$subscriptions.get(), isPending: true })
+
+                try {
+                    const result = await fetch(`${basePath}/subscription/list`, { method: "GET" })
+
+                    if (result.error) {
+                        $subscriptions.set({
+                            subscriptions: [],
+                            error: result.error,
+                            isPending: false,
+                        })
+                    } else {
+                        $subscriptions.set({
+                            subscriptions: (result.data as Subscription[]) || [],
+                            error: null,
+                            isPending: false,
+                        })
+                    }
+                } catch (error) {
+                    $subscriptions.set({
+                        subscriptions: [],
+                        error: error as any,
+                        isPending: false,
+                    })
+                }
+            }
         },
 
-        async getCustomer() {
-            return request<CustomerResult>("GET", "/customer")
+        /**
+         * Atom listeners for triggering refreshes
+         */
+        atomListeners: [
+            {
+                matcher: (path: string) => {
+                    return (
+                        path === `${basePath}/subscription/upgrade` ||
+                        path === `${basePath}/subscription/cancel` ||
+                        path === `${basePath}/subscription/restore`
+                    )
+                },
+                signal: "$subSignal",
+            },
+        ] as ClientAtomListener[],
+
+        /**
+         * Get action methods
+         */
+        getActions($fetch: NevrFetch, $store: ClientStore) {
+            // Helper to update subscriptions
+            const updateSubscriptions = async () => {
+                if ($subscriptions) {
+                    $subscriptions.set({ ...$subscriptions.get(), isPending: true })
+                    try {
+                        const result = await $fetch(`${basePath}/subscription/list`, { method: "GET" })
+                        $subscriptions.set({
+                            subscriptions: (result.data as Subscription[]) || [],
+                            error: result.error || null,
+                            isPending: false,
+                        })
+                    } catch (error) {
+                        $subscriptions.set({
+                            subscriptions: [],
+                            error: error as any,
+                            isPending: false,
+                        })
+                    }
+                }
+            }
+
+            return {
+                payment: {
+                    subscription: {
+                        upgrade: async (params: UpgradeParams) => {
+                            const result = await $fetch(`${basePath}/subscription/upgrade`, {
+                                method: "POST",
+                                body: params,
+                            })
+                            if (!result.error) {
+                                await updateSubscriptions()
+                            }
+                            return result as NevrFetchResponse<{ url: string; redirect: boolean }>
+                        },
+
+                        cancel: async (params: CancelParams) => {
+                            const result = await $fetch(`${basePath}/subscription/cancel`, {
+                                method: "POST",
+                                body: params,
+                            })
+                            if (!result.error) {
+                                await updateSubscriptions()
+                            }
+                            return result as NevrFetchResponse<{ url: string; redirect: boolean }>
+                        },
+
+                        restore: async (params?: RestoreParams) => {
+                            const result = await $fetch(`${basePath}/subscription/restore`, {
+                                method: "POST",
+                                body: params || {},
+                            })
+                            if (!result.error) {
+                                await updateSubscriptions()
+                            }
+                            return result as NevrFetchResponse<{ id: string; status: string }>
+                        },
+
+                        list: async (params?: ListParams) => {
+                            const result = await $fetch(`${basePath}/subscription/list`, {
+                                method: "GET",
+                                query: params as Record<string, string> | undefined,
+                            })
+                            return result as NevrFetchResponse<Subscription[]>
+                        },
+
+                        billingPortal: async (params?: BillingPortalParams) => {
+                            return $fetch(`${basePath}/subscription/billing-portal`, {
+                                method: "POST",
+                                body: params || {},
+                            }) as Promise<NevrFetchResponse<{ url: string; redirect: boolean }>>
+                        },
+                    },
+                },
+            }
         },
 
-        async createCustomer(params) {
-            return request<CustomerResult>("POST", "/customer", params as Record<string, unknown> || {})
+        // Type inference for SDK
+        $InferTypes: {
+            endpoints: {} as PaymentClientMethods,
+            $ERROR_CODES: PAYMENT_ERROR_CODES,
+            Subscription: {} as Subscription,
+            PaymentPlan: {} as PaymentPlan,
         },
-    }
+    } as PaymentClientPlugin
 }
 
-// -----------------------------------------------------------------------------
-// React Hooks (if React is available)
-// -----------------------------------------------------------------------------
+// =============================================================================
+// REACT HOOK TYPES
+// =============================================================================
 
-/**
- * React hook for payment state (optional, only if React is available)
- *
- * @example
- * ```tsx
- * import { usePayment } from "@nevr/payment"
- *
- * function PricingPage() {
- *   const { subscription, isLoading, checkout, openPortal } = usePayment()
- *
- *   if (isLoading) return <div>Loading...</div>
- *
- *   if (subscription) {
- *     return (
- *       <div>
- *         <p>Current plan: {subscription.plan}</p>
- *         <button onClick={() => openPortal()}>Manage Billing</button>
- *       </div>
- *     )
- *   }
- *
- *   return (
- *     <button onClick={() => checkout({ priceId: "price_xxx" })}>
- *       Subscribe
- *     </button>
- *   )
- * }
- * ```
- */
 export interface UsePaymentResult {
-    subscription: SubscriptionResult["subscription"]
-    customer: CustomerResult["customer"]
+    subscriptions: Subscription[]
     isLoading: boolean
     error: Error | null
-    checkout: PaymentClientMethods["checkout"]
-    cancelSubscription: PaymentClientMethods["cancelSubscription"]
-    resumeSubscription: PaymentClientMethods["resumeSubscription"]
-    changePlan: PaymentClientMethods["changePlan"]
-    openPortal: PaymentClientMethods["openPortal"]
+    upgrade: PaymentClientMethods["subscription"]["upgrade"]
+    cancel: PaymentClientMethods["subscription"]["cancel"]
+    restore: PaymentClientMethods["subscription"]["restore"]
+    billingPortal: PaymentClientMethods["subscription"]["billingPortal"]
     refresh: () => Promise<void>
 }
 
-// Note: Actual React hook implementation would go here if React is detected
-// For now, just export the type for documentation
+export default paymentClient
