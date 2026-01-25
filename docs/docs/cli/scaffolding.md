@@ -63,12 +63,7 @@ Classic Node.js framework, battle-tested and widely adopted.
 my-api/
 ├── src/
 │   ├── entities/
-│   ├── hooks/
-│   ├── routes/
-│   ├── middleware/
-│   ├── utils/
 │   ├── nevr.config.ts
-│   ├── generate.ts
 │   └── server.ts
 ├── prisma/
 ├── package.json
