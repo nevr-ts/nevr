@@ -63,8 +63,8 @@ npx nevr openapi                # Generate openapi.json
 npx nevr openapi --format yaml  # Generate openapi.yaml
 
 # Generate AI context
-npx nevr context                # Output to stdout
-npx nevr context -o CONTEXT.md  # Save to file
+npx nevr context                # Generate context.md
+npx nevr context -o CONTEXT.md  # Custom output path
 
 # Database commands
 npx nevr db:push                # Push schema to database
@@ -78,7 +78,7 @@ npm create nevr@latest my-app   # Create new project
 
 ## Configuration
 
-Most commands look for a `nevr.config.ts` (or `.js`, `.mjs`) file in your project root or `src/` folder.
+Most commands look for a `nevr.config.ts` (or `.js`, `.mjs`) file in your project root ,`src/` or `lib/` folder .
 
 ```typescript
 // nevr.config.ts

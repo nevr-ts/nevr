@@ -10,12 +10,15 @@ npx nevr openapi [options]
 
 ## Description
 
-This command generates a complete OpenAPI specification from your entities, including:
+This command generates a complete OpenAPI specification from your entities and plugins, including:
 
-1. **CRUD endpoints** for each entity (list, get, create, update, delete)
-2. **Custom actions** defined with `.actions()`
-3. **Request/response schemas** derived from entity fields
-4. **Query parameters** for filtering, sorting, pagination
+1. **CRUD endpoints** for each public entity (list, get, create, update, delete)
+2. **Plugin endpoints** from auth, payment, organization, and other plugins
+3. **Custom actions** defined with `.actions()`
+4. **Request/response schemas** derived from entity fields
+5. **Query parameters** for filtering, sorting, pagination
+
+> **Note:** Plugin entities marked as `internal` (e.g., user, session, account from the auth plugin) do not generate CRUD routes. They are managed through the plugin's custom endpoints instead.
 
 ## Options
 
@@ -75,6 +78,20 @@ For each entity (e.g., `post`):
 | GET | `/api/posts/{id}` | Get a post |
 | PUT | `/api/posts/{id}` | Update a post |
 | DELETE | `/api/posts/{id}` | Delete a post |
+
+### Plugin Endpoints
+
+Plugins that define custom endpoints (auth, organization, payment, etc.) are automatically included:
+
+| Method | Path | Plugin | Operation |
+|--------|------|--------|-----------|
+| POST | `/auth/sign-up/email` | Authentication | Sign up with email |
+| POST | `/auth/sign-in/email` | Authentication | Sign in with email |
+| GET | `/auth/get-session` | Authentication | Get current session |
+| POST | `/organization/create` | Organization | Create organization |
+| POST | `/payment/stripe/webhook` | Payment | Stripe webhook |
+
+Each plugin's `basePath` is used as the route prefix, and endpoint metadata (summary, tags, description) is extracted from the endpoint definitions.
 
 ### Schemas
 

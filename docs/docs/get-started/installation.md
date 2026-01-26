@@ -159,6 +159,9 @@ The CLI auto-discovers config in this order:
 2. `nevr.config.js`
 3. `src/nevr.config.ts`
 4. `src/nevr.config.js`
+5. `lib/nevr.config.ts`,
+6. `lib/nevr.config.js`,
+7. `lib/nevr.config.mjs`,
 
 Or specify custom path: `npx nevr generate --config ./custom/config.ts`
 

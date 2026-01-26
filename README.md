@@ -274,7 +274,7 @@ Nevr works with your favorite tools:
         ▼                              ▼                              ▼
    • Express                      • Prisma                      • Auth
    • Hono                         • Drizzle (soon)              • Timestamps
-   • Next.js (soon)               • Kysely (soon)               • Storage
+   • Next.js                      • Kysely (soon)               • Storage
    • Fastify (soon)                                             • Payments
 ```
 
@@ -285,8 +285,6 @@ Nevr works with your favorite tools:
 | Package | Description |
 |---------|-------------|
 | [`nevr`](https://www.npmjs.com/package/nevr) | Core framework |
-| [`@nevr/cli`](https://www.npmjs.com/package/@nevr/cli) | CLI for development |
-| [`nevr/generator`](https://www.npmjs.com/package/nevr/generator) | Schema & type generator |
 | [`create-nevr`](https://www.npmjs.com/package/create-nevr) | Project scaffolder |
 
 ---
@@ -306,7 +304,7 @@ cd docs
 npm install
 npm run docs:dev
 ```
-
+- **FULL DOCUMENTATION:** [https://nevr-ts.github.io/nevr/](https://nevr-ts.github.io/nevr/)
 ---
 
 ## 🗺️ Roadmap
@@ -316,22 +314,24 @@ npm run docs:dev
 - Relations (belongsTo, hasMany, hasOne)
 - Authorization rules & ownership
 - Prisma driver
-- Express & Hono adapters
+- NextJs, Express & Hono adapters
 - Auth plugin (full auth flows)
 - Organization & multi-tenancy
-- payments & storage plugins
+- Payments & Storage plugins
+- AI-gateway & RAG engine plugin
 - Workflow engine with saga pattern
 - Service container (DI)
 - Remote data joiner
 - Field encryption & password hashing
-- CLI & project scaffolder
+- CLI & project scaffolder (nevr context, introspect)
 - RAG & semantic search
+- Context, OpenAPI generation
+- End-to-end type safety
 
 ### 🚧 Coming Soon
 - **Drizzle & Kysely drivers**
-- **Next.js & Fastify adapters**
+- **Fastify adapters**
 - **Real-time subscriptions (WebSocket)**
-- **GraphQL adapter**
 - **Admin dashboard generator**
 - **Audit logging plugin**
 - more!

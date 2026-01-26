@@ -1,6 +1,7 @@
-# Nevr
+# ⚡ Nevr
 
-> **Nevr** write boilerplate again — Entity-first, type-safe API framework for TypeScript
+> **The AI-Native Framework for TypeScript.** 
+> Define your data model. Get a full-stack App with RAG, Authentication, and Type-Safe Clients instantly.
 
 <p align="center">
   <a href="https://www.npmjs.com/package/nevr"><img src="https://img.shields.io/npm/v/nevr.svg?style=flat-square&color=blue" alt="npm version"></a>
@@ -13,22 +14,45 @@
   Define your entities. Get a full REST API with authentication, validation, and type-safe clients—automatically.
 </p>
 
+## 🎯 What is Nevr?
+
+**Nevr** is a **full-stack TypeScript framework** that eliminates boilerplate by turning your domain models into intelligent, production-ready APIs. 
+
+It acts as a **Universal Backend Layer** that combines your favorite **Database/ORM** (Prisma, Drizzle, etc.) with a robust Entity DSL to handle **Validation, Authorization, and AI Capabilities** in a single source of truth.
+
+## 🛠️ How it Works
+
+Nevr extends standard backend development with four powerful layers:
+
+1. **The Driver Layer** (Database Agnostic)
+   Connects to any database or ORM (Prisma supported now; Drizzle, Kysely coming soon).
+
+2. **The Intelligence Layer** (Plugins)
+   Automatically injects complex capabilities like Authentication (OAuth/JWT), Payments,Timestamps,Vector Search (RAG), AI-gateway, and File Storage without writing glue code.
+
+3. **The Adapter Layer** (Framework Agnostic)
+   Mounts your API onto any framework (Next.js, Express, Hono, Fastify, etc.) or deploy as a standalone server.
+
+4. **The Consumption Layer** (Client)
+   Auto-generates end-to-end type-safe hooks and clients for your frontend (React, Next.js, etc).
+
 ---
 
-> ⚠️ **Beta Software**: Nevr is under active development. APIs may change before v1.0.
+> Read full documentation at 👉🏻 https://nevr-ts.github.io/nevr/
 
 ## ✨ Features
 
 - 🚀 **Entity-first design** — Define entities, get complete CRUD APIs automatically
 - 🔒 **End-to-end type safety** — Full TypeScript inference from database to client
 - 🔐 **Built-in authentication** — Email/password, OAuth, sessions, JWT
-- 🔌 **Framework agnostic** — Works with Express, Hono, and more
+- 🔌 **Framework agnostic** — Works with NextJs, Express, Hono, and more
 - 🗄️ **Database agnostic** — Prisma driver included, more coming soon
 - 🧩 **Unified Plugin System** — Extend with auth, timestamps, payments, storage plugins
 - ⚡ **Zero config** — Sensible defaults, full customization when needed
 - 📦 **Auto-generated clients** — Type-safe API clients for your frontend
 - 🔄 **Workflow Engine** — Multi-step transactions with compensation (saga pattern)
 - 💉 **Service Container** — Functional dependency injection with lifecycle management
+- 🧠 **AI-Native** — Built-in RAG engine, vector embeddings, and LLM context generation
 - ✅ **Cross-field Validation** — Complex business rules with declarative syntax
 
 ## 📦 Installation
@@ -61,7 +85,7 @@ import express from "express"
 const user = entity("user", {
   email: string.unique(),
   name: string.min(1).max(100),
-}).build()
+})
 
 const post = entity("post", {
   title: string.min(1).max(200),
@@ -69,7 +93,6 @@ const post = entity("post", {
   author: belongsTo(() => user),
 })
   .ownedBy("author")
-  .build()
 
 // 2️⃣ Create your API
 const api = nevr({
@@ -184,11 +207,21 @@ const post = entity("post", { /* fields */ })
 
 ## 🔌 Adapters
 
+### Next.js API Routes 
+
+```typescript
+// app/api/[...nevr]/route.ts
+import { toNextHandler } from "nevr/adapters/nextjs"
+import { api } from "@/lib/nevr"
+
+export const { GET, POST, PUT, PATCH, DELETE } = toNextHandler(api)
+```
+
 ### Express
 
 ```typescript
 import { expressAdapter, devAuth } from "nevr/adapters/express"
-
+import express from "express"
 const app = express()
 app.use("/api", expressAdapter(api, { 
   getUser: devAuth,
@@ -263,18 +296,74 @@ const api = nevr({
 - `POST /api/auth/sign-out` — Sign out
 - `GET /api/auth/session` — Get current session
 - `GET /api/auth/callback/:provider` — OAuth callback
-
-### Timestamps
-
-Auto-manage `createdAt` and `updatedAt`:
+### Organizations
+Multi-tenant support with organizations and roles:
 
 ```typescript
-import { timestamps } from "nevr/plugins/timestamps"
+import { nevr } from "nevr"
+import { organization } from "nevr/plugins/organization"
 
 const api = nevr({
-  entities: [post],
-  plugins: [timestamps()],
-  driver: prisma(db),
+  plugins: [
+    organization({
+      allowUserToCreate: true,
+      creatorRole: "owner",
+      teams: { enabled: true },
+    }),
+  ],
+})
+```
+### Payments
+Stripe integration for subscriptions and one-time payments:
+
+```typescript
+import { nevr } from "nevr"
+import { payment } from "nevr/plugins/payment"
+
+const api = nevr({
+  plugins: [
+    payment({
+      provider: "stripe",
+      stripe: {
+        secretKey: process.env.STRIPE_SECRET_KEY!,
+        webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+      },
+      createCustomerOnSignUp: true,
+      subscription: {
+        enabled: true,
+        plans: [
+          { name: "free", priceId: "price_free" },
+          { name: "pro", priceId: "price_pro", limits: { projects: 10 } },
+          { name: "enterprise", priceId: "price_enterprise", limits: { projects: -1 } },
+        ],
+      },
+    }),
+  ],
+})
+```
+### AI-Gateway 
+
+AI Gateway provides a unified API for multiple AI providers (OpenAI, Anthropic, Google) with built-in usage tracking, rate limiting, and SSE streaming support.
+
+```typescript
+import { nevr } from "nevr"
+import { aiGateway } from "nevr/plugins"
+
+const api = nevr({
+  entities: [],
+  plugins: [
+    aiGateway({
+      providers: {
+        openai: { apiKey: process.env.OPENAI_API_KEY },
+        anthropic: { apiKey: process.env.ANTHROPIC_API_KEY },
+        google: { apiKey: process.env.GOOGLE_API_KEY },
+      },
+      defaultProvider: "openai",
+      defaultModel: "gpt-5-mini",
+      trackUsage: true,
+      rateLimiting: { enabled: true },
+    }),
+  ],
 })
 ```
 
@@ -366,7 +455,7 @@ const order = entity("order", {
       message: "Max quantity must be >= min quantity",
     },
   })
-  .build()
+  
 ```
 
 ---
@@ -422,8 +511,6 @@ const user = await client.users.create({ email: "..." })
 | Package | Description |
 |---------|-------------|
 | [`nevr`](https://www.npmjs.com/package/nevr) | Core framework (this package) |
-| [`@nevr/cli`](https://www.npmjs.com/package/@nevr/cli) | CLI for schema generation |
-| [`nevr/generator`](https://www.npmjs.com/package/nevr/generator) | Prisma/TypeScript generator |
 | [`create-nevr`](https://www.npmjs.com/package/create-nevr) | Project scaffolder |
 
 ---

@@ -24,7 +24,7 @@ This command is the bridge between your `entity()` definitions and the underlyin
 | Option | Alias | Default | Description |
 |--------|-------|---------|-------------|
 | `--config <path>` | `-c` | `./nevr.config.ts` | Path to your config file. |
-| `--out <dir>` | `-o` | `./prisma` | Output directory for schema. |
+| `--outDir <dir>` | `-d` | `./prisma` | Output directory for schema. |
 | `--provider <name>` | `-p` | `sqlite` | Database provider (`sqlite`, `postgresql`, `mysql`). |
 | `--force` | `-f` | `false` | Force full regeneration, ignoring cache. |
 | `--no-cache` | | `false` | Disable incremental caching. |

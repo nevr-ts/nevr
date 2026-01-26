@@ -34,6 +34,11 @@ npm create nevr@latest my-api --no-interactive
 
 ## Examples
 
+### Next.js with MySQL 
+
+```bash
+npm create nevr@latest my-api -t nextjs -d mysql 
+```
 ### Express with PostgreSQL and Auth
 
 ```bash
@@ -45,7 +50,6 @@ npm create nevr@latest my-api -t express -d postgresql --auth
 ```bash
 npm create nevr@latest my-api -t hono -d sqlite --no-auth
 ```
-
 ### Using pnpm, no install
 
 ```bash
@@ -54,7 +58,28 @@ npm create nevr@latest my-api -p pnpm --no-install
 
 ## Templates
 
-### Express (Recommended)
+### Next.js(Recommended)
+
+Full-stack React framework with API routes.
+
+**Generated structure:**
+```
+my-api/
+├── app/
+│   ├── api/
+│   │   ├── health/route.ts     # Health check
+│   │   └── [...nevr]/route.ts  # Nevr API handler
+│   ├── layout.tsx
+│   └── page.tsx
+├── lib/
+│   ├── entities/               # Your data models
+│   ├── plugins/                # Plugin configs
+│   ├── nevr.ts                 # Nevr instance
+│   └── nevr.config.ts          # Nevr configuration
+├── middleware.ts               # Route protection
+└── package.json
+```
+### Express 
 
 Classic Node.js framework, battle-tested and widely adopted.
 

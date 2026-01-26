@@ -177,13 +177,13 @@ const product = entity("product", {
 Generate context from the command line:
 
 ```bash
-# Output markdown to stdout
+# Generate context.md (default)
 npx nevr context
 
 # Output compact JSON
 npx nevr context --json
 
-# Write to file
+# Custom output path
 npx nevr context -o .ai/context.md
 ```
 

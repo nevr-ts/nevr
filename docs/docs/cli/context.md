@@ -15,9 +15,10 @@ This command generates a compact, AI-readable representation of your application
 1. **Entities** - Names, fields, types, and constraints
 2. **Relations** - How entities connect to each other
 3. **Plugins** - Installed plugins and their endpoints
-4. **Actions** - Custom entity actions
-5. **Access Rules** - Who can do what
-6. **Semantic Fields** - Searchable and embedding fields
+4. **Extensions** - Plugin fields added to other entities (e.g., username → user)
+5. **Actions** - Custom entity actions
+6. **Access Rules** - Who can do what
+7. **Semantic Fields** - Searchable and embedding fields
 
 The output is optimized for AI consumption, making it ideal for:
 - AI coding assistants (Claude, Copilot)
@@ -30,20 +31,20 @@ The output is optimized for AI consumption, making it ideal for:
 | Option | Alias | Default | Description |
 |--------|-------|---------|-------------|
 | `--config <path>` | `-c` | `./nevr.config.ts` | Path to your config file |
-| `--output <path>` | `-o` | stdout | Output file (omit for stdout) |
+| `--output <path>` | `-o` | `context.md` | Output file path |
 | `--format <fmt>` | | `markdown` | Output format: `markdown` or `json` |
 | `--json` | | `false` | Shorthand for `--format json` |
 
 ## Examples
 
-**Output to terminal (markdown):**
+**Generate context.md (default):**
 ```bash
 npx nevr context
 ```
 
-**Save to file:**
+**Custom output path:**
 ```bash
-npx nevr context -o ./CONTEXT.md
+npx nevr context -o ./docs/ai-context.md
 ```
 
 **Compact JSON format:**
@@ -86,8 +87,14 @@ Rules: list:[everyone] create:[authenticated] update:[owner]
 ## Plugins
 
 ### auth
-Endpoints: sign-up, sign-in, sign-out, session
+Endpoints: signUpEmail, signInEmail, signOut, getSession
 Entities: user, session, account
+
+## Extensions (Plugin → Entity)
+
+- **auth** → user: username, displayUsername
+- **payment** → user: stripeCustomerId
+- **organization** → session: activeOrganizationId, activeTeamId
 
 ## Searchable Fields
 post.body, post.title
