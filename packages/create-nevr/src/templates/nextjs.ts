@@ -20,7 +20,7 @@ export const nextjsTemplates = {
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
-    "nevr": "^0.5.0",
+    "nevr": "^0.5.1",
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
