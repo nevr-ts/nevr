@@ -156,7 +156,7 @@
     }
   },
   "scripts": {
-    "build": "node --max-old-space-size=8192 ./node_modules/.bin/tsup",
+    "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest",
     "test:run": "vitest run",
