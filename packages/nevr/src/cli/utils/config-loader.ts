@@ -4,8 +4,9 @@
 // =============================================================================
 
 import { existsSync } from "fs"
-import { resolve, dirname } from "path"
-import { pathToFileURL } from "url"
+import { resolve } from "path"
+import { fileURLToPath } from "url"
+import { createJiti } from "jiti"
 import type { NevrConfig } from "../../config.js"
 
 // -----------------------------------------------------------------------------
@@ -19,6 +20,10 @@ const CONFIG_FILES = [
   "src/nevr.config.ts",
   "src/nevr.config.js",
   "src/nevr.config.mjs",
+  // Next.js convention
+  "lib/nevr.config.ts",
+  "lib/nevr.config.js",
+  "lib/nevr.config.mjs",
 ]
 
 // -----------------------------------------------------------------------------
@@ -84,11 +89,14 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<NevrC
   }
 
   try {
-    // Convert to file URL for ESM import
-    const configUrl = pathToFileURL(configPath).href
+    // Use jiti to load TypeScript config files
+    // jiti handles .ts files, ESM, and .js extension resolution
+    const jiti = createJiti(fileURLToPath(import.meta.url), {
+      interopDefault: true,
+    })
 
-    // Dynamic import
-    const module = await import(configUrl)
+    // Import the config file (works with .ts, .js, .mjs)
+    const module = await jiti.import(configPath) as Record<string, unknown>
 
     // Support default export or named config export
     const config = module.default || module.config
@@ -105,20 +113,6 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<NevrC
 
     return config as NevrConfig
   } catch (error: any) {
-    // Handle TypeScript files that need transpilation
-    if (configPath.endsWith(".ts") && error.code === "ERR_UNKNOWN_FILE_EXTENSION") {
-      throw new Error(
-        `Cannot load TypeScript config directly.\n` +
-        `Install tsx or ts-node:\n` +
-        `  npm i -D tsx\n` +
-        `\n` +
-        `Then run with:\n` +
-        `  npx tsx node_modules/.bin/nevr generate\n` +
-        `  # or add to package.json scripts:\n` +
-        `  "generate": "tsx node_modules/.bin/nevr generate"`
-      )
-    }
-
     throw new Error(`Failed to load config: ${error.message}`)
   }
 }

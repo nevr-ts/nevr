@@ -51,6 +51,36 @@ function isPlainFieldDef(value: unknown): value is PlainFieldDef {
 }
 
 /**
+ * Internal FieldBuilder state with underscore prefix
+ */
+interface FieldBuilderState {
+  _type: FieldType
+  _optional?: boolean
+  _unique?: boolean
+  _hasDefault?: boolean
+  _default?: unknown
+  _min?: number
+  _max?: number
+  _isEmail?: boolean
+  _validation?: unknown
+  _security?: { omit?: boolean }
+  _access?: { write?: string }
+  _meta?: unknown
+}
+
+/**
+ * Check if value is internal FieldBuilder state (underscore-prefixed)
+ */
+function isFieldBuilderState(value: unknown): value is FieldBuilderState {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    "_type" in value &&
+    typeof (value as any)._type === "string"
+  )
+}
+
+/**
  * Convert plain field definition to FieldDef
  */
 function convertPlainFieldDef(fieldDef: PlainFieldDef): FieldDef {
@@ -82,12 +112,48 @@ function convertPlainFieldDef(fieldDef: PlainFieldDef): FieldDef {
 }
 
 /**
+ * Convert internal FieldBuilder state to FieldDef
+ */
+function convertFieldBuilderState(state: FieldBuilderState): FieldDef {
+  const result: FieldDef = {
+    type: state._type,
+    optional: state._optional || false,
+    unique: state._unique || false,
+    hasDefault: state._hasDefault || false,
+    default: state._default,
+    min: state._min,
+    max: state._max,
+    isEmail: state._isEmail,
+    validation: state._validation as FieldDef["validation"],
+    meta: state._meta as FieldDef["meta"],
+  }
+
+  // Handle security properties
+  if (state._security?.omit) {
+    result.security = { ...result.security, omit: state._security.omit }
+  }
+
+  // Handle access properties
+  if (state._access?.write) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (result as any).access = { ...(result as any).access, write: state._access.write }
+  }
+
+  return result
+}
+
+/**
  * Build field definition from various input types
  */
 function buildFieldDef(value: unknown): FieldDef | null {
-  // FieldBuilder instance
+  // FieldBuilder instance with build() method
   if (isFieldBuilder(value)) {
     return value.build()
+  }
+
+  // Internal FieldBuilder state (underscore-prefixed)
+  if (isFieldBuilderState(value)) {
+    return convertFieldBuilderState(value)
   }
 
   // Plain field definition
@@ -149,7 +215,7 @@ export function extractPluginEntities(plugins: ConfigPlugin[]): Entity[] {
   for (const plugin of plugins) {
     if (!plugin.schema?.entities) continue
 
-    const pluginId = plugin.meta?.id || plugin.id || "unknown"
+    const pluginId = plugin.meta.id
 
     for (const [entityName, entityDef] of Object.entries(plugin.schema.entities)) {
       try {
@@ -236,7 +302,7 @@ export function getPluginSummary(plugins: ConfigPlugin[]): {
   let totalExtensions = 0
 
   for (const plugin of plugins) {
-    const id = plugin.meta?.id || plugin.id || "unknown"
+    const id = plugin.meta.id
     const entities = Object.keys(plugin.schema?.entities || {})
     const extendsEntities = Object.keys(plugin.schema?.extend || {})
 

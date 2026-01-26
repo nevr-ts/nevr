@@ -53,6 +53,7 @@ export function getOrganizationSchema(options?: OrganizationSchemaOptions): Plug
             // -----------------------------------------------------------------
             organization: {
                 description: "Organization or workspace for multi-tenant support",
+                internal: true, // Managed by organization plugin endpoints
                 fields: {
                     name: string.label("Organization Name"),
                     slug: string.unique().label("URL Slug"),
@@ -66,6 +67,7 @@ export function getOrganizationSchema(options?: OrganizationSchemaOptions): Plug
             // -----------------------------------------------------------------
             member: {
                 description: "Organization membership linking users to organizations",
+                internal: true, // Managed by organization plugin endpoints
                 fields: {
                     organizationId: string.label("Organization ID"),
                     userId: string.label("User ID"),
@@ -78,6 +80,7 @@ export function getOrganizationSchema(options?: OrganizationSchemaOptions): Plug
             // -----------------------------------------------------------------
             invitation: {
                 description: "Pending invitation to join an organization",
+                internal: true, // Managed by organization plugin endpoints
                 fields: {
                     organizationId: string.label("Organization ID"),
                     email: string.label("Invitee Email"),
@@ -98,6 +101,7 @@ export function getOrganizationSchema(options?: OrganizationSchemaOptions): Plug
     if (enableTeams && schema.entities) {
         schema.entities.team = {
             description: "Team within an organization",
+            internal: true,
             fields: {
                 name: string.label("Team Name"),
                 organizationId: string.label("Organization ID"),
@@ -106,6 +110,7 @@ export function getOrganizationSchema(options?: OrganizationSchemaOptions): Plug
 
         schema.entities.teamMember = {
             description: "Team membership linking users to teams",
+            internal: true,
             fields: {
                 teamId: string.label("Team ID"),
                 userId: string.label("User ID"),

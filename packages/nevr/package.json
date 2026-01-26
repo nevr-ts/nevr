@@ -110,29 +110,33 @@
       "import": "./dist/plugins/organization/index.js",
       "types": "./dist/plugins/organization/index.d.ts"
     },
+    "./plugins/organization/client": {
+      "import": "./dist/plugins/organization/client.js",
+      "types": "./dist/plugins/organization/client.d.ts"
+    },
     "./plugins/storage": {
       "import": "./dist/plugins/storage/index.js",
       "types": "./dist/plugins/storage/index.d.ts"
+    },
+    "./plugins/storage/client": {
+      "import": "./dist/plugins/storage/client.js",
+      "types": "./dist/plugins/storage/client.d.ts"
     },
     "./plugins/payment": {
       "import": "./dist/plugins/payment/index.js",
       "types": "./dist/plugins/payment/index.d.ts"
     },
-    "./plugins/rag": {
-      "import": "./dist/rag/index.js",
-      "types": "./dist/rag/index.d.ts"
+    "./plugins/payment/client": {
+      "import": "./dist/plugins/payment/client.js",
+      "types": "./dist/plugins/payment/client.d.ts"
     },
     "./rag": {
       "import": "./dist/rag/index.js",
       "types": "./dist/rag/index.d.ts"
     },
-    "./plugins/ai-gateway": {
-      "import": "./dist/ai-gateway/index.js",
-      "types": "./dist/ai-gateway/index.d.ts"
-    },
-    "./plugins/ai-gateway/client": {
-      "import": "./dist/ai-gateway/client.js",
-      "types": "./dist/ai-gateway/client.d.ts"
+    "./rag/client": {
+      "import": "./dist/rag/client.js",
+      "types": "./dist/rag/client.d.ts"
     },
     "./ai-gateway": {
       "import": "./dist/ai-gateway/index.js",
@@ -152,7 +156,7 @@
     }
   },
   "scripts": {
-    "build": "tsup",
+    "build": "node --max-old-space-size=8192 ./node_modules/.bin/tsup",
     "dev": "tsup --watch",
     "test": "vitest",
     "test:run": "vitest run",
@@ -160,6 +164,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "jiti": "^2.4.2",
     "nanostores": "^0.10.0",
     "zod": "^4.3.4"
   },

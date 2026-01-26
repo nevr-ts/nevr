@@ -53,9 +53,9 @@ const db = new PrismaClient()
 const driver = prisma(db)
 
 const api = nevr({
-  entities: config.entities,
+  entities: config.entities ?? [],
   driver,
-  plugins: config.plugins,
+  plugins: config.plugins ?? [],
 })
 
 const app = new Hono()

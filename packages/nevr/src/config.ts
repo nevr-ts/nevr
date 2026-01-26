@@ -10,15 +10,23 @@ import type { Entity } from "./types.js"
 // -----------------------------------------------------------------------------
 
 /**
- * Plugin interface for config (minimal - just what we need for generation)
+ * Plugin metadata interface
+ */
+export interface ConfigPluginMeta {
+  id: string
+  name: string
+  version: string
+  description?: string
+}
+
+/**
+ * Plugin interface for config
+ * Compatible with actual NevrPlugin type for runtime use
  */
 export interface ConfigPlugin {
-  id?: string
-  meta?: {
-    id?: string
-    name?: string
-    version?: string
-  }
+  /** Plugin metadata (required for runtime compatibility) */
+  meta: ConfigPluginMeta
+  /** Plugin schema for generation */
   schema?: {
     entities?: Record<string, PluginEntityDef>
     extend?: Record<string, Record<string, unknown>>

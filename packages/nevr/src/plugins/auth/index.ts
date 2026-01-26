@@ -131,10 +131,34 @@ export const auth = createPlugin<AuthPluginOptions>({
             updateAge: options.session?.updateAge ?? DEFAULT_SESSION_UPDATE_AGE,
         }
 
+        // Get base auth schema
+        const baseSchema = getAuthSchema(options.user?.additionalFields ? {
+            userFields: options.user.additionalFields as any,
+        } : undefined)
+
+        // Merge sub-plugin schemas (like username, two-factor, etc.)
+        if (options.plugins && options.plugins.length > 0) {
+            for (const subPlugin of options.plugins) {
+                const subSchema = subPlugin.schema as { extend?: Record<string, Record<string, unknown>>; entities?: Record<string, unknown> } | undefined
+                if (subSchema?.extend) {
+                    baseSchema.extend = baseSchema.extend || {}
+                    for (const [entityName, fields] of Object.entries(subSchema.extend)) {
+                        baseSchema.extend[entityName] = Object.assign(
+                            {},
+                            baseSchema.extend[entityName] || {},
+                            fields
+                        ) as any
+                    }
+                }
+                if (subSchema?.entities) {
+                    baseSchema.entities = baseSchema.entities || {}
+                    Object.assign(baseSchema.entities, subSchema.entities)
+                }
+            }
+        }
+
         return {
-            schema: getAuthSchema(options.user?.additionalFields ? {
-                userFields: options.user.additionalFields as any,
-            } : undefined),
+            schema: baseSchema,
 
             // Create endpoints using the route factories (no adapter - routes get it from context)
             endpoints: {

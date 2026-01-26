@@ -139,6 +139,7 @@ export function getAuthSchema(options?: {
         entities: {
             user: {
                 ...baseUserDefinition,
+                internal: true, // Managed by auth plugin endpoints, not CRUD routes
                 fields: {
                     ...baseUserDefinition.fields,
                     ...options?.userFields,

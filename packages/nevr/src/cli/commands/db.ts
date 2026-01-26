@@ -25,7 +25,8 @@ export interface DbCommandOptions {
 // -----------------------------------------------------------------------------
 
 /**
- * Find prisma schema file
+ * Find prisma schema path (file or folder)
+ * When using prismaSchemaFolder, returns the folder path
  */
 function findSchemaPath(customPath?: string): string {
   const cwd = process.cwd()
@@ -36,10 +37,19 @@ function findSchemaPath(customPath?: string): string {
     throw new Error(`Schema file not found: ${customPath}`)
   }
 
-  // Default locations
+  // Check for schema folder first (prismaSchemaFolder mode)
+  const schemaFolder = resolve(cwd, "prisma/schema")
+  if (existsSync(schemaFolder)) {
+    // Verify it has schema.prisma inside
+    const schemaFile = resolve(schemaFolder, "schema.prisma")
+    if (existsSync(schemaFile)) {
+      return schemaFolder // Return folder for prismaSchemaFolder
+    }
+  }
+
+  // Default single-file locations
   const locations = [
     "prisma/schema.prisma",
-    "prisma/schema/schema.prisma",
     "schema.prisma",
   ]
 
@@ -51,6 +61,7 @@ function findSchemaPath(customPath?: string): string {
   throw new Error(
     `Prisma schema not found. Run 'npx nevr generate' first.\n` +
     `Searched:\n` +
+    `  - prisma/schema/ (folder)\n` +
     locations.map(l => `  - ${l}`).join("\n")
   )
 }

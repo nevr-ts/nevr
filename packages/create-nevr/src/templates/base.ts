@@ -119,10 +119,12 @@ export { authPlugin } from "./auth.js"
 import { defineConfig } from "nevr"
 import * as entities from "./entities/index.js"
 ${withAuth ? `import { authPlugin } from "./plugins/index.js"\n` : ""}
-export default defineConfig({
+export const config = defineConfig({
   database: "${db}",
   entities: Object.values(entities).filter(e => e && typeof e === "object"),
   plugins: [${withAuth ? "authPlugin" : ""}],
 })
+
+export default config
 `,
 }

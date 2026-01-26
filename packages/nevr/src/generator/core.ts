@@ -4,7 +4,7 @@
 // Consolidated from nevr/generator
 // =============================================================================
 
-import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs"
+import { writeFileSync, mkdirSync, existsSync, readFileSync, rmSync, unlinkSync } from "fs"
 import { join, dirname } from "path"
 import { createHash } from "crypto"
 import type { Entity, FieldDef, FieldType, Plugin, Route, EntityAction } from "../types.js"
@@ -52,6 +52,34 @@ function ensureDir(dir: string): void {
 function writeFile(path: string, content: string): void {
   ensureDir(dirname(path))
   writeFileSync(path, content, "utf-8")
+}
+
+/**
+ * Clean up old schema file when switching to folder mode
+ */
+function cleanupSingleFileSchema(outDir: string): void {
+  const singleFilePath = join(outDir, "schema.prisma")
+  if (existsSync(singleFilePath)) {
+    try {
+      unlinkSync(singleFilePath)
+    } catch {
+      // Ignore errors
+    }
+  }
+}
+
+/**
+ * Clean up old schema folder when switching to single file mode
+ */
+function cleanupSchemaFolder(outDir: string): void {
+  const schemaDir = join(outDir, "schema")
+  if (existsSync(schemaDir)) {
+    try {
+      rmSync(schemaDir, { recursive: true, force: true })
+    } catch {
+      // Ignore errors
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -655,6 +683,9 @@ export function generate(
     const namespaces = Object.keys(namespaceMap).filter(ns => namespaceMap[ns].length > 0)
     console.log(`   📂 Schema splitting enabled (${namespaces.length} namespaces)`)
 
+    // Clean up old single-file schema when switching to folder mode
+    cleanupSingleFileSchema(outDir)
+
     // Create schema directory
     const schemaDir = join(outDir, "schema")
     ensureDir(schemaDir)
@@ -698,6 +729,9 @@ export function generate(
    - Parallel team development on different namespaces
 `)
   } else {
+    // Clean up old schema folder when switching to single file mode
+    cleanupSchemaFolder(outDir)
+
     // Generate single schema file
     schemaPath = join(outDir, "schema.prisma")
     writeFile(schemaPath, generatePrismaSchema(resolvedEntities, { provider: prismaProvider }))

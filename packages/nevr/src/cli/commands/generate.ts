@@ -73,9 +73,11 @@ export async function generateCommand(options: GenerateCommandOptions = {}): Pro
       }
     }
 
-    // 4. Extract and apply extensions
+    // 4. Extract and apply extensions to BOTH user and plugin entities
+    // (e.g., username plugin extends auth's user entity, payment extends user)
     const extensions = extractPluginExtensions(plugins)
     applyExtensionsToEntities(userEntities, extensions)
+    applyExtensionsToEntities(pluginEntities, extensions)
 
     // 5. Merge all entities
     const allEntities = [...userEntities, ...pluginEntities]

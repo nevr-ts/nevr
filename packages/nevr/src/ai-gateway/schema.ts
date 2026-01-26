@@ -24,6 +24,7 @@ export function getAIGatewaySchema(): PluginSchema {
         entities: {
             aiUsage: {
                 description: "AI usage record for billing and analytics",
+                internal: true,
                 fields: {
                     /** Reference ID (userId, orgId, or custom) */
                     referenceId: string.label("Reference ID"),
@@ -56,6 +57,7 @@ export function getAIGatewaySchema(): PluginSchema {
 
             aiRateLimitState: {
                 description: "Rate limit state per reference",
+                internal: true,
                 fields: {
                     /** Reference ID (userId, orgId, or custom) */
                     referenceId: string.label("Reference ID"),

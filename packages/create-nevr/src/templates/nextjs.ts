@@ -157,10 +157,10 @@ const db = new PrismaClient()
 const driver = prisma(db)
 
 export const api = nevr({
-  entities: config.entities,
+  entities: config.entities ?? [],
   driver,
   plugins: [
-    ...config.plugins,${withAuth ? `
+    ...(config.plugins ?? []),${withAuth ? `
     // nextCookies enables cookie handling in Server Components
     nextCookies(),` : ""}
   ],

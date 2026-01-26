@@ -44,7 +44,7 @@ const HELP = `
 
   Options for generate:
     -c, --config <path>   Path to nevr config file
-    -o, --outDir <path>   Output directory for schema
+    -d, --outDir <path>   Output directory for schema
     -p, --provider <db>   Database provider (sqlite|postgresql|mysql)
     --force               Force regeneration (skip cache)
 
@@ -71,7 +71,7 @@ const HELP = `
     --base-path <path>    Base path for API (default: /api)
 
   Options for context:
-    -o, --output <path>   Output file (default: stdout)
+    -o, --output <path>   Output file (default: context.md)
     --format <fmt>        Output format: markdown|json (default: markdown)
 
   Examples:
@@ -82,8 +82,9 @@ const HELP = `
     npx nevr introspect                  # Show all entities
     npx nevr openapi                     # Generate openapi.json
     npx nevr openapi --format yaml       # Generate openapi.yaml
-    npx nevr context                     # Output context to stdout
-    npx nevr context -o context.md       # Save context to file
+    npx nevr context                     # Generate context.md
+    npx nevr context -o ai-context.md    # Custom output path
+    npx nevr context --format json       # Generate context.json
 
 `
 
@@ -105,13 +106,13 @@ function parseCliArgs() {
         force: { type: "boolean" },
 
         // Generate
-        outDir: { type: "string", short: "o" },
+        outDir: { type: "string", short: "d" },
         provider: { type: "string", short: "p" },
 
-        // Generate entity
+        // Generate entity / openapi / context
         fields: { type: "string", short: "f" },
         rules: { type: "string", short: "r" },
-        output: { type: "string" },
+        output: { type: "string", short: "o" },
         "with-relations": { type: "boolean" },
         "with-actions": { type: "boolean" },
 
@@ -197,7 +198,7 @@ async function main() {
       const { generateCommand } = await import("./commands/generate.js")
       await generateCommand({
         config: args.config,
-        outDir: args.outDir,
+        outDir: args.outDir || args.output,
         provider: args.provider,
         force: args.force,
       })

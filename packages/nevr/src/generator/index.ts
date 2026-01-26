@@ -133,9 +133,11 @@ export async function generateFromConfig(
   const plugins = (config.plugins || []) as ConfigPlugin[]
   const pluginEntities = extractPluginEntities(plugins)
 
-  // Extract and apply extensions
+  // Extract and apply extensions to BOTH user and plugin entities
+  // (e.g., username plugin extends auth's user entity, payment extends user)
   const extensions = extractPluginExtensions(plugins)
   applyExtensionsToEntities(userEntities, extensions)
+  applyExtensionsToEntities(pluginEntities, extensions)
 
   // Merge all entities
   const allEntities = [...userEntities, ...pluginEntities]

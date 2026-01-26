@@ -3,11 +3,13 @@
 // Generate AI-optimized context from nevr config
 // =============================================================================
 
-import { writeFileSync } from "fs"
-import { join } from "path"
+import { writeFileSync, mkdirSync } from "fs"
+import { join, dirname } from "path"
 import { loadConfig } from "../utils/config-loader.js"
 import {
   extractPluginEntities,
+  extractPluginExtensions,
+  applyExtensionsToEntities,
   getPluginSummary,
 } from "../../generator/plugin-extractor.js"
 import type { ConfigPlugin } from "../../config.js"
@@ -65,11 +67,18 @@ interface ContextPlugin {
   entities?: string[]
 }
 
+interface ContextExtension {
+  entity: string
+  fields: string[]
+  plugin: string
+}
+
 interface AppContext {
   version: string
   generatedAt: string
   entities: ContextEntity[]
   plugins: ContextPlugin[]
+  extensions: ContextExtension[]
   searchable: Array<{ entity: string; field: string }>
   embeddings: Array<{ entity: string; field: string; provider: string; dimensions?: number }>
 }
@@ -145,7 +154,8 @@ function extractEntity(entity: Entity): ContextEntity {
 
 function generateContextFromConfig(
   entities: Entity[],
-  plugins: ConfigPlugin[]
+  plugins: ConfigPlugin[],
+  extensionMap: Map<string, Record<string, FieldDef>>
 ): AppContext {
   const contextEntities: ContextEntity[] = []
   const searchable: AppContext["searchable"] = []
@@ -187,11 +197,33 @@ function generateContextFromConfig(
     })
   }
 
+  // Build extensions info from plugins
+  const contextExtensions: ContextExtension[] = []
+  for (const plugin of plugins) {
+    const meta = (plugin as any).meta || plugin
+    const pluginId = meta.id || meta.name || "unknown"
+    const extendSchema = (plugin as any).schema?.extend
+
+    if (extendSchema) {
+      for (const [entityName, fields] of Object.entries(extendSchema)) {
+        const fieldNames = Object.keys(fields as Record<string, unknown>)
+        if (fieldNames.length > 0) {
+          contextExtensions.push({
+            entity: entityName,
+            fields: fieldNames,
+            plugin: pluginId,
+          })
+        }
+      }
+    }
+  }
+
   return {
     version: "1.0.0",
     generatedAt: new Date().toISOString(),
     entities: contextEntities,
     plugins: contextPlugins,
+    extensions: contextExtensions,
     searchable,
     embeddings,
   }
@@ -262,6 +294,15 @@ function contextToMarkdown(ctx: AppContext): string {
     }
   }
 
+  if (ctx.extensions.length > 0) {
+    lines.push("## Extensions (Plugin → Entity)")
+    lines.push("")
+    for (const ext of ctx.extensions) {
+      lines.push(`- **${ext.plugin}** → ${ext.entity}: ${ext.fields.join(", ")}`)
+    }
+    lines.push("")
+  }
+
   if (ctx.searchable.length > 0) {
     lines.push("## Searchable Fields")
     lines.push(ctx.searchable.map((s) => `${s.entity}.${s.field}`).join(", "))
@@ -308,6 +349,13 @@ function contextToCompactJSON(ctx: AppContext): string {
       id: p.id,
       e: p.endpoints.length > 0 ? p.endpoints : undefined,
     })),
+    x: ctx.extensions.length > 0
+      ? ctx.extensions.map((ext) => ({
+          p: ext.plugin,
+          e: ext.entity,
+          f: ext.fields,
+        }))
+      : undefined,
   }
 
   return JSON.stringify(compact, null, 0)
@@ -333,6 +381,12 @@ export async function contextCommand(options: ContextCommandOptions = {}): Promi
     const userEntities = config.entities || []
     const plugins = (config.plugins || []) as ConfigPlugin[]
     const pluginEntities = extractPluginEntities(plugins)
+
+    // 3. Extract and apply extensions (e.g., username extends user, payment extends user)
+    const extensions = extractPluginExtensions(plugins)
+    applyExtensionsToEntities(userEntities, extensions)
+    applyExtensionsToEntities(pluginEntities, extensions)
+
     const allEntities = [...userEntities, ...pluginEntities]
 
     if (allEntities.length === 0 && plugins.length === 0) {
@@ -340,31 +394,28 @@ export async function contextCommand(options: ContextCommandOptions = {}): Promi
       process.exit(0)
     }
 
-    // 3. Generate context
-    const ctx = generateContextFromConfig(allEntities, plugins)
+    // 4. Generate context
+    const ctx = generateContextFromConfig(allEntities, plugins, extensions)
 
-    // 4. Format output
+    // 5. Format output
     const format = options.format || "markdown"
     const content = format === "json" ? contextToCompactJSON(ctx) : contextToMarkdown(ctx)
 
-    // 5. Write or output
-    if (options.output) {
-      writeFileSync(join(process.cwd(), options.output), content)
-      if (!options.silent) {
-        console.log(`✅ Generated ${options.output}`)
-        console.log(`
-   Entities: ${ctx.entities.length}
-   Plugins: ${ctx.plugins.length}
-   Searchable fields: ${ctx.searchable.length}
-   Embedding fields: ${ctx.embeddings.length}
-`)
-      }
-    } else {
-      // Output to stdout
-      if (!options.silent) {
-        console.log("---")
-      }
-      console.log(content)
+    // 6. Write to file (default: context.md or context.json)
+    const defaultFile = format === "json" ? "context.json" : "context.md"
+    const outputPath = options.output || defaultFile
+    const fullPath = join(process.cwd(), outputPath)
+
+    mkdirSync(dirname(fullPath), { recursive: true })
+    writeFileSync(fullPath, content)
+
+    if (!options.silent) {
+      console.log(`   📄 Entities: ${ctx.entities.length}`)
+      console.log(`   📄 Plugins: ${ctx.plugins.length}`)
+      console.log(`   📄 Extensions: ${ctx.extensions.length}`)
+      if (ctx.searchable.length > 0) console.log(`   📄 Searchable fields: ${ctx.searchable.length}`)
+      if (ctx.embeddings.length > 0) console.log(`   📄 Embedding fields: ${ctx.embeddings.length}`)
+      console.log(`\n✅ Generated ${outputPath}`)
     }
   } catch (error: any) {
     console.error(`\n❌ Context generation failed: ${error.message}`)

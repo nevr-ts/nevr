@@ -13,7 +13,6 @@ import type { PluginSchema } from "../unified/types.js"
 /**
  * Get the payment plugin schema
  *
- * Follows better-auth patterns:
  * - User entity extended with stripeCustomerId
  * - Subscription entity with referenceId for multi-tenant support
  *
@@ -27,7 +26,7 @@ export function getPaymentSchema(options?: {
     const enableSubscription = options?.subscription !== false
 
     const schema: PluginSchema = {
-        // Extend user entity with stripeCustomerId (better-auth pattern)
+        // Extend user entity with stripeCustomerId
         extend: {
             user: {
                 stripeCustomerId: string.optional().omit().label("Stripe Customer ID"),
@@ -41,12 +40,13 @@ export function getPaymentSchema(options?: {
         schema.entities = {
             subscription: {
                 description: "Subscription record for payment plans",
+                internal: true,
                 fields: {
                     // Plan information
                     plan: string.label("Plan Name"),
 
                     // Reference ID (userId, workspaceId, organizationId, etc.)
-                    // This is the key for multi-tenant subscriptions (better-auth pattern)
+                    // This is the key for multi-tenant subscriptions
                     referenceId: string.label("Reference ID"),
 
                     // Provider-specific IDs
@@ -80,10 +80,10 @@ export function getPaymentSchema(options?: {
                     // Cancellation
                     cancelAtPeriodEnd: bool.default(false).label("Cancel at Period End"),
 
-                    // Team/seats support (better-auth pattern)
+                    // Team/seats support
                     seats: int.optional().label("Number of Seats"),
 
-                    // Group ID for multiple subscriptions per reference (better-auth pattern)
+                    // Group ID for multiple subscriptions per reference
                     groupId: string.optional().label("Group ID"),
                 },
             },

@@ -18,6 +18,7 @@ export function getStorageSchema(): PluginSchema {
         entities: {
             storageFile: {
                 description: "File stored in cloud or local storage",
+                internal: true,
                 fields: {
                     // Owner (optional - can be system files)
                     userId: string.optional().label("User ID"),
