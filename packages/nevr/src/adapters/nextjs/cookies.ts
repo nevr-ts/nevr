@@ -3,7 +3,8 @@
 // Handles cookie setting in Next.js Server Components
 // =============================================================================
 
-import type { Plugin, NevrRequest, NevrResponse, NevrInstance } from "../../types.js"
+import type { NevrRequest, NevrResponse, NevrInstance } from "../../types.js"
+import type { UnifiedPlugin } from "../../plugins/unified/types.js"
 
 // -----------------------------------------------------------------------------
 // Types
@@ -142,25 +143,27 @@ export interface NextCookiesOptions {
  * // lib/nevr.ts
  * import { nevr } from "nevr"
  * import { nextCookies } from "nevr/adapters/nextjs"
+ * import { config } from "./nevr.config"
  *
  * export const api = nevr({
- *   entities: [...],
- *   driver: prisma(db),
- *   plugins: [
- *     auth({ ... }),
- *     nextCookies(), // Required for cookie handling in Server Components
- *   ],
+ *   ...config,
+ *   driver,
+ *   plugins: [...(config.plugins ?? []), nextCookies()],
  * })
  * ```
  */
-export function nextCookies(options: NextCookiesOptions = {}): Plugin {
+export function nextCookies(options: NextCookiesOptions = {}): UnifiedPlugin {
   const { debug = false } = options
 
   return {
-    name: "next-cookies",
-    description: "Handles cookie setting in Next.js Server Components",
+    meta: {
+      id: "next-cookies",
+      name: "Next.js Cookies",
+      version: "1.0.0",
+      description: "Handles cookie setting in Next.js Server Components",
+    },
 
-    hooks: {
+    lifecycle: {
       onResponse: async (req: NevrRequest, res: NevrResponse, _nevr: NevrInstance) => {
         const setCookie = res?.headers?.["set-cookie"]
         if (!setCookie) return

@@ -336,8 +336,108 @@ export function cookieAuth(
   }
 }
 
+// -----------------------------------------------------------------------------
+// Helper: Session Auth (with Auth Plugin)
+// -----------------------------------------------------------------------------
+
+/**
+ * Session-based auth that works with the Nevr auth plugin
+ * Reads session token from cookies and validates against the database
+ *
+ * @example
+ * ```typescript
+ * import { Hono } from "hono"
+ * import { honoAdapter, sessionAuth } from "nevr/adapters/hono"
+ * import { prisma } from "nevr/drivers/prisma"
+ * import { PrismaClient } from "@prisma/client"
+ *
+ * const db = new PrismaClient()
+ * const driver = prisma(db)
+ *
+ * const app = new Hono()
+ * app.route("/api", honoAdapter(api, {
+ *   getUser: sessionAuth(driver),
+ * }))
+ * ```
+ */
+export function sessionAuth(
+  driver: any,
+  options?: {
+    /** Cookie name for session token (default: "nevr.session_token") */
+    cookieName?: string
+  }
+): (c: Context) => Promise<User | null> {
+  const cookieName = options?.cookieName || "nevr.session_token"
+
+  return async (c: Context): Promise<User | null> => {
+    // Try to get token from cookie
+    const cookieHeader = c.req.header("cookie")
+    let token: string | undefined
+
+    if (cookieHeader) {
+      const cookies: Record<string, string> = {}
+      cookieHeader.split(";").forEach((cookie) => {
+        const [name, ...valueParts] = cookie.split("=")
+        const trimmedName = name?.trim()
+        if (trimmedName) {
+          cookies[trimmedName] = decodeURIComponent(valueParts.join("=").trim())
+        }
+      })
+      token = cookies[cookieName]
+    }
+
+    // Also try Authorization header (Bearer token)
+    if (!token) {
+      const auth = c.req.header("authorization")
+      if (auth?.startsWith("Bearer ")) {
+        token = auth.slice(7)
+      }
+    }
+
+    if (!token) {
+      return null
+    }
+
+    try {
+      // Find session in database
+      const session = await driver.findOne("session", { token })
+      if (!session) {
+        return null
+      }
+
+      // Check expiry
+      const expiresAt = new Date(session.expiresAt)
+      if (expiresAt < new Date()) {
+        return null
+      }
+
+      // Get user
+      const user = await driver.findOne("user", { id: session.userId })
+      if (!user) {
+        return null
+      }
+
+      // Update session last used (async, don't wait)
+      driver.update("session", { id: session.id }, { updatedAt: new Date() }).catch(() => {})
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role || "user",
+        image: user.image,
+        emailVerified: user.emailVerified,
+      }
+    } catch (error) {
+      getLogger().error("[nevr:hono] Session auth error:", error)
+      return null
+    }
+  }
+}
+
 // Aliases for convenience
 export { devAuth as honoDevAuth }
 export { jwtAuth as honoJwtAuth }
+export { sessionAuth as honoSessionAuth }
 
 export default honoAdapter

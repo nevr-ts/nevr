@@ -59,12 +59,12 @@ export interface NevrConfig {
   /**
    * User-defined entities
    */
-  entities?: Entity[]
+  entities?: readonly Entity[]
 
   /**
    * Plugins (schemas auto-extracted during generation)
    */
-  plugins?: ConfigPlugin[]
+  plugins?: readonly ConfigPlugin[]
 
   /**
    * Enable incremental generation with caching
@@ -94,7 +94,7 @@ export interface NevrConfig {
  * })
  * ```
  */
-export function defineConfig(config: NevrConfig): NevrConfig {
+export function defineConfig<const T extends NevrConfig>(config: T): T {
   return config
 }
 

@@ -301,6 +301,9 @@ export interface PluginLifecycleHooks {
   /** Called before each request (after middleware) */
   onRequest?: (req: NevrRequest, nevr: NevrInstance) => void | Promise<void>
 
+  /** Called after each response is generated (before sending to client) */
+  onResponse?: (req: NevrRequest, res: NevrResponse, nevr: NevrInstance) => void | Promise<void>
+
   /** Called when an error occurs */
   onError?: (error: Error, req: NevrRequest, nevr: NevrInstance) => void | Promise<void>
 

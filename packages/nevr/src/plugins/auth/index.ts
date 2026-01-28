@@ -113,7 +113,8 @@ export const auth = createPlugin<AuthPluginOptions>({
 
     validate: (options) => {
         const secret = options.secret || process.env.AUTH_SECRET || process.env.NEVR_AUTH_SECRET
-        if (!secret) return ["Secret is required. Set options.secret or AUTH_SECRET env variable"]
+        if (!secret) return ["Secret is required. Set options.secret or NEVR_AUTH_SECRET env variable"]
+        if (secret.length < 32) return [`Secret must be at least 32 characters for security (got ${secret.length}). Generate one with: openssl rand -base64 32`]
         return []
     },
 

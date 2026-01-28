@@ -483,7 +483,7 @@ function createPrismaDriverMethods(
  * })
  * ```
  */
-export function prisma(client: PrismaClient, config: PrismaDriverConfig = {}): Driver {
+export function prisma(client: any, config: PrismaDriverConfig = {}): Driver {
   const driverConfig: DriverFactoryConfig & { modelMap?: Record<string, string> } = {
     driverId: "prisma",
     driverName: "Prisma",

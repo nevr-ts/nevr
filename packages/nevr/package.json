@@ -238,7 +238,15 @@
     "orm",
     "prisma",
     "express",
-    "hono"
+    "hono",
+    "nextjs",
+    "react",
+    "authentication",
+    "authorization",
+    "storage",
+    "payment",
+    "rag",
+    "ai-gateway"
   ],
   "author": "Yalelet Dessalegn",
   "license": "MIT",

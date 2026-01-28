@@ -364,7 +364,7 @@ type InferFieldTypeFromDef<T> =
 /**
  * Infer all entity types from config
  */
-type InferEntities<TEntities extends Entity[]> = {
+type InferEntities<TEntities extends readonly Entity[]> = {
     [E in TEntities[number]as E["name"]]: E extends { config: { fields: infer F } }
     ? F extends Record<string, import("./types.js").FieldDef<any, any, any>>
     ? InferEntityData<F>
@@ -375,7 +375,7 @@ type InferEntities<TEntities extends Entity[]> = {
 /**
  * Infer all create input types from config
  */
-type InferCreateInputs<TEntities extends Entity[]> = {
+type InferCreateInputs<TEntities extends readonly Entity[]> = {
     [E in TEntities[number]as E["name"]]: E extends { config: { fields: infer F } }
     ? F extends Record<string, import("./types.js").FieldDef<any, any, any>>
     ? InferCreateInput<F>
@@ -386,7 +386,7 @@ type InferCreateInputs<TEntities extends Entity[]> = {
 /**
  * Typed Nevr instance with $Infer for E2E type safety
  */
-export interface TypedNevrInstance<TEntities extends Entity[] = Entity[]> extends NevrInstance {
+export interface TypedNevrInstance<TEntities extends readonly Entity[] = readonly Entity[]> extends NevrInstance {
     /**
      * Type inference helper - use with `typeof api.$Infer`
      *
@@ -443,7 +443,7 @@ export interface TypedNevrInstance<TEntities extends Entity[] = Entity[]> extend
  * // User = { id: string; email: string; name: string | null; age: number | null }
  * ```
  */
-export function nevr<TEntities extends Entity[]>(
+export function nevr<TEntities extends readonly Entity[]>(
     config: NevrConfig & { entities: TEntities }
 ): TypedNevrInstance<TEntities> {
     // Use provided context or create default container
@@ -882,7 +882,16 @@ export function nevr<TEntities extends Entity[]>(
                 req.context = { ...req.context, ...context }
             }
 
-            return await processRequest(req)
+            const response = await processRequest(req)
+
+            // Execute onResponse lifecycle hooks (e.g., nextCookies plugin)
+            for (const plugin of plugins) {
+                if (plugin.lifecycle?.onResponse) {
+                    await plugin.lifecycle.onResponse(req, response, instance)
+                }
+            }
+
+            return response
         } catch (error) {
             return handleError(error)
         }

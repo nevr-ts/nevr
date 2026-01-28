@@ -3,11 +3,52 @@
 // Loads nevr.config.ts from the project
 // =============================================================================
 
-import { existsSync } from "fs"
+import { existsSync, readFileSync } from "fs"
 import { resolve } from "path"
 import { fileURLToPath } from "url"
 import { createJiti } from "jiti"
 import type { NevrConfig } from "../../config.js"
+
+// -----------------------------------------------------------------------------
+// Lightweight .env Loader
+// Loads .env and .env.local without requiring dotenv dependency
+// -----------------------------------------------------------------------------
+
+const ENV_FILES = [".env", ".env.local"]
+
+function loadEnvFiles(cwd: string): void {
+  for (const file of ENV_FILES) {
+    const filePath = resolve(cwd, file)
+    if (!existsSync(filePath)) continue
+
+    try {
+      const content = readFileSync(filePath, "utf-8")
+      for (const line of content.split("\n")) {
+        const trimmed = line.trim()
+        // Skip empty lines and comments
+        if (!trimmed || trimmed.startsWith("#")) continue
+        const eqIndex = trimmed.indexOf("=")
+        if (eqIndex === -1) continue
+
+        const key = trimmed.slice(0, eqIndex).trim()
+        let value = trimmed.slice(eqIndex + 1).trim()
+
+        // Strip surrounding quotes
+        if ((value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1)
+        }
+
+        // Don't overwrite existing env vars
+        if (process.env[key] === undefined) {
+          process.env[key] = value
+        }
+      }
+    } catch {
+      // Silently skip unreadable files
+    }
+  }
+}
 
 // -----------------------------------------------------------------------------
 // Config File Locations
@@ -74,6 +115,11 @@ export function findConfigFile(options: LoadConfigOptions = {}): string | null {
  * - Default export or named `config` export
  */
 export async function loadConfig(options: LoadConfigOptions = {}): Promise<NevrConfig> {
+  const cwd = options.cwd || process.cwd()
+
+  // Load .env files before config (so plugins can access env vars during validation)
+  loadEnvFiles(cwd)
+
   const configPath = findConfigFile(options)
 
   if (!configPath) {

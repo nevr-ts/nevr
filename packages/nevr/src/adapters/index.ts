@@ -30,6 +30,7 @@ export {
   mountNevr,
   devAuth as honoDevAuth,
   jwtAuth as honoJwtAuth,
+  sessionAuth as honoSessionAuth,
   cookieAuth,
   type HonoAdapterOptions,
 } from "./hono.js"

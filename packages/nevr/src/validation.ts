@@ -181,6 +181,7 @@ export function validateQueryParams(query: Record<string, unknown>): {
     }
 
     // Parse JSON sort if present
+    let sortParsedAsJson = false
     if (typeof query.sort === "string" && query.sort.startsWith("{")) {
         try {
             const parsed = JSON.parse(query.sort)
@@ -190,6 +191,7 @@ export function validateQueryParams(query: Record<string, unknown>): {
                         sort[field] = direction
                     }
                 }
+                sortParsedAsJson = true
             }
         } catch {
             // Not JSON, will try comma-separated format below
@@ -295,7 +297,7 @@ export function validateQueryParams(query: Record<string, unknown>): {
     }
 
     // Parse sort - support comma-separated, prefix with - for desc
-    if (typeof query.sort === "string") {
+    if (typeof query.sort === "string" && !sortParsedAsJson) {
         const sortFields = query.sort.split(",")
         for (const field of sortFields) {
             const trimmed = field.trim()

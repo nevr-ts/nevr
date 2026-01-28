@@ -252,6 +252,12 @@ export interface LifecycleHooks {
     onRequest?: (req: NevrRequest, nevr: NevrInstance) => void | Promise<void>
 
     /**
+     * Called after each response is generated (before sending to client)
+     * Use for response modification, cookie interception
+     */
+    onResponse?: (req: NevrRequest, res: NevrResponse, nevr: NevrInstance) => void | Promise<void>
+
+    /**
      * Called when error occurs
      * Use for error reporting, logging
      */

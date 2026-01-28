@@ -78,6 +78,7 @@ export function normalizeNewPlugin(modern: NewPlugin): UnifiedPlugin {
             await modern.init?.({ nevr, driver: (nevr as any).driver } as any)
         } : undefined),
         onRequest: modern.lifecycle?.onRequest,
+        onResponse: modern.lifecycle?.onResponse,
         onError: modern.lifecycle?.onError,
         onShutdown: modern.lifecycle?.onShutdown,
     }
@@ -147,7 +148,7 @@ export function normalizePlugin(plugin: NewPlugin | UnifiedPlugin): UnifiedPlugi
 /**
  * Normalize multiple plugins
  */
-export function normalizePlugins(plugins: (NewPlugin | UnifiedPlugin)[]): UnifiedPlugin[] {
+export function normalizePlugins(plugins: readonly (NewPlugin | UnifiedPlugin)[]): UnifiedPlugin[] {
     return plugins.map(normalizePlugin)
 }
 

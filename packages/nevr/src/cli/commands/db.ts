@@ -68,10 +68,16 @@ function findSchemaPath(customPath?: string): string {
 
 /**
  * Run a command and stream output
+ * Quotes arguments containing spaces for safe shell execution
  */
 async function runCommand(command: string, args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
-    const proc = spawn(command, args, {
+    // Quote arguments that contain spaces to prevent shell splitting
+    const safeArgs = args.map(arg =>
+      arg.includes(" ") ? `"${arg}"` : arg
+    )
+
+    const proc = spawn(command, safeArgs, {
       stdio: "inherit",
       shell: true,
       cwd: process.cwd(),

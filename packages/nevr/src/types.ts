@@ -1027,9 +1027,9 @@ export interface NevrError {
 // -----------------------------------------------------------------------------
 
 export interface NevrConfig {
-  entities: (Entity | EntityOrBuilder)[]
+  entities: readonly (Entity | EntityOrBuilder)[]
   driver: Driver
-  plugins?: { meta: any;[key: string]: any }[]
+  plugins?: readonly { meta: any;[key: string]: any }[]
   cors?: CorsOptions | boolean
   security?: SecurityOptions | false
   /**

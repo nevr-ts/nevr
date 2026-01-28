@@ -273,7 +273,7 @@ export function extractPluginExtensions(plugins: ConfigPlugin[]): Map<string, Re
  * Modifies entities in-place to add fields from plugins
  */
 export function applyExtensionsToEntities(
-  entities: Entity[],
+  entities: readonly Entity[],
   extensions: Map<string, Record<string, FieldDef>>
 ): void {
   for (const entity of entities) {
