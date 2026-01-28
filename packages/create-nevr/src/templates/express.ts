@@ -20,7 +20,7 @@ export const expressTemplates = {
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
-    "nevr": "^0.5.1",
+    "nevr": "^0.5.2",
     "dotenv": "^16.4.0",
     "express": "^4.21.0"
   },
