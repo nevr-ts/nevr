@@ -15,9 +15,10 @@ import { nevr } from "nevr"
 import { expressAdapter, expressDevAuth, expressJwtAuth } from "nevr/adapters/express"
 import { prisma } from "nevr/drivers/prisma"
 import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
 
-const db = new PrismaClient()
-const api = nevr({ entities, driver: prisma(db) })
+const driver = prisma(new PrismaClient())
+const api = nevr({ ...config, driver })
 
 const app = express()
 app.use(express.json())
@@ -41,8 +42,13 @@ Options:
 import { Hono } from "hono"
 import { nevr } from "nevr"
 import { honoAdapter, honoDevAuth, honoJwtAuth } from "nevr/adapters/hono"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
+
+const driver = prisma(new PrismaClient())
+const api = nevr({ ...config, driver })
 
 const app = new Hono()
-const api = nevr({ entities, driver })
 app.route("/api", honoAdapter(api, { getUser: honoDevAuth }))
 ```

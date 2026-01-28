@@ -5,10 +5,62 @@ Create and configure a Nevr API instance. This is the main entry point for your 
 ## Signature
 
 ```typescript
-function nevr<TEntities extends Entity[]>(
-  config: NevrConfig<TEntities>
-): NevrInstance<TEntities>
+function nevr<TEntities extends readonly Entity[]>(
+  config: NevrConfig & { entities: TEntities }
+): TypedNevrInstance<TEntities>
 ```
+
+---
+
+## defineConfig()  {#defineconfig}
+
+Create a type-safe configuration object. This is the recommended way to define your config so it can be shared between the **CLI** (generate, db:push) and the **runtime** (server).
+
+### Signature
+
+```typescript
+function defineConfig<const T extends NevrConfig>(config: T): T
+```
+
+The `const` generic preserves the exact tuple type of your entities, so type inference (like `$Infer`) works when you spread the config into `nevr()`.
+
+### Usage
+
+```typescript
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
+import { user } from "./entities/user.js"
+import { post } from "./entities/post.js"
+
+export const config = defineConfig({
+  database: "sqlite",
+  entities: [user, post],
+  plugins: [],
+})
+
+export default config
+```
+
+Then in your server:
+
+```typescript
+// src/server.ts
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
+
+const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
+
+// Full type inference works:
+type User = typeof api.$Infer.Entities["user"]
+```
+
+::: tip Why defineConfig?
+- **Single source of truth** — entities and plugins defined once, used by both CLI and runtime
+- **Type preservation** — the `const` generic preserves entity tuple types through the spread
+- **CLI compatibility** — `npx nevr generate` and `npx nevr db:push` auto-discover `nevr.config.ts`
+:::
 
 ---
 
@@ -17,15 +69,18 @@ function nevr<TEntities extends Entity[]>(
 Full configuration options:
 
 ```typescript
-interface NevrConfig<TEntities> {
+interface NevrConfig {
   /** Entity definitions */
-  entities: TEntities
+  entities: readonly Entity[]
 
-  /** Database driver */
+  /** Database driver (runtime only — not needed in defineConfig) */
   driver: Driver
 
   /** Plugins to use */
-  plugins?: Plugin[]
+  plugins?: readonly Plugin[]
+
+  /** Database type (for CLI schema generation) */
+  database?: "sqlite" | "postgresql" | "mysql"
 
   /** CORS configuration */
   cors?: CorsOptions
@@ -52,6 +107,11 @@ interface NevrConfig<TEntities> {
 
 }
 ```
+
+::: tip
+ `defineConfig()`. The config file focuses on entities, plugins, and database type for schema generation.
+ so always use `defineConfig()` to create your config object(`nevr.config.ts`), then spread it into `nevr()` at runtime to add the driver and any runtime-only options.
+:::
 
 ---
 
@@ -306,6 +366,15 @@ function getUser(id: string): Promise<User> {
 
 ## Integration Examples
 
+### Next.js
+
+```typescript
+import { toNextHandler } from "nevr/adapters/nextjs"
+import { api } from "@/lib/nevr"
+
+export const { GET, POST, PUT, PATCH, DELETE } = toNextHandler(api)
+```
+
 ### Express
 
 ```typescript
@@ -330,15 +399,16 @@ export default app
 
 
 
-## Full Example
+## Full Example 
 
-```typescript
-import { nevr, entity, string, int, text, belongsTo } from "nevr"
-import { prisma } from "nevr/drivers/prisma"
+Using `defineConfig` with the config spread pattern:
+
+::: code-group
+
+```typescript [src/nevr.config.ts]
+import { defineConfig, entity, string, int, text, bool, belongsTo } from "nevr"
 import { auth } from "nevr/plugins/auth"
-import { PrismaClient } from "@prisma/client"
 
-// Define entities
 const user = entity("user", {
   email: string.email().unique(),
   name: string.trim(),
@@ -360,16 +430,31 @@ const post = entity("post", {
     delete: ["owner", "admin"],
   })
 
-// Create API
-const api = nevr({
+export const config = defineConfig({
+  database: "postgresql",
   entities: [user, post],
-  driver: prisma(new PrismaClient()),
   plugins: [
     auth({
       session: { expiresIn: "7d" },
       emailAndPassword: { enabled: true },
     }),
   ],
+})
+
+export default config
+```
+
+```typescript [src/server.ts]
+import express from "express"
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { expressAdapter } from "nevr/adapters/express"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
+
+const api = nevr({
+  ...config,
+  driver: prisma(new PrismaClient()),
   cors: {
     origin: ["http://localhost:3000"],
     credentials: true,
@@ -380,11 +465,14 @@ const api = nevr({
 api.registerService("stripe", () => new Stripe(process.env.STRIPE_KEY))
 api.registerService("mailer", () => new MailerService())
 
-// Export for adapter
-export { api }
+// Mount
+const app = express()
+app.use(express.json())
+app.use("/api", expressAdapter(api))
+app.listen(3000)
 ```
 
----
+:::
 
 ## See Also
 

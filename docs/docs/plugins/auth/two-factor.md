@@ -4,18 +4,28 @@ Multi-method 2FA: TOTP, OTP (email/SMS), and backup codes.
 
 ## Installation
 
+Add the two-factor plugin inside the auth plugin in your config:
+
 ```typescript
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
 import { auth } from "nevr/plugins/auth"
 import { twoFactor } from "nevr/plugins/auth/plugins/two-factor"
 
-const api = nevr({
+export const config = defineConfig({
+  database: "sqlite",
+  entities: [],
   plugins: [
     auth({
       plugins: [twoFactor()],
     }),
   ],
 })
+
+export default config
 ```
+
+Your server picks it up automatically with `nevr({ ...config, driver })`.
 
 ## Configuration
 

@@ -16,21 +16,37 @@ Plugins let you add entities, fields, hooks, middleware, and routes without chan
 
 Full authentication with email/password, sessions, and user management. No external dependencies.
 
-```ts
-import { nevr } from "nevr"
-import { auth } from "nevr/plugins/auth"
-import { prisma } from "nevr/drivers/prisma"
+Add it to your config:
 
-const api = nevr({
+```ts
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
+import { auth } from "nevr/plugins/auth"
+
+export const config = defineConfig({
+  database: "sqlite",
   entities: [],
-  driver: prisma(db),
   plugins: [
     auth({
       mode: "session",          // "session" | "bearer"
       emailAndPassword: true,   // Enable email/password auth
     })
-  ]
+  ],
 })
+
+export default config
+```
+
+Then your server picks it up automatically:
+
+```ts
+// src/server.ts
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
+
+const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 ```
 
 Set the secret in your environment:
@@ -61,9 +77,16 @@ AUTH_SECRET="your-random-secret-key"
 Add `createdAt`/`updatedAt` (on by default). Disable per-entity via `.noTimestamps()`.
 
 ```ts
+// In nevr.config.ts:
 import { timestamps } from "nevr/plugins/timestamps"
 
-const api = nevr({ entities, driver, plugins: [timestamps()] })
+export const config = defineConfig({
+  database: "sqlite",
+  entities: [...],
+  plugins: [timestamps()],
+})
+
+// In server.ts — nevr({ ...config, driver }) picks up the plugin automatically.
 ```
 
 ## Authoring a Plugin

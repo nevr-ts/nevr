@@ -2,10 +2,11 @@
   <img src="docs/docs/public/nevr_pp.png" alt="Nevr Logo" width="120" height="120" />
 </p>
 
-<h1 align="center">⚡ Nevr</h1>
+<h1 align="center">Nevr</h1>
 
 <p align="center">
-  <strong>The Full-Stack TypeScript Framework That Makes Backend Development Fun Again</strong>
+  <strong>The Entity-First TypeScript Framework</strong><br>
+  Define your data model once. Get a type-safe API, database schema, auth, and client — automatically.
 </p>
 
 <p align="center">
@@ -27,7 +28,7 @@
 
 ## 🎯 What is Nevr?
 
-**Nevr** is a **full-stack TypeScript framework** that eliminates boilerplate by turning your domain models into fully functional, type-safe APIs. Define your entities once—get CRUD endpoints, validation, authorization, Prisma schema, and typed clients automatically.
+**Nevr** is the **Entity-First TypeScript Framework** that eliminates boilerplate by turning your domain models into fully functional, type-safe APIs. Define your entities once — get CRUD endpoints, validation, authorization, Prisma schema, and typed clients automatically.
 
 ```typescript
 // This is your entire backend for a blog post resource
@@ -37,14 +38,7 @@ export const post = entity("post", {
   title: string.min(1).max(200),
   content: text,
   author: belongsTo(() => user),
-})
-  .ownedBy("author")
-  .rules({
-    create: ["authenticated"],
-    read: ["everyone"],
-    update: ["owner"],
-    delete: ["owner", "admin"],
-  })
+}).ownedBy("author")
 ```
 
 **That's it.** You now have:
@@ -55,8 +49,6 @@ export const post = entity("post", {
 - ✅ `DELETE /api/posts/:id` — Delete (ownership enforced)
 - ✅ Prisma schema auto-generated
 - ✅ TypeScript types inferred end-to-end
-- ✅ Type-safe client for your frontend
-
 ---
 
 ## 🚀 Quick Start
@@ -80,7 +72,7 @@ Your API is live at **http://localhost:3000/api** 🎉
 
 ### The Problem
 
-Building backends in 2024 still feels like it's 2014:
+Building backends today still feels like 2014:
 
 | Pain Point | Traditional Approach |
 |------------|---------------------|
@@ -151,25 +143,23 @@ await runWorkflow(checkoutWorkflow, { cartId, paymentMethod })
 ### 🧩 Plugin Ecosystem
 
 ```typescript
-const api = nevr({
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
+import { auth } from "nevr/plugins/auth"
+
+export const config = defineConfig({
+  database: "postgresql",
   entities: [user, post],
   plugins: [
     auth({
-      secret: "",
-      emailAndPassword: {
-        enable: true,
-        
+      secret: process.env.AUTH_SECRET!,
+      emailAndPassword: { enabled: true },
+      socialProviders: {
+        google: { clientId: "", clientSecret: "" },
+        github: { clientId: "", clientSecret: "" },
       },
-      socialProviders: { google: {
-        clientId: "",
-        clientSecret: "",
-        },
-        github: {
-          clientId: "",
-          clientSecret: "",
-        },
     }),
-    timestamps(),      // Auto createdAt/updatedAt
+    timestamps(),
     storage({ s3: {} }),
     payments({ stripe: {} }),
   ],
@@ -200,9 +190,9 @@ const emailService = createService("email", () => ({
 ctx.services.email.send(user.email, "Welcome!", "...")
 ```
 
-### 🧠 AI-Native & RAG 
+### 🧠 RAG & AI Gateway
 
-Nevr is the first framework with a **built-in RAG (Retrieval-Augmented Generation) engine**.
+Nevr has a **built-in RAG (Retrieval-Augmented Generation) plugin** for vector search and AI integration.
 
 ```typescript
 const document = entity("document", {
@@ -229,7 +219,8 @@ const compact = generateContextString(api, "json")
 
 ```typescript
 // Server
-const api = nevr({ entities: [user, post] })
+import { config } from "./nevr.config.js"
+const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 export type API = typeof api
 
 // Client (types inferred automatically)
@@ -241,7 +232,7 @@ const posts = await client.posts.list() // Fully typed!
 
 ---
 
-## 📊 The Numbers Don't Lie
+## 📊 The Numbers
 
 | Metric | Traditional (Express + Prisma + Zod) | Nevr |
 |--------|--------------------------------------|------|
@@ -372,7 +363,7 @@ npm run build
 ---
 
 <p align="center">
-  <strong>Stop writing boilerplate. Start shipping products.</strong>
+  <strong>Define your entity. Get your API. Start building in 60 seconds.</strong>
   <br><br>
   <a href="https://github.com/nevr-ts/nevr">⭐ Star us on GitHub</a>
 </p>

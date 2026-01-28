@@ -29,17 +29,19 @@
 
 ## Using Plugins
 
-Plugins are passed to the `nevr` configuration:
+Add plugins to your `defineConfig` — they're picked up automatically by `nevr()`:
 
 ```typescript
-import { nevr } from "nevr"
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
 import { auth } from "nevr/plugins/auth"
 import { timestamps } from "nevr/plugins/timestamps"
+import { user } from "./entities/user.js"
+import { post } from "./entities/post.js"
 
-const api = nevr({
+export const config = defineConfig({
+  database: "sqlite",
   entities: [user, post],
-  driver: prisma(db),
-  
   plugins: [
     // Official plugin with options
     auth({
@@ -49,17 +51,77 @@ const api = nevr({
         github: { clientId: "...", clientSecret: "..." },
       },
     }),
-    
+
     // Official simple plugin
     timestamps(),
-    
+
     // Your custom plugin
     myCustomPlugin({ apiKey: "..." }),
-  ]
+  ],
 })
+
+export default config
+```
+
+```typescript
+// src/server.ts — plugins loaded automatically from config
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
+
+const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 ```
 
 > 🟡 **Intermediate Tip**: Plugins are applied in order. If plugin B depends on plugin A, make sure A comes first in the array.
+
+::: tip Recommended project structure
+For projects with custom plugins, keep them in a dedicated `plugins/` folder:
+
+**Express / Hono:**
+```
+src/
+├── entities/
+│   ├── user.ts
+│   ├── post.ts
+│   └── index.ts         # re-exports all entities
+├── plugins/
+│   ├── auth.ts          # auth plugin config
+│   ├── my-plugin.ts     # your custom plugin
+│   └── index.ts         # re-exports all plugins
+├── nevr.config.ts       # defineConfig — entities + plugins
+└── server.ts            # nevr({ ...config, driver })
+```
+
+**Next.js:**
+```
+lib/
+├── entities/
+│   └── index.ts
+├── plugins/
+│   ├── auth.ts
+│   └── index.ts
+├── nevr.config.ts
+└── nevr.ts
+app/
+└── api/
+    └── [...nevr]/
+        └── route.ts
+```
+
+This keeps plugin configuration separate and your `nevr.config.ts` clean:
+```typescript
+import { defineConfig } from "nevr"
+import * as entities from "./entities/index.js"
+import { authPlugin, myPlugin } from "./plugins/index.js"
+
+export default defineConfig({
+  database: "sqlite",
+  entities: Object.values(entities).filter(e => e && typeof e === "object"),
+  plugins: [authPlugin, myPlugin],
+})
+```
+:::
 
 ---
 
@@ -129,8 +191,8 @@ const greetPlugin = createPlugin<Options>({
   }),
 })
 
-// Usage
-nevr({ plugins: [greetPlugin({ greeting: "Welcome!" })] })
+// Usage in nevr.config.ts:
+// plugins: [greetPlugin({ greeting: "Welcome!" })]
 ```
 
 See [Creating Plugins](./creating) for the full guide.

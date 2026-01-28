@@ -1,8 +1,8 @@
 # Introduction
 
-> 🏗️ **Nevr is the Entity-First Full-Stack Framework for TypeScript.**
+> **Nevr is the Entity-First TypeScript Framework.**
 
-Building industrial-grade backends shouldn't mean gluing together 15 different libraries. Nevr provides a cohesive, type-safe architecture where your **Entity** is the single source of truth.
+Define your data model once — get a type-safe API, database schema, auth rules, and client SDK automatically.
 
 ---
 
@@ -49,7 +49,7 @@ const order = entity("order", {
 
 ### What This Gives You
 
-From this single definition, Nevr gaves you everything you need for a production-ready app:
+From this single definition, Nevr gives you everything you need for a production-ready app:
 
 | Generated Output | Description |
 |-----------------|-------------|
@@ -62,9 +62,9 @@ From this single definition, Nevr gaves you everything you need for a production
 
 ---
 
-## 3 Pillars of Industrial Architecture
+## Beyond CRUD
 
-Nevr goes beyond CRUD APIs. It provides the architectural patterns needed for complex, real-world applications.
+Nevr provides the architectural patterns needed for complex, real-world applications.
 
 ### 1. Workflow Engine (Sagas) 🔄
 
@@ -157,40 +157,56 @@ graph TD
         Workflow --> Entity[Entity Logic]
         Entity --> Driver[Database Driver]
     end
-    Driver --> DB[(PostgreSQL / MySQL)]
+    Driver --> DB[(PostgreSQL / MySQL / SQLite)]
 ```
 
 ### Supported Adapters
 
 | Layer | Options |
 |-------|---------|
-| **HTTP** | Express, Fastify, Hono, Bun, Node.js (standalone) |
-| **Database** | Prisma (PostgreSQL, MySQL, SQLite, MongoDB) |
+| **HTTP** | Express, NextJs, Hono, more coming soon |
+| **Database** | Prisma (PostgreSQL, MySQL, SQLite) |
 | **Auth** | Auth integration |
 
 ---
 
 ## Full-Stack TypeScript
 
-Nevr is designed as a **true full-stack TypeScript framework**. Types flow seamlessly from your entity definitions to your frontend client—no code generation, no runtime overhead, just pure TypeScript inference.
+Nevr is designed for **end-to-end type safety**. Types flow seamlessly from your entity definitions to your frontend client — no code generation, no runtime overhead, just pure TypeScript inference.
 
 ### The $Infer Pattern
 
 Nevr uses a `$Infer` pattern to extract types from your server:
 
-```typescript
-// === server.ts ===
-export const api = nevr({
+::: code-group
+
+```typescript [src/nevr.config.ts]
+import { defineConfig } from "nevr"
+import { user, product, order } from "./entities/index.js"
+import { auth } from "nevr/plugins/auth"
+
+export const config = defineConfig({
+  database: "postgresql",
   entities: [user, product, order],
   plugins: [auth()],
 })
+
+export default config
+```
+
+```typescript [src/server.ts]
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
+
+export const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 
 // Export the server type (no runtime import on client)
 export type API = typeof api
 ```
 
-```typescript
-// === client.ts ===
+```typescript [src/client.ts]
 import { createTypedClient, entityClient } from "nevr/client"
 import type { API } from "./server"  // Type-only import
 
@@ -206,6 +222,8 @@ const { data } = await client.users.create({
   // unknownField: "oops",    // ❌ Type error
 })
 ```
+
+:::
 
 ### Type Inference Utilities
 

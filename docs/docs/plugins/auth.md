@@ -13,21 +13,138 @@ Self-contained authentication for Nevr. Supports email/password, OAuth providers
 
 ## Quick Start
 
-```typescript
-import { nevr } from "nevr"
-import { auth } from "nevr/plugins/auth"
+### 1. Set your secret
 
-const api = nevr({
+Generate a high-entropy secret (minimum 32 characters):
+
+```bash
+# Generate a secure secret
+openssl rand -base64 32
+```
+
+Add it to your `.env` file:
+
+```bash
+NEVR_AUTH_SECRET="paste-your-generated-secret-here"
+```
+
+::: warning Security
+The secret must be at least **32 characters**. It's used for HMAC-SHA256 signing of sessions and tokens. Never commit it to version control.
+:::
+
+### 2. Add the auth plugin
+
+```typescript
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
+import { auth } from "nevr/plugins/auth"
+import { post } from "./entities/post.js"
+
+export const config = defineConfig({
+  database: "sqlite",
   entities: [post],
-  driver: prisma(db),
   plugins: [
     auth({
-      secret: process.env.AUTH_SECRET,  // Required
-      baseURL: "http://localhost:3000",
       emailAndPassword: { enabled: true },
     }),
   ],
 })
+
+export default config
+```
+
+The plugin reads `NEVR_AUTH_SECRET` (or `AUTH_SECRET`) from your environment automatically — no need to pass `secret` in the options.
+
+### 3. Create the server with `getUser`
+
+The auth plugin creates sessions in the database. To resolve the authenticated user on each request, pass `sessionAuth()` as the `getUser` callback in your adapter.
+
+::: code-group
+
+```typescript [Express]
+// src/server.ts
+import "dotenv/config"
+import express from "express"
+import { PrismaClient } from "@prisma/client"
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { expressAdapter, sessionAuth } from "nevr/adapters/express"
+import { config } from "./nevr.config.js"
+
+const db = new PrismaClient()
+const driver = prisma(db)
+
+const api = nevr({ ...config, driver })
+
+const app = express()
+app.use(express.json())
+app.use("/api", expressAdapter(api, {
+  getUser: sessionAuth(driver),
+}))
+
+app.listen(3000)
+```
+
+```typescript [Hono]
+// src/server.ts
+import "dotenv/config"
+import { Hono } from "hono"
+import { serve } from "@hono/node-server"
+import { PrismaClient } from "@prisma/client"
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { honoAdapter, sessionAuth } from "nevr/adapters/hono"
+import { config } from "./nevr.config.js"
+
+const db = new PrismaClient()
+const driver = prisma(db)
+
+const api = nevr({ ...config, driver })
+
+const app = new Hono()
+app.route("/api", honoAdapter(api, {
+  getUser: sessionAuth(driver),
+}))
+
+serve({ fetch: app.fetch, port: 3000 })
+```
+
+```typescript [Next.js — lib/nevr.ts]
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { nextCookies } from "nevr/adapters/nextjs"
+import { config } from "./nevr.config"
+
+const db = new PrismaClient()
+const driver = prisma(db)
+
+export const api = nevr({
+  ...config,
+  driver,
+  plugins: [...(config.plugins ?? []), nextCookies()],
+})
+```
+
+```typescript [Next.js — route.ts]
+// app/api/[...nevr]/route.ts
+import { toNextHandler, sessionAuth } from "nevr/adapters/nextjs"
+import { api } from "@/lib/nevr"
+
+export const { GET, POST, PUT, PATCH, DELETE } = toNextHandler(api, {
+  getUser: sessionAuth(api),
+})
+```
+
+:::
+
+`sessionAuth()` reads the `nevr.session_token` cookie (or `Authorization: Bearer` header), finds the session in the database, validates expiry, and returns the user. Without it, `req.user` is always `null` and rules like `"authenticated"` or `"owner"` will deny access.
+
+### 4. Generate and push
+
+```bash
+npx nevr generate    # Generates user + session tables
+npx nevr db:push     # Push to database
 ```
 
 ---
@@ -38,7 +155,7 @@ const api = nevr({
 
 | Option | Type | Default | Description |
 |:-------|:-----|:--------|:------------|
-| `secret` | `string` | `AUTH_SECRET` env | **Required.** Encryption key for tokens |
+| `secret` | `string` | `NEVR_AUTH_SECRET` or `AUTH_SECRET` env | **Required.** Min 32 chars. Signing key for tokens/sessions. Auto-reads from env. |
 | `baseURL` | `string` | - | Base URL for OAuth callbacks |
 
 ### Email & Password
@@ -471,3 +588,7 @@ Extend authentication with additional capabilities:
 - [Organization Plugin](/plugins/organization) - Multi-tenant teams and roles
 - [Payment Plugin](/plugins/payment) - Subscription billing with Stripe
 - [Storage Plugin](/plugins/storage) - S3-compatible file storage
+
+## Other Auth Guides
+- [Email & Password](/plugins/auth/email-password)
+- [Session Management](/plugins/auth/sessions)

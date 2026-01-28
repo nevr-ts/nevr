@@ -4,13 +4,17 @@ Passwordless authentication via email magic links.
 
 ## Installation
 
-The magic-link plugin is included with the auth plugin.
+The magic-link plugin is included with the auth plugin. Add it to your config:
 
 ```typescript
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
 import { auth } from "nevr/plugins/auth"
 import { magicLink } from "nevr/plugins/auth/plugins/magic-link"
 
-const api = nevr({
+export const config = defineConfig({
+  database: "sqlite",
+  entities: [],
   plugins: [
     auth({
       plugins: [
@@ -23,7 +27,11 @@ const api = nevr({
     }),
   ],
 })
+
+export default config
 ```
+
+Your server picks it up automatically with `nevr({ ...config, driver })`.
 
 ## Configuration
 

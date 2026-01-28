@@ -5,17 +5,25 @@ Username-based authentication with case-insensitive sign-in.
 ## Installation
 
 ```typescript
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
 import { auth } from "nevr/plugins/auth"
 import { username } from "nevr/plugins/auth/plugins/username"
 
-const api = nevr({
+export const config = defineConfig({
+  database: "sqlite",
+  entities: [],
   plugins: [
     auth({
       plugins: [username()],
     }),
   ],
 })
+
+export default config
 ```
+
+Your server picks it up automatically with `nevr({ ...config, driver })`.
 
 ## Configuration
 

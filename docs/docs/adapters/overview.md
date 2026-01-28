@@ -20,7 +20,7 @@ Express Request → Adapter → NevrRequest → Core → NevrResponse → Adapte
 
 ## Usage
 
-### Next.js (Recommended)
+### Next.js 
 
 ```typescript
 // app/api/[...nevr]/route.ts
@@ -70,7 +70,7 @@ expressAdapter(api, {
 
 ## Next Steps
 
-- [Next.js Adapter](/adapters/nextjs) (Recommended)
+- [Next.js Adapter](/adapters/nextjs) 
 - [Express Adapter](/adapters/express)
 - [Hono Adapter](/adapters/hono)
 - [Custom Adapters](/adapters/custom)

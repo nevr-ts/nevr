@@ -4,11 +4,11 @@ import { text } from '../../../packages/nevr/src'
 export default defineConfig({
   base: '/nevr/',
   title: "Nevr",
-  description: "The Entity-First Backend Framework — Build industrial-grade APIs with workflows, services, and remote data stitching",
+  description: "The Entity-First TypeScript Framework — Define your data model once, get a type-safe API automatically.",
   head: [
     ['meta', { name: 'theme-color', content: '#7c3aed' }],
-    ['meta', { property: 'og:title', content: 'Nevr — The Entity-First Backend Framework' }],
-    ['meta', { property: 'og:description', content: 'Build industrial-grade APIs with workflows, services, and remote data stitching. All type-safe.' }],
+    ['meta', { property: 'og:title', content: 'Nevr — The Entity-First TypeScript Framework' }],
+    ['meta', { property: 'og:description', content: 'Define your data model once. Get a type-safe API, database schema, auth, and client — automatically.' }],
   ],
   themeConfig: {
     logo: '/nevr_pp.png',
@@ -110,6 +110,7 @@ export default defineConfig({
             collapsed: false,
             items: [
               { text: 'Overview', link: '/plugins/auth' },
+              { text: 'Usernames', link: '/plugins/auth/username' },
               { text: 'Magic Link', link: '/plugins/auth/magic-link' },
               { text: 'Two Factor', link: '/plugins/auth/two-factor' },
               { text: 'Phone Number', link: '/plugins/auth/phone-number' },
@@ -212,7 +213,7 @@ export default defineConfig({
     },
     footer: {
       message: 'Released under the MIT License.',
-      copyright: 'Copyright © 2025 Nevr Contributors'
+      copyright: 'Copyright © 2025-present Nevr Contributors'
     },
     outline: {
       level: [2, 3]

@@ -12,29 +12,36 @@ npm install -D @types/express
 ## Basic Usage
 
 ```typescript
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
+import { user } from "./entities/user"
+import { post } from "./entities/post"
+
+export const config = defineConfig({
+  database: "sqlite",
+  entities: [user, post],
+  plugins: [],
+})
+```
+
+```typescript
+// src/server.ts
 import express from "express"
 import { nevr } from "nevr"
 import { expressAdapter } from "nevr/adapters/express"
 import { prisma } from "nevr/drivers/prisma"
 import { PrismaClient } from "@prisma/client"
-import { user, post } from "./entities"
+import { config } from "./nevr.config.js"
 
 const db = new PrismaClient()
+const driver = prisma(db)
+
+const api = nevr({ ...config, driver })
+
 const app = express()
-
-// 1. Initialize Nevr
-const api = nevr({
-  entities: [user, post],
-  driver: prisma(db)
-})
-
-// 2. Add Body Parser (Required)
 app.use(express.json())
-
-// 3. Mount Nevr
 app.use("/api", expressAdapter(api))
 
-// 4. Start Server
 app.listen(3000, () => {
   console.log("Server running on http://localhost:3000")
 })
@@ -42,34 +49,27 @@ app.listen(3000, () => {
 
 ## With Authentication
 
+Add the auth plugin to your config:
+
 ```typescript
-import express from "express"
-import { nevr } from "nevr"
-import { expressAdapter } from "nevr/adapters/express"
-import { prisma } from "nevr/drivers/prisma"
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
 import { auth } from "nevr/plugins/auth"
-import { PrismaClient } from "@prisma/client"
-import { post } from "./entities"
+import { post } from "./entities/post"
 
-const db = new PrismaClient()
-const app = express()
-
-const api = nevr({
+export const config = defineConfig({
+  database: "sqlite",
   entities: [post],
-  driver: prisma(db),
   plugins: [
     auth({
-      mode: "session",
-      emailAndPassword: true,
-    })
-  ]
+      secret: process.env.AUTH_SECRET!,
+      emailAndPassword: { enabled: true },
+    }),
+  ],
 })
-
-app.use(express.json())
-app.use("/api", expressAdapter(api))
-
-app.listen(3000)
 ```
+
+Your server stays the same — `nevr({ ...config, driver })` picks up the plugin automatically.
 
 Now you have authentication endpoints at:
 - `POST /api/auth/sign-up`

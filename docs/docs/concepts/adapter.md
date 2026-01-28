@@ -54,9 +54,8 @@ A Next.js API Route adapter for Nevr.
 ```typescript
 // app/api/[...nevr]/route.ts
 import { toNextHandler } from "nevr/adapters/nextjs"
-import { api } from "@/lib/nevr"
 
-export const { GET, POST, PUT, PATCH, DELETE } = toNextHandler(api)
+export const { GET, POST, PUT, PATCH, DELETE } = toNextHandler(nevrInstance)
 ```
 
 ## Creating Custom Adapters

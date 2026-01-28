@@ -4,18 +4,28 @@ Guest user accounts with optional account linking.
 
 ## Installation
 
+Add the anonymous plugin inside the auth plugin in your config:
+
 ```typescript
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
 import { auth } from "nevr/plugins/auth"
 import { anonymous } from "nevr/plugins/auth/plugins/anonymous"
 
-const api = nevr({
+export const config = defineConfig({
+  database: "sqlite",
+  entities: [],
   plugins: [
     auth({
       plugins: [anonymous()],
     }),
   ],
 })
+
+export default config
 ```
+
+Your server picks it up automatically with `nevr({ ...config, driver })`.
 
 ## Configuration
 

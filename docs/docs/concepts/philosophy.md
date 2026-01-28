@@ -39,7 +39,7 @@ Traditional frameworks require a Senior Developer to architect the "right way" t
 
 ---
 
-## 4. Data-Centric Architecture: Logic is the Entity
+## 4. Entity-First Architecture
 
 In traditional development, "Schema" (Database) and "Rules" (Logic) are separated into different files and layers. We believe this separation is artificial.
 
@@ -72,9 +72,9 @@ We named it **Nevr** because there are things you should **never** have to do ag
 
 ---
 
-## 7. AI-First: Low-Entropy Architecture
+## 7. Low-Entropy Architecture (AI-Friendly)
 
-> Nevr is not just a framework for humans—it's designed to be the **native tongue of AI developers**.
+> Nevr's entity-first design makes it naturally easy for AI agents to understand and extend your codebase.
 
 ### The Problem: Entropy
 

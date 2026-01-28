@@ -11,58 +11,62 @@ npm install hono
 ## Basic Usage
 
 ```typescript
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
+import { user } from "./entities/user"
+import { post } from "./entities/post"
+
+export const config = defineConfig({
+  database: "sqlite",
+  entities: [user, post],
+  plugins: [],
+})
+```
+
+```typescript
+// src/server.ts
 import { Hono } from "hono"
+import { serve } from "@hono/node-server"
 import { nevr } from "nevr"
 import { honoAdapter } from "nevr/adapters/hono"
 import { prisma } from "nevr/drivers/prisma"
 import { PrismaClient } from "@prisma/client"
-import { user, post } from "./entities"
+import { config } from "./nevr.config.js"
 
 const db = new PrismaClient()
+const driver = prisma(db)
+
+const api = nevr({ ...config, driver })
+
 const app = new Hono()
-
-// 1. Initialize Nevr
-const api = nevr({
-  entities: [user, post],
-  driver: prisma(db)
-})
-
-// 2. Mount Nevr (Hono handles body parsing automatically)
 app.route("/api", honoAdapter(api))
 
-// 3. Export for your runtime
-export default app
+serve({ fetch: app.fetch, port: 3000 })
 ```
 
 ## With Authentication
 
+Add the auth plugin to your config:
+
 ```typescript
-import { Hono } from "hono"
-import { nevr } from "nevr"
-import { honoAdapter } from "nevr/adapters/hono"
-import { prisma } from "nevr/drivers/prisma"
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
 import { auth } from "nevr/plugins/auth"
-import { PrismaClient } from "@prisma/client"
-import { post } from "./entities"
+import { post } from "./entities/post"
 
-const db = new PrismaClient()
-const app = new Hono()
-
-const api = nevr({
+export const config = defineConfig({
+  database: "sqlite",
   entities: [post],
-  driver: prisma(db),
   plugins: [
     auth({
-      mode: "session",
-      emailAndPassword: true,
-    })
-  ]
+      secret: process.env.AUTH_SECRET!,
+      emailAndPassword: { enabled: true },
+    }),
+  ],
 })
-
-app.route("/api", honoAdapter(api))
-
-export default app
 ```
+
+Your server stays the same — `nevr({ ...config, driver })` picks up the plugin automatically.
 
 ## Adapter Options
 

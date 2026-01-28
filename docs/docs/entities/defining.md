@@ -28,6 +28,51 @@ const user = entity("user", { ... })
 
 > 🟢 **Beginner Tip**: You don't need to write migration files manually. Just define your entity and run `nevr db:push`.
 
+::: tip Recommended project structure
+Keep each entity in its own file, with a barrel `index.ts` that re-exports them:
+
+**Express / Hono:**
+```
+src/
+├── entities/
+│   ├── user.ts          # export const user = entity("user", { ... })
+│   ├── post.ts          # export const post = entity("post", { ... })
+│   ├── product.ts
+│   └── index.ts         # export { user } from "./user.js"
+├── nevr.config.ts       # defineConfig — imports from entities/
+└── server.ts            # nevr({ ...config, driver })
+```
+
+**Next.js:**
+```
+lib/
+├── entities/
+│   ├── user.ts
+│   ├── post.ts
+│   ├── product.ts
+│   └── index.ts
+├── nevr.config.ts       # defineConfig — imports from entities/
+└── nevr.ts              # nevr({ ...config, driver })
+app/
+└── api/
+    └── [...nevr]/
+        └── route.ts     # nextjsAdapter(api)
+```
+
+Then in your config:
+```typescript
+import { defineConfig } from "nevr"
+import { user, post, product } from "./entities/index.js"
+
+export const config = defineConfig({
+  database: "sqlite",
+  entities: [user, post, product],
+})
+
+export default config
+```
+:::
+
 ---
 
 ## EntityBuilder Method Reference

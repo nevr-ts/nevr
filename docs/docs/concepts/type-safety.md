@@ -39,10 +39,8 @@ Export types from your server for client consumption:
 
 ```typescript
 // server.ts
-export const api = nevr({
-  entities: [user, post, product],
-  driver: prisma(db),
-})
+const db = new PrismaClient()
+const api = nevr({ ...config, driver: prisma(db) })
 
 // Export inferred types
 export type API = typeof api

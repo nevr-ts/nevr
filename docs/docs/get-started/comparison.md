@@ -2,9 +2,9 @@
 
 > ⚔️ **Choosing the right tool for the job.**
 
-Nevr occupies a unique niche: **Developer-First, Type-Safe, Standard REST APIs.**
+Nevr occupies a unique niche: **Entity-First, Type-Safe, Standard REST APIs.**
 
-We believe that for 95% of projects, you shouldn't need to choose between "fast development" (BaaS) and "full control" (Custom Backend). Nevr gives you both.
+For 95% of projects, you shouldn't need to choose between "fast development" (BaaS) and "full control" (Custom Backend). Nevr gives you both.
 
 ---
 
@@ -56,9 +56,7 @@ const user = entity("user", {
 })
 ```
 
-**Verdict**: Nevr uses `Express` and `Prisma` under the hood but removes the 80% of code that is just "gluing things together."
 
----
 
 ## 🆚 vs. Opinionated Frameworks (NestJS)
 

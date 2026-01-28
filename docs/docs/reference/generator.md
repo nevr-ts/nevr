@@ -35,6 +35,9 @@ npx nevr db:push     # Push schema to database
 - `src/nevr.config.ts`
 - `src/nevr.config.js`
 - `src/nevr.config.mjs`
+- `lib/nevr.config.ts`
+- `lib/nevr.config.js`
+- `lib/nevr.config.mjs`
 
 ---
 

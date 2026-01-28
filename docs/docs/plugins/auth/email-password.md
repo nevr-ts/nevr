@@ -23,11 +23,8 @@
 import { nevr } from "nevr"
 import { auth } from "nevr/plugins/auth"
 
-const api = nevr({
-  entities: [user],
-  driver: prisma(db),
-  
-  plugins: [
+
+   plugins: [
     auth({
       baseURL: process.env.BASE_URL,
       
@@ -47,7 +44,7 @@ const api = nevr({
       },
     }),
   ],
-})
+
 ```
 
 ---
@@ -249,7 +246,7 @@ The auth plugin creates these endpoints:
 
 ## Best Practices
 
-1. **Always hash passwords**: Nevr uses scrypt by default
+1. **Always hash passwords**: Nevr uses PBKDF2 by default
 2. **Rate limit auth endpoints**: Prevent brute force attacks
 3. **Use HTTPS**: Never send passwords over HTTP
 4. **Implement email verification**: Especially for B2B apps
@@ -260,5 +257,4 @@ The auth plugin creates these endpoints:
 ## Next Steps
 
 - [Session Management](/plugins/auth/sessions) - Configure sessions
-- [Social Sign-On](/plugins/auth/social) - Add OAuth providers
 - [Auth Plugin](/plugins/auth) - Full auth configuration

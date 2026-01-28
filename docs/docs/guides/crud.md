@@ -20,9 +20,13 @@ Nevr auto-generates RESTful CRUD endpoints for every entity. This guide covers:
 ```typescript
 // Server setup
 import express from "express"
-import { nevr, expressAdapter } from "nevr"
+import { nevr } from "nevr"
+import { expressAdapter } from "nevr/adapters/express"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
 
-const api = nevr({ entities: [user, post, product] })
+const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 const app = express()
 
 app.use("/api", expressAdapter(api))

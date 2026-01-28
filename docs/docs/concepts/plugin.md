@@ -17,26 +17,30 @@ Plugins hook into the Nevr lifecycle. They can:
 Self-contained authentication with sessions and user management.
 
 ```typescript
-import { nevr } from "nevr"
+// nevr.config.ts
+import { defineConfig } from "nevr"
 import { auth } from "nevr/plugins/auth"
-import { prisma } from "nevr/drivers/prisma"
 
-const api = nevr({
+export const config = defineConfig({
+  database: "sqlite",
   entities: [],
-  driver: prisma(db),
   plugins: [
     auth({
-      emailAndPassword: {enabled: true},   // Enable email/password auth
-    })
-  ]
+      emailAndPassword: { enabled: true },
+    }),
+  ],
 })
+
+export default config
 ```
 
-Set `NEVR_AUTH_SECRET` in your environment:
+Set `NEVR_AUTH_SECRET` in your `.env` file (minimum 32 characters):
 
 ```bash
-NEVR_AUTH_SECRET="your-random-secret-key"
+NEVR_AUTH_SECRET="your-random-secret-key-at-least-32-chars"
 ```
+
+The plugin reads from `NEVR_AUTH_SECRET` (or `AUTH_SECRET`) automatically — no need to pass `secret` in the plugin options.
 
 The auth plugin automatically:
 - Creates `user` and `session` entities
@@ -49,12 +53,10 @@ The auth plugin automatically:
 Automatically adds `createdAt` and `updatedAt` fields to your entities (enabled by default).
 
 ```typescript
+// Add to your nevr.config.ts plugins array
 import { timestamps } from "nevr/plugins/timestamps"
 
-const api = nevr({
-  // ...
-  plugins: [timestamps()]
-})
+plugins: [timestamps()]
 ```
 
 Disable per-entity with `.timestamps(false)`.

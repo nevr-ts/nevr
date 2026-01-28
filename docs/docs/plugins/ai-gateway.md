@@ -28,11 +28,15 @@ AI Gateway provides:
 
 ### 1. Add AI Gateway Plugin
 
+Add the plugin to your config:
+
 ```typescript
-import { nevr } from "nevr"
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
 import { aiGateway } from "nevr/plugins"
 
-const api = nevr({
+export const config = defineConfig({
+  database: "postgresql",
   entities: [],
   plugins: [
     aiGateway({
@@ -48,6 +52,20 @@ const api = nevr({
     }),
   ],
 })
+
+export default config
+```
+
+Then in your server:
+
+```typescript
+// src/server.ts
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
+
+const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 ```
 
 ### 2. Client Setup

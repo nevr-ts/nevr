@@ -59,19 +59,21 @@ export const post = entity("post", {
 
 ### 2. Create Configuration (Required)
 
-Create `nevr.config.ts` with `defineConfig`:
+Create `src/nevr.config.ts` with `defineConfig`:
 
 ```typescript
-// nevr.config.ts (or src/nevr.config.ts)
+// src/nevr.config.ts
 import { defineConfig } from "nevr"
 import { user } from "./entities/user"
 import { post } from "./entities/post"
 
-export default defineConfig({
+export const config = defineConfig({
   database: "postgresql",  // or "sqlite", "mysql"
   entities: [user, post],
   plugins: [],
 })
+
+export default config
 ```
 
 The CLI automatically discovers this config file:
@@ -81,33 +83,25 @@ npx nevr generate    # Generates Prisma schema from config
 npx nevr db:push     # Push schema to database
 ```
 
-### 3. Create Nevr Instance
+### 3. Create Server
 
-```typescript
-// src/api.ts
+Your config is the single source of truth — spread it into `nevr()` and add the runtime driver:
+
+::: code-group
+
+```typescript [Express]
+// src/server.ts
+import express from "express"
+import { PrismaClient } from "@prisma/client"
 import { nevr } from "nevr"
 import { prisma } from "nevr/drivers/prisma"
-import { PrismaClient } from "@prisma/client"
-import { user } from "./entities/user"
-import { post } from "./entities/post"
-
-const prismaClient = new PrismaClient()
-
-export const api = nevr({
-  entities: [user, post],
-  driver: prisma(prismaClient),
-})
-```
-
-### 4. Connect to HTTP Framework
-
-**Express:**
-
-```typescript
-// src/index.ts
-import express from "express"
 import { expressAdapter } from "nevr/adapters/express"
-import { api } from "./api"
+import { config } from "./nevr.config.js"
+
+const db = new PrismaClient()
+const driver = prisma(db)
+
+const api = nevr({ ...config, driver })
 
 const app = express()
 app.use(express.json())
@@ -118,19 +112,30 @@ app.listen(3000, () => {
 })
 ```
 
-**Hono:**
-
-```typescript
-// src/index.ts
+```typescript [Hono]
+// src/server.ts
 import { Hono } from "hono"
-import { honoAdapter} from "nevr/adapters/hono"
-import { api } from "./api"
+import { serve } from "@hono/node-server"
+import { PrismaClient } from "@prisma/client"
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { honoAdapter } from "nevr/adapters/hono"
+import { config } from "./nevr.config.js"
+
+const db = new PrismaClient()
+const driver = prisma(db)
+
+const api = nevr({ ...config, driver })
 
 const app = new Hono()
 app.route("/api", honoAdapter(api))
 
-export default app
+serve({ fetch: app.fetch, port: 3000 }, () => {
+  console.log("Server running on http://localhost:3000")
+})
 ```
+
+:::
 
 ### 5. Generate Database Schema
 
@@ -193,13 +198,13 @@ const user = entity("user", {
 Register services for dependency injection:
 
 ```typescript
-import { nevr, prisma } from "nevr"
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
 import Stripe from "stripe"
 
-const api = nevr({
-  entities: [user, post, order],
-  driver: prisma(prismaClient),
-})
+const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 
 // Register services
 api.registerService("stripe", () => new Stripe(process.env.STRIPE_KEY!))
@@ -277,26 +282,31 @@ If any step fails, all previous steps are compensated in reverse order.
 **Nevr has a plugin system to extend functionality**.
 It allows adding features like authentication, payments, storage, and more out of the box.
 
-```typescript
-import { nevr } from "nevr"
-import { auth} from "nevr/plugins/auth"
+Add plugins to your `nevr.config.ts`:
 
-const api = nevr({
+```typescript
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
+import { auth } from "nevr/plugins/auth"
+import { user } from "./entities/user"
+import { post } from "./entities/post"
+
+export const config = defineConfig({
+  database: "sqlite",
   entities: [user, post],
-  driver: prisma(prismaClient),
   plugins: [
     auth({
-      emailAndPassword:true,
-      session: {
-        expiresIn: "7d",
-      },
-      EmailVerification: {
-        expiresIn: "1d"
-      },
+      secret: process.env.AUTH_SECRET!,
+      emailAndPassword: { enabled: true },
+      session: { expiresIn: 60 * 60 * 24 * 7 },
     }),
   ],
 })
+
+export default config
 ```
+
+Your server stays clean — `nevr({ ...config, driver })` picks up the plugins automatically.
 
 This adds:
 - `/auth/sign-up` - User registration

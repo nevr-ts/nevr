@@ -197,27 +197,42 @@ await client.products.action("bulkPublish", {
 
 Full E2E type safety from server using `createTypedClient`:
 
-```typescript
-// Server (api.ts)
-export const api = nevr({
-  entities: [user, product],
-  plugins: [auth(), stripe()],
-})
-export type API = typeof api
+::: code-group
 
-// Client (client.ts)
+```typescript [src/nevr.config.ts]
+import { defineConfig } from "nevr"
+import { auth } from "nevr/plugins/auth"
+import { user, product } from "./entities/index.js"
+
+export const config = defineConfig({
+  database: "sqlite",
+  entities: [user, product],
+  plugins: [auth()],
+})
+
+export default config
+```
+
+```typescript [src/server.ts]
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
+
+export const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
+export type API = typeof api
+```
+
+```typescript [src/client.ts]
 import { createTypedClient, entityClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
-import { stripeClient } from "nevr/plugins/stripe/client"
-import type { API } from "../server/api"
+import type { API } from "./server"
 
 export const client = createTypedClient<API>({
   baseURL: "http://localhost:3000",
   plugins: [
     entityClient({ entities: ["user", "product"] }),
     authClient(),
-    stripeClient(),
-    // Any plugin works!
   ],
 })
 
@@ -227,8 +242,9 @@ const { data: product } = await client.products.create({ name: "Widget" })
 
 // Fully typed plugin methods!
 await client.auth.signIn.email({ email: "...", password: "..." })
-await client.stripe.createCheckout({ priceId: "..." })
 ```
+
+:::
 
 > [!NOTE]
 > The `import type { API }` is required for entity type safety. This is a TypeScript requirement - runtime strings like `["user"]` cannot carry type information.

@@ -18,29 +18,48 @@ Nevr allows you to share strict TypeScript types between your server and client 
 
 The `NevrInstance` exposes a special `$Infer` property that contains all inferred types for your application.
 
-```typescript
-// server.ts
-import { nevr, entity, string, int, belongsTo } from "nevr"
+::: code-group
 
-const user = entity("user", {
+```typescript [src/entities/index.ts]
+import { entity, string, int, belongsTo } from "nevr"
+
+export const user = entity("user", {
   name: string,
   email: string.email().unique(),
 })
 
-const post = entity("post", {
+export const post = entity("post", {
   title: string,
   views: int.default(0),
   author: belongsTo(() => user),
 })
+```
 
-export const api = nevr({
+```typescript [src/nevr.config.ts]
+import { defineConfig } from "nevr"
+import { user, post } from "./entities/index.js"
+
+export const config = defineConfig({
+  database: "sqlite",
   entities: [user, post],
-  driver: prisma(db),
 })
+
+export default config
+```
+
+```typescript [src/server.ts]
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
+
+export const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 
 // Just export the API type - that's all you need!
 export type Api = typeof api
 ```
+
+:::
 
 ### Accessing Types from $Infer
 
@@ -270,11 +289,11 @@ const { data } = await client.products.list({
 Plugins also export their own types which are automatically merged into the main `Api` type.
 
 ```typescript
-import { auth } from "nevr/plugins/auth"
+// In nevr.config.ts — add auth to plugins array:
+// plugins: [auth()]
 
-const api = nevr({
-  plugins: [auth()]
-})
+// In server.ts:
+const api = nevr({ ...config, driver })
 
 // Inferred type includes plugin methods
 type AuthClient = Api["$Infer"]["Plugins"]["auth"]["client"]
@@ -306,27 +325,37 @@ function Profile() {
 
 ### Complete Type Export Pattern
 
-```typescript
-// server/index.ts
-import { nevr, entity, string, int } from "nevr"
+::: code-group
+
+```typescript [src/nevr.config.ts]
+import { defineConfig, entity, string, int } from "nevr"
 import { auth } from "nevr/plugins/auth"
 
-// Define entities
 const user = entity("user", { name: string, email: string.email() })
 const product = entity("product", { name: string, price: int })
 
-// Create API
-export const api = nevr({
+export const config = defineConfig({
+  database: "sqlite",
   entities: [user, product],
   plugins: [auth()],
-  driver: prisma(db),
 })
+
+export default config
+```
+
+```typescript [src/server.ts]
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
+
+export const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 
 // Export types for client consumption
 export type Api = typeof api
-
-
 ```
+
+:::
 
 ### Client Setup with Full Inference
 
@@ -401,7 +430,7 @@ You only need to export the API type. Individual entity types are accessible via
 
 ```typescript
 // ✅ server.ts - Just export Api
-export const api = nevr({ entities: [user, product, order] })
+export const api = nevr({ ...config, driver })
 export type Api = typeof api
 
 // ❌ Don't do this - it's redundant
@@ -460,18 +489,33 @@ const { data: product } = await client.products.get("123")
 
 The recommended pattern for best DX:
 
-```typescript
-// === server.ts ===
-export const api = nevr({
+::: code-group
+
+```typescript [src/nevr.config.ts]
+import { defineConfig } from "nevr"
+import { auth } from "nevr/plugins/auth"
+import { user, product, order } from "./entities/index.js"
+
+export const config = defineConfig({
+  database: "sqlite",
   entities: [user, product, order],
   plugins: [auth()],
 })
 
+export default config
+```
+
+```typescript [src/server.ts]
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
+
+export const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 export type Api = typeof api  // That's it!
 ```
 
-```typescript
-// === client.ts ===
+```typescript [src/client.ts]
 import { createTypedClient, entityClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
 import type { Api } from "./server"
@@ -487,6 +531,8 @@ const { data } = await client.users.create({ name: "John", email: "john@test.com
 // Access types when needed
 type User = Api["$Infer"]["Entities"]["user"]
 ```
+
+:::
 
 ---
 

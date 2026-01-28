@@ -19,21 +19,33 @@ npm install -D @types/react @types/react-dom typescript
 
 ## Setup
 
-### 1. Create Nevr Instance
+### 1. Config (`lib/nevr.config.ts`)
 
 ```typescript
-// lib/nevr.ts
+import { defineConfig } from "nevr"
+import * as entities from "./entities"
+
+export const config = defineConfig({
+  database: "sqlite",
+  entities: Object.values(entities).filter(e => e && typeof e === "object"),
+  plugins: [],
+})
+
+export default config
+```
+
+### 2. Create Nevr Instance (`lib/nevr.ts`)
+
+```typescript
 import { nevr } from "nevr"
 import { prisma } from "nevr/drivers/prisma"
 import { PrismaClient } from "@prisma/client"
-import { user, post } from "./entities"
+import { config } from "./nevr.config"
 
 const db = new PrismaClient()
+const driver = prisma(db)
 
-export const api = nevr({
-  entities: [user, post],
-  driver: prisma(db),
-})
+export const api = nevr({ ...config, driver })
 ```
 
 ### 2. Create API Route Handler
@@ -53,19 +65,40 @@ That's it! Your API is now available at `/api/*`.
 ### 1. Add Auth Plugin
 
 ```typescript
+// lib/nevr.config.ts
+import { defineConfig } from "nevr"
+import { auth } from "nevr/plugins/auth"
+import * as entities from "./entities"
+
+export const config = defineConfig({
+  database: "sqlite",
+  entities: Object.values(entities).filter(e => e && typeof e === "object"),
+  plugins: [
+    auth({
+      // Secret is auto-read from NEVR_AUTH_SECRET env variable
+      emailAndPassword: { enabled: true },
+    }),
+  ],
+})
+
+export default config
+```
+
+```typescript
 // lib/nevr.ts
 import { nevr } from "nevr"
 import { prisma } from "nevr/drivers/prisma"
-import { auth } from "nevr/plugins/auth"
+import { PrismaClient } from "@prisma/client"
 import { nextCookies } from "nevr/adapters/nextjs"
+import { config } from "./nevr.config"
+
+const db = new PrismaClient()
+const driver = prisma(db)
 
 export const api = nevr({
-  entities: [user, post],
-  driver: prisma(db),
-  plugins: [
-    auth({ emailAndPassword: true }),
-    nextCookies(), // Required for cookie handling in Server Components
-  ],
+  ...config,
+  driver,
+  plugins: [...(config.plugins ?? []), nextCookies()],
 })
 ```
 
@@ -152,11 +185,8 @@ Plugin for handling cookies in Server Components.
 import { nextCookies } from "nevr/adapters/nextjs"
 
 const api = nevr({
-  // ...
-  plugins: [
-    auth({ ... }),
-    nextCookies({ debug: false }), // Add as last plugin
-  ],
+  // ...config,
+  plugins: [...(config.plugins ?? []), nextCookies()],
 })
 ```
 
@@ -189,17 +219,31 @@ const session = await requireSession(api, {
 
 ### `sessionAuth(api, options?)`
 
-Create `getUser` function for route handlers.
+Creates a `getUser` function that resolves the authenticated user from each request. It reads the session cookie (or `Authorization: Bearer` header), looks up the session in the database, checks expiry, and returns the user.
 
 ```typescript
 import { sessionAuth } from "nevr/adapters/nextjs"
 
 toNextHandler(api, {
   getUser: sessionAuth(api, {
-    cookieName: "nevr.session_token",
+    cookieName: "nevr.session_token", // default
   }),
 })
 ```
+
+The flow:
+
+1. User signs in → auth plugin creates a session and sets a `nevr.session_token` cookie
+2. User makes a request → `sessionAuth(api)` reads the cookie, finds the session, returns the `User`
+3. Nevr checks entity rules (e.g., `"authenticated"`, `"owner"`) against that user
+
+| Option | Type | Default | Description |
+|:-------|:-----|:--------|:------------|
+| `cookieName` | `string` | `"nevr.session_token"` | Cookie name to read |
+
+::: tip Note
+Unlike Express/Hono where `sessionAuth` takes a `driver`, the Next.js version takes the `api` instance and calls `api.getDriver()` internally.
+:::
 
 ### `withNevrMiddleware(options)`
 

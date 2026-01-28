@@ -4,11 +4,17 @@ SMS-based OTP authentication for phone number sign-in.
 
 ## Installation
 
+Add the phone-number plugin inside the auth plugin in your config:
+
 ```typescript
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
 import { auth } from "nevr/plugins/auth"
 import { phoneNumber } from "nevr/plugins/auth/plugins/phone-number"
 
-const api = nevr({
+export const config = defineConfig({
+  database: "sqlite",
+  entities: [],
   plugins: [
     auth({
       plugins: [
@@ -21,7 +27,11 @@ const api = nevr({
     }),
   ],
 })
+
+export default config
 ```
+
+Your server picks it up automatically with `nevr({ ...config, driver })`.
 
 ## Configuration
 

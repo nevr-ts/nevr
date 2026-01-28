@@ -1,7 +1,7 @@
-# ⚡ Nevr
+# Nevr
 
-> **The AI-Native Framework for TypeScript.** 
-> Define your data model. Get a full-stack App with RAG, Authentication, and Type-Safe Clients instantly.
+> **The Entity-First TypeScript Framework.**
+> Define your data model once. Get a type-safe API, database schema, auth, and client — automatically.
 
 <p align="center">
   <a href="https://www.npmjs.com/package/nevr"><img src="https://img.shields.io/npm/v/nevr.svg?style=flat-square&color=blue" alt="npm version"></a>
@@ -11,14 +11,14 @@
 </p>
 
 <p align="center">
-  Define your entities. Get a full REST API with authentication, validation, and type-safe clients—automatically.
+  Define your entities. Get a full REST API with authentication, validation, and type-safe clients — automatically.
 </p>
 
 ## 🎯 What is Nevr?
 
-**Nevr** is a **full-stack TypeScript framework** that eliminates boilerplate by turning your domain models into intelligent, production-ready APIs. 
+**Nevr** is the **Entity-First TypeScript Framework** that eliminates boilerplate by turning your domain models into production-ready APIs.
 
-It acts as a **Universal Backend Layer** that combines your favorite **Database/ORM** (Prisma, Drizzle, etc.) with a robust Entity DSL to handle **Validation, Authorization, and AI Capabilities** in a single source of truth.
+Your **Entity** is the single source of truth — Nevr derives your database schema, REST API, validation, authorization, and typed client from it automatically.
 
 ## 🛠️ How it Works
 
@@ -34,7 +34,7 @@ Nevr extends standard backend development with four powerful layers:
    Mounts your API onto any framework (Next.js, Express, Hono, Fastify, etc.) or deploy as a standalone server.
 
 4. **The Consumption Layer** (Client)
-   Auto-generates end-to-end type-safe hooks and clients for your frontend (React, Next.js, etc).
+   End-to-end type-safety Full TypeScript inference from database to client.
 
 ---
 
@@ -49,10 +49,9 @@ Nevr extends standard backend development with four powerful layers:
 - 🗄️ **Database agnostic** — Prisma driver included, more coming soon
 - 🧩 **Unified Plugin System** — Extend with auth, timestamps, payments, storage plugins
 - ⚡ **Zero config** — Sensible defaults, full customization when needed
-- 📦 **Auto-generated clients** — Type-safe API clients for your frontend
 - 🔄 **Workflow Engine** — Multi-step transactions with compensation (saga pattern)
 - 💉 **Service Container** — Functional dependency injection with lifecycle management
-- 🧠 **AI-Native** — Built-in RAG engine, vector embeddings, and LLM context generation
+- 🧠 **RAG & AI Gateway** — Built-in vector search, embeddings, and multi-provider AI gateway
 - ✅ **Cross-field Validation** — Complex business rules with declarative syntax
 
 ## 📦 Installation
@@ -75,32 +74,46 @@ npm create nevr@latest my-nevr-app
 ## 🚀 Quick Start
 
 ```typescript
-import { entity, string, text, belongsTo, nevr } from "nevr"
-import { expressAdapter } from "nevr/adapters/express"
-import { prisma } from "nevr/drivers/prisma"
-import { PrismaClient } from "@prisma/client"
-import express from "express"
+// src/entities/index.ts
+import { entity, string, text, belongsTo } from "nevr"
 
-// 1️⃣ Define your entities
-const user = entity("user", {
+export const user = entity("user", {
   email: string.unique(),
   name: string.min(1).max(100),
 })
 
-const post = entity("post", {
+export const post = entity("post", {
   title: string.min(1).max(200),
   content: text,
   author: belongsTo(() => user),
 })
   .ownedBy("author")
+```
 
-// 2️⃣ Create your API
-const api = nevr({
+```typescript
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
+import { user, post } from "./entities/index.js"
+
+export const config = defineConfig({
+  database: "sqlite",
   entities: [user, post],
-  driver: prisma(new PrismaClient()),
 })
 
-// 3️⃣ Mount to Express
+export default config
+```
+
+```typescript
+// src/server.ts
+import express from "express"
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { expressAdapter } from "nevr/adapters/express"
+import { config } from "./nevr.config.js"
+
+const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
+
 const app = express()
 app.use("/api", expressAdapter(api, { cors: true }))
 app.listen(3000, () => console.log("API running at http://localhost:3000/api"))
@@ -141,7 +154,7 @@ const task = entity("task", {
   // Relations
   project: belongsTo(() => project),        // Many-to-one relation
   assignee: belongsTo(() => user),
-}).build()
+})
 ```
 
 ### Field Modifiers
@@ -172,7 +185,7 @@ const user = entity("user", {
   
   // 📖 Read-only computed fields
   lastLoginAt: datetime.writable("none").optional(),
-}).build()
+})
 ```
 
 | Builder Method | Description |
@@ -194,7 +207,6 @@ const post = entity("post", { /* fields */ })
     update: ["owner", "admin"],             // Owner or admin only
     delete: ["admin"],                      // Admin only
   })
-  .build()
 ```
 
 **Built-in Rules:**
@@ -233,10 +245,10 @@ app.use("/api", expressAdapter(api, {
 
 ```typescript
 import { Hono } from "hono"
-import { mountNevr, honoDevAuth } from "nevr/adapters/hono"
+import { honoAdapter } from "nevr/adapters/hono"
 
 const app = new Hono()
-mountNevr(app, "/api", api, { getUser: honoDevAuth })
+app.route("/api", honoAdapter(api))
 
 export default app
 ```
@@ -248,20 +260,20 @@ export default app
 ### Prisma
 
 ```typescript
+// src/server.ts
+import { nevr } from "nevr"
 import { prisma } from "nevr/drivers/prisma"
 import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
 
-const api = nevr({
-  entities: [user, post],
-  driver: prisma(new PrismaClient()),
-})
+const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 ```
 
-Generate your Prisma schema with `@nevr/cli`:
+Generate your Prisma schema and push to database:
 
 ```bash
-npx @nevr/cli generate
-npx prisma db push --schema=./prisma/schema.prisma
+npx nevr generate
+npx nevr db:push
 ```
 
 ---
@@ -273,20 +285,22 @@ npx prisma db push --schema=./prisma/schema.prisma
 Full-featured auth with email/password, OAuth, sessions, and JWT:
 
 ```typescript
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
 import { auth } from "nevr/plugins/auth"
 
-const api = nevr({
+export const config = defineConfig({
+  database: "postgresql",
   entities: [post],
   plugins: [
     auth({
-      emailAndPassword: {enabled: true},
+      emailAndPassword: { enabled: true },
       socialProviders: {
         google: { clientId: "...", clientSecret: "..." },
         github: { clientId: "...", clientSecret: "..." },
       },
-    })
+    }),
   ],
-  driver: prisma(db),
 })
 ```
 
@@ -300,71 +314,64 @@ const api = nevr({
 Multi-tenant support with organizations and roles:
 
 ```typescript
-import { nevr } from "nevr"
+// Add to your nevr.config.ts plugins array
 import { organization } from "nevr/plugins/organization"
 
-const api = nevr({
-  plugins: [
-    organization({
-      allowUserToCreate: true,
-      creatorRole: "owner",
-      teams: { enabled: true },
-    }),
-  ],
-})
+plugins: [
+  organization({
+    allowUserToCreate: true,
+    creatorRole: "owner",
+    teams: { enabled: true },
+  }),
+]
 ```
 ### Payments
 Stripe integration for subscriptions and one-time payments:
 
 ```typescript
-import { nevr } from "nevr"
+// Add to your nevr.config.ts plugins array
 import { payment } from "nevr/plugins/payment"
 
-const api = nevr({
-  plugins: [
-    payment({
-      provider: "stripe",
-      stripe: {
-        secretKey: process.env.STRIPE_SECRET_KEY!,
-        webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
-      },
-      createCustomerOnSignUp: true,
-      subscription: {
-        enabled: true,
-        plans: [
-          { name: "free", priceId: "price_free" },
-          { name: "pro", priceId: "price_pro", limits: { projects: 10 } },
-          { name: "enterprise", priceId: "price_enterprise", limits: { projects: -1 } },
-        ],
-      },
-    }),
-  ],
-})
+plugins: [
+  payment({
+    provider: "stripe",
+    stripe: {
+      secretKey: process.env.STRIPE_SECRET_KEY!,
+      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+    },
+    createCustomerOnSignUp: true,
+    subscription: {
+      enabled: true,
+      plans: [
+        { name: "free", priceId: "price_free" },
+        { name: "pro", priceId: "price_pro", limits: { projects: 10 } },
+        { name: "enterprise", priceId: "price_enterprise", limits: { projects: -1 } },
+      ],
+    },
+  }),
+]
 ```
 ### AI-Gateway 
 
 AI Gateway provides a unified API for multiple AI providers (OpenAI, Anthropic, Google) with built-in usage tracking, rate limiting, and SSE streaming support.
 
 ```typescript
-import { nevr } from "nevr"
+// Add to your nevr.config.ts plugins array
 import { aiGateway } from "nevr/plugins"
 
-const api = nevr({
-  entities: [],
-  plugins: [
-    aiGateway({
-      providers: {
-        openai: { apiKey: process.env.OPENAI_API_KEY },
-        anthropic: { apiKey: process.env.ANTHROPIC_API_KEY },
-        google: { apiKey: process.env.GOOGLE_API_KEY },
-      },
-      defaultProvider: "openai",
-      defaultModel: "gpt-5-mini",
-      trackUsage: true,
-      rateLimiting: { enabled: true },
-    }),
-  ],
-})
+plugins: [
+  aiGateway({
+    providers: {
+      openai: { apiKey: process.env.OPENAI_API_KEY },
+      anthropic: { apiKey: process.env.ANTHROPIC_API_KEY },
+      google: { apiKey: process.env.GOOGLE_API_KEY },
+    },
+    defaultProvider: "openai",
+    defaultModel: "gpt-5-mini",
+    trackUsage: true,
+    rateLimiting: { enabled: true },
+  }),
+]
 ```
 
 ---
@@ -413,7 +420,7 @@ const signUpWorkflow = createWorkflow({
 Functional dependency injection with lifecycle management:
 
 ```typescript
-const api = nevr({ entities: [...], driver })
+const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 
 // Register services
 api.registerService("stripe", () => new Stripe(process.env.STRIPE_KEY!))
@@ -488,16 +495,25 @@ GET /api/posts?include=author,comments
 Get end-to-end type safety from server to client:
 
 ```typescript
-// Server
-import { nevr, entity, string } from "nevr"
-export const api = nevr({ entities: [...], driver })
+// src/server.ts
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
+
+export const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 export type API = typeof api
+```
 
-// Client (can be in a different package!)
-import type { API } from "../server"
-import { createTypedClient } from "nevr/client"
+```typescript
+// src/client.ts (can be in a different package!)
+import { createTypedClient, entityClient } from "nevr/client"
+import type { API } from "./server"
 
-const client = createTypedClient<API>({ baseURL: "/api" })
+const client = createTypedClient<API>({
+  baseURL: "/api",
+  plugins: [entityClient({ entities: ["user", "post"] })],
+})
 
 // Full autocomplete & type checking!
 const users = await client.users.list()

@@ -127,9 +127,12 @@ Nevr **auto-wires** plugin endpoints to the client. You don't need to manually d
 
 When you use a server plugin with `endpoints{}`, the client automatically creates typed methods:
 
-```typescript
-// === Server ===
+::: code-group
+
+```typescript [src/nevr.config.ts]
+import { defineConfig } from "nevr"
 import { createPlugin } from "nevr/plugins"
+import { user } from "./entities/user.js"
 
 export const analyticsPlugin = createPlugin({
   id: "analytics",
@@ -139,13 +142,28 @@ export const analyticsPlugin = createPlugin({
   },
 })
 
-export const api = nevr({
+export const config = defineConfig({
+  database: "sqlite",
   entities: [user],
   plugins: [analyticsPlugin],
 })
 
-// === Client ===
+export default config
+```
+
+```typescript [src/server.ts]
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
+
+export const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
+export type Api = typeof api
+```
+
+```typescript [src/client.ts]
 import { createTypedClient } from "nevr/client"
+import { analyticsPlugin } from "./nevr.config.js"
 import type { Api } from "./server"
 
 const client = createTypedClient<Api>({
@@ -157,6 +175,8 @@ const client = createTypedClient<Api>({
 await client.analytics.track.create({ event: "page_view" })
 const { data } = await client.analytics.getStats.list({ period: "7d" })
 ```
+
+:::
 
 ### Pre-built Plugins
 
@@ -348,10 +368,10 @@ Full end-to-end type safety is the core feature that makes Nevr a true full-stac
 
 ### Server → Client Type Flow
 
-```typescript
-// === server.ts ===
-import { nevr, entity, string, int, belongsTo } from "nevr"
-import { auth } from "nevr/plugins/auth"
+::: code-group
+
+```typescript [src/entities/user.ts]
+import { entity, string, int, belongsTo } from "nevr"
 
 export const user = entity("user", {
   name: string,
@@ -364,11 +384,29 @@ export const product = entity("product", {
   price: int,
   ownerId: belongsTo(user),
 })
+```
 
-export const api = nevr({
+```typescript [src/nevr.config.ts]
+import { defineConfig } from "nevr"
+import { auth } from "nevr/plugins/auth"
+import { user, product } from "./entities/user.js"
+
+export const config = defineConfig({
+  database: "sqlite",
   entities: [user, product],
   plugins: [auth()],
 })
+
+export default config
+```
+
+```typescript [src/server.ts]
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
+
+export const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 
 // Export types for client consumption
 export type API = typeof api
@@ -376,8 +414,7 @@ export type User = API["$Infer"]["Entities"]["user"]
 export type Product = API["$Infer"]["Entities"]["product"]
 ```
 
-```typescript
-// === client.ts ===
+```typescript [src/client.ts]
 import { createTypedClient, entityClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
 import type { API, User, Product } from "./server"  // Type-only import!
@@ -403,6 +440,8 @@ const { data: product } = await client.products.create({
 const session = await client.auth.getSession()
 //    ^? { user: User; session: Session } | null
 ```
+
+:::
 
 ### Infer Types from Client
 

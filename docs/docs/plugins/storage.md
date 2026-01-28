@@ -4,11 +4,16 @@ File storage with S3-compatible providers (AWS S3, Cloudflare R2, MinIO) and loc
 
 ## Installation
 
+Add the storage plugin to your config:
+
 ```typescript
-import { nevr } from "nevr"
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
 import { storage } from "nevr/plugins/storage"
 
-const api = nevr({
+export const config = defineConfig({
+  database: "postgresql",
+  entities: [],
   plugins: [
     storage({
       provider: "s3",
@@ -22,6 +27,19 @@ const api = nevr({
   ],
 })
 
+export default config
+```
+
+Then in your server:
+
+```typescript
+// src/server.ts
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
+
+const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 export type API = typeof api
 ```
 

@@ -6,7 +6,7 @@ Complete API reference for Nevr. This page provides a comprehensive index of all
 
 ```typescript
 // Core functionality
-import { nevr, entity, action, step } from "nevr"
+import { nevr, defineConfig, entity, action, step } from "nevr"
 
 // Field types
 import { string, text, int, float, bool, datetime, json, email } from "nevr"
@@ -38,6 +38,7 @@ import { getLogger, setLogger, capitalize, pascalCase } from "nevr"
 // Drivers & Adapters (subpath imports)
 import { prisma } from "nevr/drivers/prisma"
 import { expressAdapter } from "nevr/adapters/express"
+import { toNextHandler } from "nevr/adapters/nextjs"
 ```
 
 ---
@@ -46,6 +47,7 @@ import { expressAdapter } from "nevr/adapters/express"
 
 | Function | Description | Link |
 |----------|-------------|------|
+| `defineConfig(config)` | Define type-safe config (for CLI + runtime) | [Reference](/reference/nevr#defineconfig) |
 | `nevr(config)` | Create Nevr instance | [Reference](/reference/nevr) |
 | `entity(name, fields)` | Define entity | [Reference](/reference/entity) |
 | `action(name?)` | Create custom action | [Reference](/reference/actions) |
@@ -130,6 +132,7 @@ See [Fields Reference](/reference/fields) for all methods.
 |---------|--------|-------------|
 | `expressAdapter(app)` | `nevr/adapters/express` | Express.js adapter |
 | `honoAdapter(app)` | `nevr/adapters/hono` | Hono adapter |
+| `toNextHandler(app)` | `nevr/adapters/nextjs` | Next.js API handler |
 
 ---
 

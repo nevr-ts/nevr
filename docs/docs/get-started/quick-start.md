@@ -35,7 +35,7 @@ After creation, you'll have:
 my-api/
 ├── src/
 │   ├── entities/ # Your entity definitions
-│   ├── nevr_config.ts             # Nevr configuration
+│   ├── nevr.config.ts             # Nevr configuration
 │   └── server.ts             # HTTP server entry point
 ├── prisma/
 │   └── schema.prisma         # Generated Prisma schema
@@ -48,7 +48,7 @@ my-api/
 | File | Purpose |
 |------|---------|
 | `src/entities/*.ts` | Entity definitions (source of truth) |
-| `src/nevr_config.ts` | Nevr configuration for generating Prisma schema |
+| `src/nevr.config.ts` | Nevr configuration for generating Prisma schema |
 | `src/server.ts` | HTTP adapter setup and Nevr instance initialization |
 | `prisma/schema.prisma` | Auto-generated database schema |
 
@@ -191,17 +191,20 @@ export const post = entity("post", {
 | `hasMany` | `hasMany(() => Entity)` | One-to-many relation |
 | `hasOne` | `hasOne(() => Entity)` | One-to-one relation |
 
-Register it in `src/nevr_config.ts`:
+Register it in `src/nevr.config.ts`:
 
 ```typescript
 import { defineConfig } from "nevr"
 import { user } from "./entities/user"
 import { post } from "./entities/post"  // [!code ++]
 
-export default defineConfig({
-  db: "sqlite",
+export const config = defineConfig({
+  database: "sqlite",
   entities: [user, post],  // [!code highlight]
+  plugins: [],
 })
+
+export default config
 ```
 
 Regenerate and push:

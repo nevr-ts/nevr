@@ -4,24 +4,37 @@ Nevr provides a built-in auth plugin that handles user authentication without an
 
 ## Quick Start
 
+Add the auth plugin to your config:
+
 ```typescript
-import { nevr } from "nevr"
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
 import { auth } from "nevr/plugins/auth"
-import { prisma } from "nevr/drivers/prisma"
-import { PrismaClient } from "@prisma/client"
 
-const db = new PrismaClient()
-
-const api = nevr({
+export const config = defineConfig({
+  database: "sqlite",
   entities: [],
-  driver: prisma(db),
   plugins: [
     auth({
       mode: "session",
       emailAndPassword: true,
     })
-  ]
+  ],
 })
+
+export default config
+```
+
+Then create your server:
+
+```typescript
+// src/server.ts
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
+
+const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 ```
 
 Set the secret in your environment:

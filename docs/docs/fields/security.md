@@ -160,8 +160,7 @@ initEncryption({
 })
 
 const api = nevr({
-  entities: [user, order],
-  // ... other config
+  // ...  configuration
 })
 ```
 

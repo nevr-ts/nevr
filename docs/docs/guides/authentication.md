@@ -4,15 +4,17 @@ Implement authentication in your Nevr application.
 
 ## Using the Auth Plugin
 
-The fastest way to add auth:
+The fastest way to add auth — add the plugin to your config:
 
 ```typescript
-import { nevr } from "nevr"
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
 import { auth } from "nevr/plugins/auth"
+import { post } from "./entities/post.js"
 
-const api = nevr({
+export const config = defineConfig({
+  database: "sqlite",
   entities: [post],
-  driver: prisma(db),
   plugins: [
     auth({
       session: { expiresIn: "7d" },
@@ -20,6 +22,20 @@ const api = nevr({
     }),
   ],
 })
+
+export default config
+```
+
+Then your server picks it up:
+
+```typescript
+// src/server.ts
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
+
+const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 ```
 
 This provides:
@@ -143,32 +159,6 @@ const post = entity("post", { ... })
   .rules({
     create: [premiumUser],
   })
-```
-
-### JWT Authentication
-
-If using JWT instead of sessions:
-
-```typescript
-// Custom middleware
-const jwtMiddleware = {
-  name: "jwt",
-  fn: async (ctx, next) => {
-    const token = ctx.headers.authorization?.replace("Bearer ", "")
-    if (token) {
-      try {
-        ctx.user = jwt.verify(token, JWT_SECRET)
-      } catch {
-        // Invalid token
-      }
-    }
-    return next()
-  },
-}
-
-const api = nevr({
-  middleware: [jwtMiddleware],
-})
 ```
 
 ## OAuth Providers

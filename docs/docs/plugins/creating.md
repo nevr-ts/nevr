@@ -28,8 +28,8 @@ const myPlugin = createPlugin({
   },
 })
 
-// Usage
-const api = nevr({ plugins: [myPlugin] })
+// Usage in nevr.config.ts:
+// plugins: [myPlugin]
 ```
 
 ---
@@ -65,8 +65,8 @@ const myPlugin = createPlugin<MyOptions>({
   }),
 })
 
-// Usage
-nevr({ plugins: [myPlugin({ apiKey: "secret_123" })] })
+// Usage in nevr.config.ts:
+// plugins: [myPlugin({ apiKey: "secret_123" })]
 ```
 
 ---

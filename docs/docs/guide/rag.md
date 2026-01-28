@@ -29,15 +29,21 @@ RAG combines:
 ### 1. Define Entities with Semantic Fields
 
 ```typescript
+// src/entities/article.ts
 import { entity, string, text } from "nevr"
 
-const article = entity("article", {
+export const article = entity("article", {
   title: string.searchable(),                           // Full-text search
   content: text.embedding({ provider: "openai" }),      // Vector search
   summary: text.embedding().instruction("For quick Q&A"),
 })
+```
 
-const ticket = entity("ticket", {
+```typescript
+// src/entities/ticket.ts
+import { entity, string, text } from "nevr"
+
+export const ticket = entity("ticket", {
   subject: string.searchable(),
   description: text.embedding({ provider: "openai" }),
   resolution: text.embedding().searchable(),  // Both vector AND text search
@@ -46,11 +52,16 @@ const ticket = entity("ticket", {
 
 ### 2. Add RAG Plugin
 
-```typescript
-import { nevr } from "nevr"
-import { rag } from "nevr/plugins"
+Add entities and the RAG plugin to your config:
 
-const api = nevr({
+```typescript
+// src/nevr.config.ts
+import { defineConfig } from "nevr"
+import { rag } from "nevr/plugins"
+import { article, ticket } from "./entities/index.js"
+
+export const config = defineConfig({
+  database: "postgresql",
   entities: [article, ticket],
   plugins: [
     rag({
@@ -61,6 +72,20 @@ const api = nevr({
     }),
   ],
 })
+
+export default config
+```
+
+Then in your server:
+
+```typescript
+// src/server.ts
+import { nevr } from "nevr"
+import { prisma } from "nevr/drivers/prisma"
+import { PrismaClient } from "@prisma/client"
+import { config } from "./nevr.config.js"
+
+const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 ```
 
 ### 3. Search

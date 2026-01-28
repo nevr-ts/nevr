@@ -2,14 +2,14 @@
 layout: home
 hero:
   name: Nevr
-  text: The Full Stack TypeScript Framework
-  tagline: Build industrial-grade applications with entity definitions. Workflows, Services, and Remote Data — fully type-safe from database to client.
+  text: The Entity-First TypeScript Framework
+  tagline: Define your data model once. Get a type-safe API, database schema, auth, and client — automatically.
   image:
     src: /hero.PNG
     alt: Nevr Framework Hero
   actions:
     - theme: brand
-      text: Get Started 🚀
+      text: Get Started
       link: /get-started/introduction
     - theme: alt
       text: View on GitHub
@@ -18,30 +18,26 @@ hero:
 features:
   - icon: ⚡
     title: Entity-First Architecture
-    details: Define your data model once. Nevr generates your database schema, API, auth rules, and client SDK automatically.
+    details: Define your data model once. Nevr generates your database schema, REST API, auth rules, and client SDK automatically.
+  - icon: 🛡️
+    title: End-to-End Type Safety
+    details: Types flow from entity to database to client. Change a field — your entire stack updates instantly. No codegen.
+  - icon: 🔌
+    title: Plugin Ecosystem
+    details: Drop-in Auth, Payments, Storage, RAG, and AI Gateway. One line each. Type-safe and production-ready.
   - icon: 🔄
     title: Workflow Engine
-    details: Handle complex business logic with ease. Define multi-step sagas with automatic rollback compensation.
+    details: Multi-step business operations with automatic rollback. Built-in saga pattern for complex transactions.
   - icon: 🧩
     title: Service Container
-    details: Powerful dependency injection without the boilerplate. Register services and resolve them anywhere.
+    details: Functional dependency injection without boilerplate. Register services and resolve them anywhere.
   - icon: 🌐
     title: Remote Joiner
     details: Stitch data from external services (Stripe, CMS) directly into your API responses.
-  - icon: 🔌
-    title: Unified Plugin System
-    details: Add Auth, Payments, and Storage with a single line. Extensible, type-safe, and production-ready.
-  - icon: 🛡️
-    title: End-to-End Type Safety
-    details: Zero-latency feedback loop. Change an entity, and your entire stack — server, API, client — updates instantly.
 ---
 
 <style>
 .landing-page {
-  /* display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center; */
   text-align: center;
   margin-top: 4rem;
 }
@@ -148,6 +144,31 @@ features:
   max-width: 800px;
 }
 
+.what-you-get {
+  text-align: left;
+  max-width: 700px;
+  margin: 1rem auto 2rem auto;
+}
+
+.what-you-get ul {
+  list-style: none;
+  padding: 0;
+}
+
+.what-you-get li {
+  margin-bottom: 0.4rem;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.what-you-get li::before {
+  content: "✅";
+  position: absolute;
+  left: 0;
+  font-size: 0.8rem;
+  top: 4px;
+}
+
 .cta-section {
   margin-top: 5rem;
   padding: 3rem;
@@ -176,17 +197,55 @@ features:
 
 <div class="landing-page">
 
-# The Missing Layer for Modern Backends
+# Why Nevr?
 
-<p>Building production-ready backends today is too hard. You glue together an ORM, a framework, validation libraries, and auth middleware, then manually keep types in sync.</p>
+<p>Building backends today means gluing together an ORM, a framework, validation libraries, and auth middleware — then manually keeping types in sync.</p>
 
-**Nevr changes the game.**
+**Nevr changes that.** Define your entity once, and everything else is derived from it.
 
 </div>
 
 ---
 
 <div class="landing-page">
+
+## What You Get
+
+<div class="code-showcase">
+
+```typescript
+// Define your entity — this is your entire backend for a resource
+const post = entity("post", {
+  title: string.min(1).max(200),
+  content: text,
+  author: belongsTo(() => user),
+})
+.ownedBy("author")
+.rules({
+    create: ["authenticated"],
+    read: ["everyone"],
+    update: ["owner"],
+    delete: ["owner", "admin"],
+  })
+```
+
+</div>
+
+<div class="what-you-get">
+
+From this single definition, you get:
+
+- `POST /api/posts` — Create (validated, auth-protected)
+- `GET /api/posts` — List (filtered, sorted, paginated)
+- `GET /api/posts/:id` — Read (with relation includes)
+- `PUT /api/posts/:id` — Update (ownership enforced)
+- `DELETE /api/posts/:id` — Delete (ownership enforced)
+- Prisma schema auto-generated
+- TypeScript types inferred end-to-end (from DB to React)
+
+</div>
+
+---
 
 ## The Nevr Difference
 
@@ -215,15 +274,15 @@ features:
 
 ---
 
-## 3 Pillars of Industrial-Grade Apps
+## Beyond CRUD
 
-Nevr isn't just a CRUD generator. It provides the architectural primitives needed to build scalable, real-world applications.
+Nevr provides the architectural primitives needed to build scalable, real-world applications.
 
 <div class="pillars-grid">
 
 <div>
 
-### 1. Robust Workflows
+### Robust Workflows
 Define complex multi-step operations with automatic failure handling.
 
 ```typescript
@@ -238,7 +297,7 @@ action().workflow([
 
 <div>
 
-### 2. Service Container
+### Service Container
 Functional dependency injection that keeps your code testable and decoupled.
 
 ```typescript
@@ -252,53 +311,24 @@ const payments = ctx.resolve(Payment)
 
 <div>
 
-### 3. Remote Data
+### Remote Data
 Merge data from external APIs as if it were in your local database.
 
 ```typescript
 // User in DB, Sub in Stripe
 belongsTo(() => sub).remote("stripe")
 
-// API Response: { user, sub } ✅
+// API Response: { user, sub }
 ```
 
 </div>
-
-</div>
-
----
-
-## Experience the Speed
-
-<div class="code-showcase">
-
-```typescript
-// 1. Define Entity
-const order = entity("order", {
-  total: float,
-  status: string.default("pending"),
-  items: hasMany(() => orderItem),
-})
-  .ownedBy("customer")
-  .actions({
-    checkout: action().handler(async (ctx) => {
-      // Implement checkout logic...
-    })
-  })
-
-// 2. That's it. You have:
-// 🚀 POST /api/orders/checkout  (Authenticated)
-// 🛡️ Automatic Validation & Authorization
-// 📦 Generated Database Schema
-// 💻 Fully Typed Client SDK
-```
 
 </div>
 
 <div class="cta-section">
-  <h2>Ready to build better backends?</h2>
-  <p>Join thousands of developers building type-safe APIs faster.</p>
-  <a href="get-started/introduction" class="cta-button">Start the Guide →</a>
+  <h2>Ready to build?</h2>
+  <p>Start building in 60 seconds.</p>
+  <a href="get-started/introduction" class="cta-button">Get Started →</a>
 </div>
 
 </div>

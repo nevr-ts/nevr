@@ -249,5 +249,4 @@ Nevr uses **session tokens** (not JWT) by default:
 ## Next Steps
 
 - [Email & Password](/plugins/auth/email-password) - Traditional auth
-- [Social Sign-On](/plugins/auth/social) - OAuth providers
 - [Auth Plugin](/plugins/auth) - Full configuration
