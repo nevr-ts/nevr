@@ -52,11 +52,7 @@ import { config } from "./nevr.config.js"
 const db = new PrismaClient()
 const driver = prisma(db)
 
-const api = nevr({
-  entities: config.entities ?? [],
-  driver,
-  plugins: config.plugins ?? [],
-})
+const api = nevr({ ...config, driver })
 
 const app = new Hono()
 

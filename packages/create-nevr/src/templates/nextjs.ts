@@ -157,13 +157,9 @@ const db = new PrismaClient()
 const driver = prisma(db)
 
 export const api = nevr({
-  entities: config.entities ?? [],
-  driver,
-  plugins: [
-    ...(config.plugins ?? []),${withAuth ? `
-    // nextCookies enables cookie handling in Server Components
-    nextCookies(),` : ""}
-  ],
+  ...config,
+  driver,${withAuth ? `
+  plugins: [...(config.plugins ?? []), nextCookies()],` : ""}
 })
 `,
 
@@ -207,8 +203,7 @@ export { authPlugin } from "./auth"
 import { auth } from "nevr/plugins/auth"
 
 export const authPlugin = auth({
-  secret: process.env.AUTH_SECRET || "dev-secret-change-in-production",
-
+  // Secret is auto-read from NEVR_AUTH_SECRET env variable
   emailAndPassword: {
     enabled: true,
   },
@@ -256,8 +251,8 @@ export { }
 `,
 
   ".env.local": (db: string, withAuth: boolean) => {
-    const authSecret = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2)
-    const authEnv = withAuth ? `\n# Auth Plugin\nAUTH_SECRET="${authSecret}"` : ""
+    const authSecret = Array.from({ length: 4 }, () => Math.random().toString(36).substring(2)).join("")
+    const authEnv = withAuth ? `\n# Auth Plugin (min 32 characters)\nNEVR_AUTH_SECRET="${authSecret}"` : ""
 
     const dbUrls: Record<string, string> = {
       postgresql: 'DATABASE_URL="postgresql://user:password@localhost:5432/mydb"',
