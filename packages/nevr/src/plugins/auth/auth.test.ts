@@ -96,7 +96,7 @@ function createMockDriver(): Driver & { store: Map<string, Map<string, any>> } {
 describe("Auth Plugin", () => {
     describe("Plugin Creation", () => {
         it("should create plugin with default options", () => {
-            process.env.AUTH_SECRET = "test-secret-key"
+            process.env.AUTH_SECRET = "test-secret-key-that-is-at-least-32-chars-long"
             const plugin = auth({})
 
             expect(plugin).toBeDefined()
@@ -106,7 +106,7 @@ describe("Auth Plugin", () => {
         })
 
         it("should have all required endpoints", () => {
-            process.env.AUTH_SECRET = "test-secret-key"
+            process.env.AUTH_SECRET = "test-secret-key-that-is-at-least-32-chars-long"
             const plugin = auth({})
 
             expect(plugin.endpoints).toBeDefined()
@@ -120,7 +120,7 @@ describe("Auth Plugin", () => {
         })
 
         it("should export error codes", () => {
-            process.env.AUTH_SECRET = "test-secret-key"
+            process.env.AUTH_SECRET = "test-secret-key-that-is-at-least-32-chars-long"
             const plugin = auth({})
 
             expect(plugin.$ERROR_CODES).toBeDefined()
@@ -129,7 +129,7 @@ describe("Auth Plugin", () => {
         })
 
         it("should have schema defined", () => {
-            process.env.AUTH_SECRET = "test-secret-key"
+            process.env.AUTH_SECRET = "test-secret-key-that-is-at-least-32-chars-long"
             const plugin = auth({})
 
             expect(plugin.schema).toBeDefined()
@@ -141,7 +141,7 @@ describe("Auth Plugin", () => {
         let driver: ReturnType<typeof createMockDriver>
 
         beforeEach(() => {
-            process.env.AUTH_SECRET = "test-secret-key"
+            process.env.AUTH_SECRET = "test-secret-key-that-is-at-least-32-chars-long"
             driver = createMockDriver()
         })
 
@@ -238,7 +238,7 @@ describe("Auth Plugin", () => {
         let driver: ReturnType<typeof createMockDriver>
 
         beforeEach(async () => {
-            process.env.AUTH_SECRET = "test-secret-key"
+            process.env.AUTH_SECRET = "test-secret-key-that-is-at-least-32-chars-long"
             driver = createMockDriver()
 
             // Create a test user
@@ -336,7 +336,7 @@ describe("Auth Plugin", () => {
 
     describe("Sign Out Endpoint", () => {
         it("should sign out and clear cookie", async () => {
-            process.env.AUTH_SECRET = "test-secret-key"
+            process.env.AUTH_SECRET = "test-secret-key-that-is-at-least-32-chars-long"
             const driver = createMockDriver()
             const plugin = auth({})
 
@@ -366,7 +366,7 @@ describe("Auth Plugin", () => {
 
     describe("Get Session Endpoint", () => {
         it("should return null when no session", async () => {
-            process.env.AUTH_SECRET = "test-secret-key"
+            process.env.AUTH_SECRET = "test-secret-key-that-is-at-least-32-chars-long"
             const driver = createMockDriver()
             const plugin = auth({})
 
@@ -381,7 +381,7 @@ describe("Auth Plugin", () => {
         })
 
         it("should return session when valid token", async () => {
-            process.env.AUTH_SECRET = "test-secret-key"
+            process.env.AUTH_SECRET = "test-secret-key-that-is-at-least-32-chars-long"
             const driver = createMockDriver()
             const plugin = auth({})
 
@@ -411,7 +411,7 @@ describe("Auth Plugin", () => {
 
     describe("List Sessions Endpoint", () => {
         it("should reject when not authenticated", async () => {
-            process.env.AUTH_SECRET = "test-secret-key"
+            process.env.AUTH_SECRET = "test-secret-key-that-is-at-least-32-chars-long"
             const driver = createMockDriver()
             const plugin = auth({})
 
@@ -424,7 +424,7 @@ describe("Auth Plugin", () => {
         })
 
         it("should list all sessions for user", async () => {
-            process.env.AUTH_SECRET = "test-secret-key"
+            process.env.AUTH_SECRET = "test-secret-key-that-is-at-least-32-chars-long"
             const driver = createMockDriver()
             const plugin = auth({})
 

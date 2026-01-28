@@ -232,7 +232,7 @@ describe("Username Plugin", () => {
         let driver: ReturnType<typeof createMockDriver>
 
         beforeEach(async () => {
-            process.env.AUTH_SECRET = "test-secret-key"
+            process.env.AUTH_SECRET = "test-secret-key-that-is-at-least-32-chars-long"
             driver = createMockDriver()
 
             const authPlugin = auth({})
