@@ -25,11 +25,94 @@ export type PrettifyDeep<T> = {
   [K in keyof T]: T[K] extends object ? PrettifyDeep<T[K]> : T[K]
 } & {}
 
+export type Prettify<T> = {
+  [K in keyof T]: T[K]
+} & {}
+
 export type StripEmptyObjects<T> = T extends infer U
   ? {} extends U
   ? never
   : U
   : never
+
+// -----------------------------------------------------------------------------
+// Deep Merge Types for Plugin Actions
+// Merges nested objects like { signIn: { email } } & { signIn: { username } }
+// into { signIn: { email, username } }
+// -----------------------------------------------------------------------------
+
+/**
+ * Deep merge two types, combining nested objects instead of overwriting
+ */
+export type DeepMerge<T, U> = {
+  [K in keyof T | keyof U]: K extends keyof T
+    ? K extends keyof U
+      ? T[K] extends Record<string, unknown>
+        ? U[K] extends Record<string, unknown>
+          ? DeepMerge<T[K], U[K]>
+          : T[K]
+        : U[K]
+      : T[K]
+    : K extends keyof U
+      ? U[K]
+      : never
+}
+
+/**
+ * Deep merge array of types
+ */
+export type DeepMergeAll<T extends any[]> = T extends [infer First, ...infer Rest]
+  ? Rest extends any[]
+    ? Rest["length"] extends 0
+      ? First
+      : DeepMerge<First, DeepMergeAll<Rest>>
+    : First
+  : {}
+
+/**
+ * Convert union to tuple for iteration
+ */
+type UnionToTuple<T, L = LastOf<T>, N = [T] extends [never] ? true : false> =
+  true extends N ? [] : Push<UnionToTuple<Exclude<T, L>>, L>
+
+type LastOf<T> = UnionToIntersection<T extends any ? () => T : never> extends () => infer R ? R : never
+
+type Push<T extends any[], V> = [...T, V]
+
+/**
+ * Deep merge union of types - preserves nested objects
+ * TypeScript's intersection automatically merges nested objects with same keys
+ * { auth: A } & { auth: B } => { auth: A & B }
+ */
+export type DeepMergeUnion<U> = [U] extends [never]
+  ? {}
+  : UnionToIntersection<U>
+
+// -----------------------------------------------------------------------------
+// Path to Object Types (for endpoint path inference)
+// Converts API paths like "/sign-in/username" to { signIn: { username: fn } }
+// -----------------------------------------------------------------------------
+
+/**
+ * Convert kebab-case to camelCase
+ */
+export type CamelCase<S extends string> =
+  S extends `${infer P1}-${infer P2}${infer P3}`
+    ? `${Lowercase<P1>}${Uppercase<P2>}${CamelCase<P3>}`
+    : Lowercase<S>
+
+/**
+ * Convert path to nested object structure
+ * e.g. "/sign-in/username" -> { signIn: { username: Fn } }
+ */
+export type PathToObject<
+  T extends string,
+  Fn extends (...args: any[]) => any,
+> = T extends `/${infer Segment}/${infer Rest}`
+  ? { [K in CamelCase<Segment>]: PathToObject<`/${Rest}`, Fn> }
+  : T extends `/${infer Segment}`
+    ? { [K in CamelCase<Segment>]: Fn }
+    : never
 
 // -----------------------------------------------------------------------------
 // Client Store
@@ -226,6 +309,13 @@ export interface NevrClientPlugin {
   $InferServerPlugin?: NevrPlugin | undefined
 
   /**
+   * Type-only property for action type inference
+   * Used by InferActions to get proper types without calling getActions
+   * This enables deep merging of nested action objects
+   */
+  $InferActions?: unknown
+
+  /**
    * Custom actions added by this plugin
    */
   getActions?: (
@@ -372,16 +462,24 @@ export type InferClientAPI<O extends NevrClientOptions> = InferRoutes<
 >
 
 /**
- * Infer actions from client plugins
+ * Extract action types from a single plugin
+ */
+type ExtractPluginActions<P> = P extends NevrClientPlugin
+  ? P extends { $InferActions: infer A }
+    ? A extends Record<string, any>
+      ? A  // Use explicit $InferActions if available
+      : {}
+    : P["getActions"] extends (...args: any) => infer Actions
+      ? Actions
+      : {}
+  : {}
+
+/**
+ * Infer actions from client plugins with deep merge support
+ * This properly merges nested objects like { signIn: { email } } & { signIn: { username } }
  */
 export type InferActions<O extends NevrClientOptions> = O["plugins"] extends Array<infer Plugin>
-  ? UnionToIntersection<
-    Plugin extends NevrClientPlugin
-    ? Plugin["getActions"] extends (...args: any) => infer Actions
-    ? Actions
-    : {}
-    : {}
-  >
+  ? Prettify<DeepMergeUnion<ExtractPluginActions<Plugin>>>
   : {}
 
 /**

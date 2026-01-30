@@ -118,47 +118,47 @@ describe("Organization Client Plugin", () => {
 
         it("should have all action methods", () => {
             // Organization CRUD
-            expect(actions.create).toBeDefined()
-            expect(actions.update).toBeDefined()
-            expect(actions.delete).toBeDefined()
-            expect(actions.get).toBeDefined()
-            expect(actions.list).toBeDefined()
-            expect(actions.checkSlug).toBeDefined()
+            expect(actions.org.create).toBeDefined()
+            expect(actions.org.update).toBeDefined()
+            expect(actions.org.delete).toBeDefined()
+            expect(actions.org.get).toBeDefined()
+            expect(actions.org.list).toBeDefined()
+            expect(actions.org.checkSlug).toBeDefined()
 
             // Active organization
-            expect(actions.setActive).toBeDefined()
-            expect(actions.getActive).toBeDefined()
+            expect(actions.org.setActive).toBeDefined()
+            expect(actions.org.getActive).toBeDefined()
 
             // Members
-            expect(actions.listMembers).toBeDefined()
-            expect(actions.addMember).toBeDefined()
-            expect(actions.removeMember).toBeDefined()
-            expect(actions.updateMemberRole).toBeDefined()
-            expect(actions.leave).toBeDefined()
+            expect(actions.org.listMembers).toBeDefined()
+            expect(actions.org.addMember).toBeDefined()
+            expect(actions.org.removeMember).toBeDefined()
+            expect(actions.org.updateMemberRole).toBeDefined()
+            expect(actions.org.leave).toBeDefined()
 
             // Invitations
-            expect(actions.invite).toBeDefined()
-            expect(actions.acceptInvitation).toBeDefined()
-            expect(actions.rejectInvitation).toBeDefined()
-            expect(actions.cancelInvitation).toBeDefined()
-            expect(actions.listInvitations).toBeDefined()
-            expect(actions.getMyInvitations).toBeDefined()
+            expect(actions.org.invite).toBeDefined()
+            expect(actions.org.acceptInvitation).toBeDefined()
+            expect(actions.org.rejectInvitation).toBeDefined()
+            expect(actions.org.cancelInvitation).toBeDefined()
+            expect(actions.org.listInvitations).toBeDefined()
+            expect(actions.org.getMyInvitations).toBeDefined()
 
             // Teams
-            expect(actions.createTeam).toBeDefined()
-            expect(actions.updateTeam).toBeDefined()
-            expect(actions.deleteTeam).toBeDefined()
-            expect(actions.listTeams).toBeDefined()
-            expect(actions.addTeamMember).toBeDefined()
-            expect(actions.removeTeamMember).toBeDefined()
-            expect(actions.setActiveTeam).toBeDefined()
+            expect(actions.org.createTeam).toBeDefined()
+            expect(actions.org.updateTeam).toBeDefined()
+            expect(actions.org.deleteTeam).toBeDefined()
+            expect(actions.org.listTeams).toBeDefined()
+            expect(actions.org.addTeamMember).toBeDefined()
+            expect(actions.org.removeTeamMember).toBeDefined()
+            expect(actions.org.setActiveTeam).toBeDefined()
 
             // Permissions & Roles
-            expect(actions.hasPermission).toBeDefined()
-            expect(actions.listRoles).toBeDefined()
-            expect(actions.createRole).toBeDefined()
-            expect(actions.updateRole).toBeDefined()
-            expect(actions.deleteRole).toBeDefined()
+            expect(actions.org.hasPermission).toBeDefined()
+            expect(actions.org.listRoles).toBeDefined()
+            expect(actions.org.createRole).toBeDefined()
+            expect(actions.org.updateRole).toBeDefined()
+            expect(actions.org.deleteRole).toBeDefined()
         })
 
         it("create should call POST with correct body", async () => {
@@ -170,7 +170,7 @@ describe("Organization Client Plugin", () => {
                 error: null
             })
 
-            await actions.create({ name: "Test Org" })
+            await actions.org.create({ name: "Test Org" })
 
             expect(mockFetch).toHaveBeenCalledWith(
                 "/organization/create-organization",
@@ -187,7 +187,7 @@ describe("Organization Client Plugin", () => {
                 error: null
             })
 
-            await actions.list()
+            await actions.org.list()
 
             expect(mockFetch).toHaveBeenCalledWith(
                 "/organization/list-organizations",
@@ -204,7 +204,7 @@ describe("Organization Client Plugin", () => {
                 error: null
             })
 
-            await actions.setActive("org-1")
+            await actions.org.setActive("org-1")
 
             // Check that atoms were updated (we initialized them earlier)
             expect(mockFetch).toHaveBeenCalledWith(

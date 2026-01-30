@@ -96,6 +96,13 @@ export interface PaymentClientMethods {
 // =============================================================================
 
 /**
+ * Payment plugin client methods (namespaced under `payment`)
+ */
+export interface PaymentPluginMethods {
+    payment: PaymentClientMethods
+}
+
+/**
  * Payment client plugin type with server inference
  */
 export type PaymentClientPlugin = NevrClientPlugin & {
@@ -105,6 +112,7 @@ export type PaymentClientPlugin = NevrClientPlugin & {
         Subscription: Subscription
         PaymentPlan: PaymentPlan
     }
+    readonly $InferActions: PaymentPluginMethods
 }
 
 // =============================================================================
@@ -328,6 +336,8 @@ export function paymentClient(options?: PaymentClientOptions): PaymentClientPlug
             Subscription: {} as Subscription,
             PaymentPlan: {} as PaymentPlan,
         },
+
+        $InferActions: {} as PaymentPluginMethods,
     } as PaymentClientPlugin
 }
 

@@ -226,8 +226,9 @@ export interface EntityClientOptions<TEntities = Record<string, unknown>> {
 
 /**
  * Create CRUD methods for an entity with action support
+ * Exported for use by createClient's `entities` option
  */
-function createEntityMethods<T>(
+export function createEntityMethods<T>(
   $fetch: NevrFetch,
   entityName: string
 ): EntityMethods<T> {

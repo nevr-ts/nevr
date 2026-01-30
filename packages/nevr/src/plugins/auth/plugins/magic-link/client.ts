@@ -3,8 +3,9 @@
 // Client-side plugin for magic link authentication
 // =============================================================================
 
-import type { NevrClientPlugin, NevrFetch, ClientStore, ClientAtomListener } from "../../../../client/types.js"
+import type { NevrClientPlugin, NevrFetch, ClientStore, ClientAtomListener, NevrFetchResponse } from "../../../../client/types.js"
 import { MAGIC_LINK_ERROR_CODES } from "./error-codes.js"
+import type { AuthResponse } from "../../client.js"
 
 // =============================================================================
 // Types
@@ -29,10 +30,30 @@ export interface VerifyMagicLinkInput {
     callbackURL?: string
 }
 
+/**
+ * Magic link auth methods (inside auth namespace)
+ */
+export interface MagicLinkAuthMethods {
+    signIn: {
+        magicLink: (input: SendMagicLinkInput) => Promise<NevrFetchResponse<{ success: boolean }>>
+    }
+    magicLink: {
+        verify: (input: VerifyMagicLinkInput) => Promise<NevrFetchResponse<AuthResponse>>
+    }
+}
+
+/**
+ * Magic link client methods - namespaced under `client.auth.*`
+ */
+export interface MagicLinkClientMethods {
+    auth: MagicLinkAuthMethods
+}
+
 export type MagicLinkClientPlugin = NevrClientPlugin & {
     readonly $InferTypes: {
         $ERROR_CODES: typeof MAGIC_LINK_ERROR_CODES
     }
+    readonly $InferActions: MagicLinkClientMethods
 }
 
 // =============================================================================
@@ -80,33 +101,37 @@ export function magicLinkClient(options?: MagicLinkClientOptions): MagicLinkClie
 
         getActions($fetch: NevrFetch, $store: ClientStore) {
             return {
-                signIn: {
-                    magicLink: async (input: SendMagicLinkInput) => {
-                        return $fetch(`${basePath}/sign-in/magic-link`, {
-                            method: "POST",
-                            body: input,
-                        })
+                auth: {
+                    signIn: {
+                        magicLink: async (input: SendMagicLinkInput) => {
+                            return $fetch(`${basePath}/sign-in/magic-link`, {
+                                method: "POST",
+                                body: input,
+                            })
+                        },
                     },
-                },
 
-                magicLink: {
-                    verify: async (input: VerifyMagicLinkInput) => {
-                        const params = new URLSearchParams()
-                        params.set("token", input.token)
-                        if (input.callbackURL) {
-                            params.set("callbackURL", input.callbackURL)
-                        }
-                        return $fetch(`${basePath}/magic-link/verify?${params.toString()}`, {
-                            method: "GET",
-                        })
+                    magicLink: {
+                        verify: async (input: VerifyMagicLinkInput) => {
+                            const params = new URLSearchParams()
+                            params.set("token", input.token)
+                            if (input.callbackURL) {
+                                params.set("callbackURL", input.callbackURL)
+                            }
+                            return $fetch(`${basePath}/magic-link/verify?${params.toString()}`, {
+                                method: "GET",
+                            })
+                        },
                     },
-                },
+                }
             }
         },
 
         $InferTypes: {
             $ERROR_CODES: MAGIC_LINK_ERROR_CODES,
         },
+
+        $InferActions: {} as MagicLinkClientMethods,
     } as unknown as MagicLinkClientPlugin
 }
 

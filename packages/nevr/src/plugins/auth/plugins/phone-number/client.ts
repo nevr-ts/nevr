@@ -2,8 +2,9 @@
 // PHONE NUMBER CLIENT PLUGIN
 // =============================================================================
 
-import type { NevrClientPlugin, NevrFetch, ClientStore, ClientAtomListener } from "../../../../client/types.js"
+import type { NevrClientPlugin, NevrFetch, ClientStore, ClientAtomListener, NevrFetchResponse } from "../../../../client/types.js"
 import { PHONE_NUMBER_ERROR_CODES } from "./error-codes.js"
+import type { AuthResponse, AuthFetchOptions } from "../../client.js"
 
 export interface PhoneNumberClientOptions {
     basePath?: string
@@ -24,10 +25,39 @@ export interface VerifyPhoneInput {
     code: string
 }
 
+export interface ResetPasswordInput {
+    phoneNumber: string
+    otp: string
+    newPassword: string
+}
+
+/**
+ * Phone number auth methods (inside auth namespace)
+ */
+export interface PhoneNumberAuthMethods {
+    signIn: {
+        phoneNumber: (input: SignInPhoneInput) => Promise<NevrFetchResponse<AuthResponse>>
+    }
+    phoneNumber: {
+        sendOTP: (input: SendOTPInput) => Promise<NevrFetchResponse<{ success: boolean }>>
+        verify: (input: VerifyPhoneInput) => Promise<NevrFetchResponse<{ success: boolean }>>
+        requestPasswordReset: (input: SendOTPInput) => Promise<NevrFetchResponse<{ success: boolean }>>
+        resetPassword: (input: ResetPasswordInput) => Promise<NevrFetchResponse<{ success: boolean }>>
+    }
+}
+
+/**
+ * Phone number client methods - namespaced under `client.auth.*`
+ */
+export interface PhoneNumberClientMethods {
+    auth: PhoneNumberAuthMethods
+}
+
 export type PhoneNumberClientPlugin = NevrClientPlugin & {
     readonly $InferTypes: {
         $ERROR_CODES: typeof PHONE_NUMBER_ERROR_CODES
     }
+    readonly $InferActions: PhoneNumberClientMethods
 }
 
 /**
@@ -72,50 +102,54 @@ export function phoneNumberClient(options?: PhoneNumberClientOptions): PhoneNumb
 
         getActions($fetch: NevrFetch, $store: ClientStore) {
             return {
-                signIn: {
-                    phoneNumber: async (input: SignInPhoneInput) => {
-                        return $fetch(`${basePath}/sign-in/phone-number`, {
-                            method: "POST",
-                            body: input,
-                        })
-                    },
-                },
-
-                phoneNumber: {
-                    sendOTP: async (input: SendOTPInput) => {
-                        return $fetch(`${basePath}/phone-number/send-otp`, {
-                            method: "POST",
-                            body: input,
-                        })
+                auth: {
+                    signIn: {
+                        phoneNumber: async (input: SignInPhoneInput) => {
+                            return $fetch(`${basePath}/sign-in/phone-number`, {
+                                method: "POST",
+                                body: input,
+                            })
+                        },
                     },
 
-                    verify: async (input: VerifyPhoneInput) => {
-                        return $fetch(`${basePath}/phone-number/verify`, {
-                            method: "POST",
-                            body: input,
-                        })
-                    },
+                    phoneNumber: {
+                        sendOTP: async (input: SendOTPInput) => {
+                            return $fetch(`${basePath}/phone-number/send-otp`, {
+                                method: "POST",
+                                body: input,
+                            })
+                        },
 
-                    requestPasswordReset: async (input: SendOTPInput) => {
-                        return $fetch(`${basePath}/phone-number/request-password-reset`, {
-                            method: "POST",
-                            body: input,
-                        })
-                    },
+                        verify: async (input: VerifyPhoneInput) => {
+                            return $fetch(`${basePath}/phone-number/verify`, {
+                                method: "POST",
+                                body: input,
+                            })
+                        },
 
-                    resetPassword: async (input: { phoneNumber: string; otp: string; newPassword: string }) => {
-                        return $fetch(`${basePath}/phone-number/reset-password`, {
-                            method: "POST",
-                            body: input,
-                        })
+                        requestPasswordReset: async (input: SendOTPInput) => {
+                            return $fetch(`${basePath}/phone-number/request-password-reset`, {
+                                method: "POST",
+                                body: input,
+                            })
+                        },
+
+                        resetPassword: async (input: { phoneNumber: string; otp: string; newPassword: string }) => {
+                            return $fetch(`${basePath}/phone-number/reset-password`, {
+                                method: "POST",
+                                body: input,
+                            })
+                        },
                     },
-                },
+                }
             }
         },
 
         $InferTypes: {
             $ERROR_CODES: PHONE_NUMBER_ERROR_CODES,
         },
+
+        $InferActions: {} as PhoneNumberClientMethods,
     } as unknown as PhoneNumberClientPlugin
 }
 

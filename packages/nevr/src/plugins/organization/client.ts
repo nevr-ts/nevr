@@ -77,7 +77,10 @@ export interface OrganizationClientOptions {
 // CLIENT METHODS
 // =============================================================================
 
-export interface OrganizationClientMethods {
+/**
+ * Organization methods (inside org namespace)
+ */
+export interface OrgMethods {
     // Organization CRUD
     create(data: CreateOrganizationInput): Promise<NevrFetchResponse<{ organization: Organization; member: Member }>>
     update(organizationId: string, data: UpdateOrganizationInput): Promise<NevrFetchResponse<Organization>>
@@ -126,6 +129,13 @@ export interface OrganizationClientMethods {
     deleteRole(roleId: string): Promise<NevrFetchResponse<{ success: boolean }>>
 }
 
+/**
+ * Organization client methods - namespaced under `client.org.*`
+ */
+export interface OrganizationClientMethods {
+    org: OrgMethods
+}
+
 // =============================================================================
 // CLIENT PLUGIN TYPE
 // =============================================================================
@@ -146,6 +156,7 @@ export type OrganizationClientPlugin = NevrClientPlugin & {
         Invitation: Invitation
         RoleDefinition: RoleDefinition
     }
+    readonly $InferActions: OrganizationClientMethods
 }
 
 // =============================================================================
@@ -422,11 +433,12 @@ export function organizationClient(options?: OrganizationClientOptions): Organiz
             }
 
             return {
-                // ============================================================
-                // Organization CRUD
-                // ============================================================
+                org: {
+                    // ============================================================
+                    // Organization CRUD
+                    // ============================================================
 
-                create: async (data: CreateOrganizationInput) => {
+                    create: async (data: CreateOrganizationInput) => {
                     const result = await $fetch(`${basePath}/create-organization`, {
                         method: "POST",
                         body: data,
@@ -735,6 +747,7 @@ export function organizationClient(options?: OrganizationClientOptions): Organiz
                         body: { roleId },
                     }) as Promise<NevrFetchResponse<{ success: boolean }>>
                 },
+                }
             }
         },
 
@@ -748,6 +761,8 @@ export function organizationClient(options?: OrganizationClientOptions): Organiz
             Invitation: {} as Invitation,
             RoleDefinition: {} as RoleDefinition,
         },
+
+        $InferActions: {} as OrganizationClientMethods,
     } as OrganizationClientPlugin
 }
 
@@ -763,13 +778,13 @@ export interface UseOrganizationResult {
     error: Error | null
 
     // Actions
-    create: OrganizationClientMethods["create"]
-    update: OrganizationClientMethods["update"]
-    delete: OrganizationClientMethods["delete"]
-    setActive: OrganizationClientMethods["setActive"]
-    invite: OrganizationClientMethods["invite"]
-    leave: OrganizationClientMethods["leave"]
-    hasPermission: OrganizationClientMethods["hasPermission"]
+    create: OrgMethods["create"]
+    update: OrgMethods["update"]
+    delete: OrgMethods["delete"]
+    setActive: OrgMethods["setActive"]
+    invite: OrgMethods["invite"]
+    leave: OrgMethods["leave"]
+    hasPermission: OrgMethods["hasPermission"]
 
     // Refresh
     refresh: () => Promise<void>

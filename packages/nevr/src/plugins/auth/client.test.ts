@@ -99,7 +99,7 @@ describe("Auth Client Plugin", () => {
             const plugin = authClient()
             const actions = plugin.getActions!(mockFetch, {} as any, {} as any)
 
-            const result = await actions.signUp.email({
+            const result = await actions.auth.signUp.email({
                 name: "Test User",
                 email: "test@example.com",
                 password: "password123",
@@ -135,7 +135,7 @@ describe("Auth Client Plugin", () => {
             const plugin = authClient()
             const actions = plugin.getActions!(mockFetch, {} as any, {} as any)
 
-            const result = await actions.signIn.email({
+            const result = await actions.auth.signIn.email({
                 email: "test@example.com",
                 password: "password123",
             })
@@ -161,7 +161,7 @@ describe("Auth Client Plugin", () => {
             const plugin = authClient()
             const actions = plugin.getActions!(mockFetch, {} as any, {} as any)
 
-            const result = await actions.signOut()
+            const result = await actions.auth.signOut()
 
             expect(result.data?.success).toBe(true)
             expect(mockFetch).toHaveBeenCalledWith("/auth/sign-out", {
@@ -183,7 +183,7 @@ describe("Auth Client Plugin", () => {
             const plugin = authClient()
             const actions = plugin.getActions!(mockFetch, {} as any, {} as any)
 
-            const result = await actions.getSession()
+            const result = await actions.auth.getSession()
 
             expect(result.data?.session.id).toBe("s1")
             expect(result.data?.user.email).toBe("test@example.com")
@@ -205,7 +205,7 @@ describe("Auth Client Plugin", () => {
             const plugin = authClient()
             const actions = plugin.getActions!(mockFetch, {} as any, {} as any)
 
-            const result = await actions.listSessions()
+            const result = await actions.auth.listSessions()
 
             expect(result.data?.sessions).toHaveLength(2)
         })
@@ -221,7 +221,7 @@ describe("Auth Client Plugin", () => {
             const plugin = authClient()
             const actions = plugin.getActions!(mockFetch, {} as any, {} as any)
 
-            const result = await actions.revokeSession({ token: "token-to-revoke" })
+            const result = await actions.auth.revokeSession({ token: "token-to-revoke" })
 
             expect(result.data?.status).toBe(true)
             expect(mockFetch).toHaveBeenCalledWith("/auth/revoke-session", {
@@ -241,7 +241,7 @@ describe("Auth Client Plugin", () => {
             const plugin = authClient()
             const actions = plugin.getActions!(mockFetch, {} as any, {} as any)
 
-            const result = await actions.revokeSessions()
+            const result = await actions.auth.revokeSessions()
 
             expect(result.data?.status).toBe(true)
         })
@@ -257,7 +257,7 @@ describe("Auth Client Plugin", () => {
             const plugin = authClient()
             const actions = plugin.getActions!(mockFetch, {} as any, {} as any)
 
-            const result = await actions.revokeOtherSessions()
+            const result = await actions.auth.revokeOtherSessions()
 
             expect(result.data?.status).toBe(true)
         })

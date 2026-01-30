@@ -177,9 +177,9 @@ export interface RevokeSessionInput {
 }
 
 /**
- * Auth client methods
+ * Auth methods (internal - used inside auth namespace)
  */
-export interface AuthClientMethods {
+export interface AuthMethods {
     /**
      * Sign up with email and password
      * @param input - Sign up data (email, password, name)
@@ -261,6 +261,22 @@ export interface AuthClientMethods {
     deleteUser: (input: { password: string }) => Promise<NevrFetchResponse<{ status: boolean }>>
 }
 
+/**
+ * Auth client methods - namespaced under `client.auth.*`
+ *
+ * @example
+ * ```typescript
+ * // All auth methods are under the `auth` namespace
+ * await client.auth.signIn.email({ email, password })
+ * await client.auth.signUp.email({ name, email, password })
+ * await client.auth.signOut()
+ * await client.auth.getSession()
+ * ```
+ */
+export interface AuthClientMethods {
+    auth: AuthMethods
+}
+
 // -----------------------------------------------------------------------------
 // Session Atom
 // Reactive session state using nanostores
@@ -337,6 +353,11 @@ export type AuthClientPlugin = NevrClientPlugin & {
         Session: SessionData
         User: AuthUser
     }
+    /**
+     * Type-only property for action inference
+     * Used by InferActions for proper deep merging
+     */
+    readonly $InferActions: AuthClientMethods
 }
 
 export function authClient(options?: AuthClientOptions): AuthClientPlugin {
@@ -517,8 +538,9 @@ export function authClient(options?: AuthClientOptions): AuthClientPlugin {
             }
 
             return {
-                signUp: {
-                    email: async (input: SignUpEmailInput, fetchOptions?: AuthFetchOptions) => {
+                auth: {
+                    signUp: {
+                        email: async (input: SignUpEmailInput, fetchOptions?: AuthFetchOptions) => {
                         const { fetchOptions: inputOpts, ...body } = input
                         const opts = mergeOptions(inputOpts, fetchOptions)
 
@@ -749,6 +771,7 @@ export function authClient(options?: AuthClientOptions): AuthClientPlugin {
                     await handleCallbacks(result, fetchOptions)
                     return result as NevrFetchResponse<{ status: boolean }>
                 },
+                }
             }
         },
 
@@ -759,6 +782,9 @@ export function authClient(options?: AuthClientOptions): AuthClientPlugin {
             Session: {} as SessionData,
             User: {} as AuthUser,
         },
+
+        // Action type inference for deep merging with sub-plugins
+        $InferActions: {} as AuthClientMethods,
     } as AuthClientPlugin
 }
 

@@ -129,12 +129,20 @@ export interface RAGClientMethods {
 // CLIENT PLUGIN TYPE
 // =============================================================================
 
+/**
+ * RAG plugin client methods (namespaced under `rag`)
+ */
+export interface RAGPluginMethods {
+    rag: RAGClientMethods
+}
+
 export type RAGClientPlugin = NevrClientPlugin & {
     readonly $InferTypes: {
         endpoints: RAGClientMethods
         $ERROR_CODES: typeof RAG_ERROR_CODES
         SearchResult: SearchResult
     }
+    readonly $InferActions: RAGPluginMethods
 }
 
 // =============================================================================
@@ -271,6 +279,8 @@ export function ragClient(options?: RAGClientOptions): RAGClientPlugin {
             $ERROR_CODES: RAG_ERROR_CODES,
             SearchResult: {} as SearchResult,
         },
+
+        $InferActions: {} as RAGPluginMethods,
     } as unknown as RAGClientPlugin
 }
 

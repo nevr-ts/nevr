@@ -7,16 +7,18 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { useStore } from "@nanostores/react"
 import type { Atom } from "nanostores"
 import { createClient, type NevrClient } from "./vanilla.js"
-import type { NevrClientOptions, SessionState, NevrFetchResponse } from "./types.js"
+import type { NevrClientOptions, NevrClientPlugin, SessionState, NevrFetchResponse } from "./types.js"
 
 // Re-export vanilla client
 export { createClient, type NevrClient } from "./vanilla.js"
+
+import type { ClientOptionsWithEntities } from "./vanilla.js"
 
 /**
  * React-specific client type alias
  * Same as NevrClient but named for React context
  */
-export type ReactNevrClient = NevrClient<NevrClientOptions> & {
+export type ReactNevrClient = NevrClient<void, NevrClientPlugin[]> & {
   /**
    * Raw fetch method for custom API calls
    * Use for entity actions or custom endpoints
@@ -48,10 +50,12 @@ export { useStore }
  * Create a React-aware NEVR client
  * This is an alias for createClient with better type inference for React
  */
-export function createReactClient<Options extends NevrClientOptions>(
-  options?: Options
-): NevrClient<Options> {
-  return createClient(options)
+export function createReactClient<
+  const Plugins extends NevrClientPlugin[] = NevrClientPlugin[]
+>(
+  options?: Omit<ClientOptionsWithEntities, 'plugins'> & { plugins?: Plugins }
+): NevrClient<void, Plugins> {
+  return createClient(options as any) as NevrClient<void, Plugins>
 }
 
 /**

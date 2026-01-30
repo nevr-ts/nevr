@@ -35,6 +35,13 @@ export interface ModelsState {
 // Client Plugin Type
 // -----------------------------------------------------------------------------
 
+/**
+ * AI Gateway plugin client methods (namespaced under `ai`)
+ */
+export interface AIGatewayPluginMethods {
+    ai: AIGatewayClientMethods
+}
+
 export type AIGatewayClientPlugin = NevrClientPlugin & {
     readonly $InferTypes: {
         endpoints: AIGatewayClientMethods
@@ -42,6 +49,7 @@ export type AIGatewayClientPlugin = NevrClientPlugin & {
         UsageRecord: UsageRecord
         ChatResponse: ChatResponse
     }
+    readonly $InferActions: AIGatewayPluginMethods
 }
 
 // -----------------------------------------------------------------------------
@@ -525,6 +533,8 @@ export function aiClient(options: AIGatewayClientOptions = {}): AIGatewayClientP
             UsageRecord: {} as import("./types.js").UsageRecord,
             ChatResponse: {} as import("./types.js").ChatResponse,
         },
+
+        $InferActions: {} as AIGatewayPluginMethods,
     } as unknown as AIGatewayClientPlugin
 }
 

@@ -169,12 +169,20 @@ export interface StorageClientMethods {
 // CLIENT PLUGIN TYPE
 // =============================================================================
 
+/**
+ * Storage plugin client methods (namespaced under `storage`)
+ */
+export interface StoragePluginMethods {
+    storage: StorageClientMethods
+}
+
 export type StorageClientPlugin = NevrClientPlugin & {
     readonly $InferTypes: {
         endpoints: StorageClientMethods
         $ERROR_CODES: typeof STORAGE_ERROR_CODES
         File: StorageFile
     }
+    readonly $InferActions: StoragePluginMethods
 }
 
 // =============================================================================
@@ -563,6 +571,8 @@ export function storageClient(options?: StorageClientOptions): StorageClientPlug
             $ERROR_CODES: STORAGE_ERROR_CODES,
             File: {} as StorageFile,
         },
+
+        $InferActions: {} as StoragePluginMethods,
     } as StorageClientPlugin
 }
 

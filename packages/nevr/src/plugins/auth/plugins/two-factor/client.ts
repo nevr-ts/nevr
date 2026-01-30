@@ -2,8 +2,9 @@
 // TWO FACTOR CLIENT PLUGIN
 // =============================================================================
 
-import type { NevrClientPlugin, NevrFetch, ClientStore, ClientAtomListener } from "../../../../client/types.js"
+import type { NevrClientPlugin, NevrFetch, ClientStore, ClientAtomListener, NevrFetchResponse } from "../../../../client/types.js"
 import { TWO_FACTOR_ERROR_CODES } from "./error-codes.js"
+import type { AuthResponse } from "../../client.js"
 
 export interface TwoFactorClientOptions {
     basePath?: string
@@ -34,10 +35,40 @@ export interface GenerateBackupCodesInput {
     password: string
 }
 
+export interface EnableTwoFactorResponse {
+    totpUri: string
+    secret: string
+    backupCodes: string[]
+}
+
+/**
+ * Two-factor auth methods (inside auth namespace)
+ */
+export interface TwoFactorAuthMethods {
+    twoFactor: {
+        enable: (input: EnableTwoFactorInput) => Promise<NevrFetchResponse<EnableTwoFactorResponse>>
+        verifySetup: (input: VerifyTOTPInput) => Promise<NevrFetchResponse<{ success: boolean }>>
+        disable: (input: DisableTwoFactorInput) => Promise<NevrFetchResponse<{ success: boolean }>>
+        verifyTotp: (input: VerifyTOTPInput) => Promise<NevrFetchResponse<AuthResponse>>
+        verifyBackupCode: (input: VerifyBackupCodeInput) => Promise<NevrFetchResponse<AuthResponse>>
+        generateBackupCodes: (input: GenerateBackupCodesInput) => Promise<NevrFetchResponse<{ backupCodes: string[] }>>
+        sendOtp: () => Promise<NevrFetchResponse<{ success: boolean }>>
+        verifyOtp: (input: VerifyTOTPInput) => Promise<NevrFetchResponse<AuthResponse>>
+    }
+}
+
+/**
+ * Two-factor client methods - namespaced under `client.auth.*`
+ */
+export interface TwoFactorClientMethods {
+    auth: TwoFactorAuthMethods
+}
+
 export type TwoFactorClientPlugin = NevrClientPlugin & {
     readonly $InferTypes: {
         $ERROR_CODES: typeof TWO_FACTOR_ERROR_CODES
     }
+    readonly $InferActions: TwoFactorClientMethods
 }
 
 /**
@@ -123,7 +154,8 @@ export function twoFactorClient(options?: TwoFactorClientOptions): TwoFactorClie
 
         getActions($fetch: NevrFetch, $store: ClientStore) {
             return {
-                twoFactor: {
+                auth: {
+                    twoFactor: {
                     /**
                      * Enable two-factor authentication
                      * Returns TOTP URI (for QR code) and backup codes
@@ -203,13 +235,16 @@ export function twoFactorClient(options?: TwoFactorClientOptions): TwoFactorClie
                             body: input,
                         })
                     },
-                },
+                    },
+                }
             }
         },
 
         $InferTypes: {
             $ERROR_CODES: TWO_FACTOR_ERROR_CODES,
         },
+
+        $InferActions: {} as TwoFactorClientMethods,
     } as unknown as TwoFactorClientPlugin
 }
 

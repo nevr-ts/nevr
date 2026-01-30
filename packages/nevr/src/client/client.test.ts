@@ -13,7 +13,7 @@ import type { NevrClientPlugin, NevrFetch, ClientStore } from "./types.js"
 describe("Client", () => {
   describe("createClient", () => {
     it("should create a client with default options", () => {
-      const client = createClient()
+      const client = createClient({})
 
       expect(client).toBeDefined()
       expect(client.$fetch).toBeDefined()
