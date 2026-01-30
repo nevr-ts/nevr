@@ -378,13 +378,14 @@ RAG can be accessed from the frontend using the client plugin:
 ### Setup
 
 ```typescript
-import { createTypedClient } from "nevr/client"
-import { ragClient } from "nevr/rag"
+import { createClient } from "nevr/client"
+import { ragClient } from "nevr/plugins/rag/client"
 import type { API } from "./api"
 
-const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+const client = createClient<API>()({
   baseURL: "/api",
-  plugins: [ragClient()]
+  plugins: [ragClient()],
 })
 ```
 

@@ -224,8 +224,14 @@ const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 export type API = typeof api
 
 // Client (types inferred automatically)
+import { createClient } from "nevr/client"
 import type { API } from "./server"
-const client = createTypedClient<API>({ baseURL: "/api" })
+
+// Use curried pattern for full type inference
+const client = createClient<API>()({
+  baseURL: "/api",
+  entities: ["post"],
+})
 
 const posts = await client.posts.list() // Fully typed!
 ```

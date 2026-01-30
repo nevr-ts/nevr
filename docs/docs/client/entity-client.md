@@ -5,14 +5,14 @@ Auto-generated CRUD methods for entities with full type safety.
 ## Setup
 
 ```typescript
-import { createTypedClient, entityClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import type { API } from "./server/api"
 
-const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+// Pass entities directly to createClient options
+const client = createClient<API>()({
   baseURL: "http://localhost:3000",
-  plugins: [
-    entityClient({ entities: ["user", "product", "order"] })
-  ]
+  entities: ["user", "product", "order"],
 })
 ```
 
@@ -195,7 +195,7 @@ await client.products.action("bulkPublish", {
 
 ## Type Inference
 
-Full E2E type safety from server using `createTypedClient`:
+Full E2E type safety from server using `createClient` with the curried pattern:
 
 ::: code-group
 
@@ -224,23 +224,22 @@ export type API = typeof api
 ```
 
 ```typescript [src/client.ts]
-import { createTypedClient, entityClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
 import type { API } from "./server"
 
-export const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+export const client = createClient<API>()({
   baseURL: "http://localhost:3000",
-  plugins: [
-    entityClient({ entities: ["user", "product"] }),
-    authClient(),
-  ],
+  entities: ["user", "product"],
+  plugins: [authClient()],
 })
 
 // Fully typed entities!
 const { data } = await client.users.list()
 const { data: product } = await client.products.create({ name: "Widget" })
 
-// Fully typed plugin methods!
+// Fully typed plugin methods (under auth namespace)!
 await client.auth.signIn.email({ email: "...", password: "..." })
 ```
 

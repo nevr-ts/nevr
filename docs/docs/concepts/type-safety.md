@@ -88,12 +88,13 @@ type UpdateUser = InferEntityData<typeof user, "update">
 Client operations are fully typed:
 
 ```typescript
-import { createTypedClient, entityClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import type { API } from "../server"
 
-const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+const client = createClient<API>()({
   baseURL: "http://localhost:3000",
-  plugins: [entityClient({ entities: ["user", "post"] })],
+  entities: ["user", "post"],
 })
 
 // Fully typed operations

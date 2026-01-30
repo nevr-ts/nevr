@@ -891,12 +891,13 @@ Actions are automatically available through the Nevr client. Here's how to call 
 ### Setup Client
 
 ```typescript
-import { createTypedClient, entityClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import type { API } from "./server/api"
 
-const api = createTypedClient<API>({
+// Use curried pattern for full type inference
+const client = createClient<API>()({
   baseURL: "http://localhost:3000",
-  plugins: [entityClient({ entities: ["user", "post", "product"] })],
+  entities: ["user", "post", "product"],
 })
 ```
 

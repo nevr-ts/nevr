@@ -109,19 +109,18 @@ function UserStatus() {
 Configure automatic session refresh:
 
 ```typescript
-import { authClient } from "nevr/plugins/auth/client"
-
-import { createTypedClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
 import type { API } from "../server/api"
 
-const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+const client = createClient<API>()({
   plugins: [
     authClient({
       session: {
         // Refetch session every 5 minutes
         refetchInterval: 60 * 5,
-        
+
         // Refetch when tab gets focus
         refetchOnWindowFocus: true,
       },

@@ -7,10 +7,10 @@ Passwordless authentication via email magic links.
 The magic-link plugin is included with the auth plugin. Add it to your config:
 
 ```typescript
-// src/nevr.config.ts
+// nevr.config.ts
 import { defineConfig } from "nevr"
 import { auth } from "nevr/plugins/auth"
-import { magicLink } from "nevr/plugins/auth/plugins/magic-link"
+import { magicLink } from "nevr/plugins/auth/magic-link"
 
 export const config = defineConfig({
   database: "sqlite",
@@ -33,6 +33,28 @@ export default config
 
 Your server picks it up automatically with `nevr({ ...config, driver })`.
 
+###  Generate and push or migrate the database
+
+```bash
+npx nevr generate    # Generates user + session tables
+npx nevr db:push     # Push to database
+# or
+npx nevr db:migrate  # Create migration files
+```
+
+###  Client Setup
+
+```typescript
+import { createClient } from "nevr/client"
+import { authClient } from "nevr/plugins/auth/client"
+import { magicLinkClient } from "nevr/plugins/auth/magic-link/client"
+import type { API } from "./api"
+
+const client = createClient<API>()({
+  baseURL: "/api",
+  plugins: [authClient(), magicLinkClient()],
+})
+```
 ## Configuration
 
 ```typescript
@@ -62,7 +84,7 @@ magicLink({
 ### Send Magic Link
 
 ```
-POST /auth/magic-link/send
+POST /sign-in/magic-link
 ```
 
 **Request:**
@@ -92,18 +114,21 @@ Redirects to callback URL with session cookie set.
 ## Client Usage
 
 ```typescript
-import { createTypedClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
-import { magicLinkClient } from "nevr/plugins/auth/plugins/magic-link/client"
+import { magicLinkClient } from "nevr/plugins/auth/magic-link/client"
+import type { API } from "./api"
 
-const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+const client = createClient<API>()({
   baseURL: "/api",
   plugins: [authClient(), magicLinkClient()],
 })
 
-// Send magic link
-await client.auth.sendMagicLink({
+// sign in directly with magic link
+await client.auth.signIn.magicLink({
   email: "user@example.com",
+  callbackURL: "/dashboard",
 })
 
 // User clicks link in email -> automatically verified

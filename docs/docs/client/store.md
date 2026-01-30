@@ -151,7 +151,7 @@ unsubscribe()
 Access the client store:
 
 ```typescript
-const client = createTypedClient<API>({ ... })
+const client = createClient<API>()({ ... })
 
 // Notify signal
 client.$store.notify("$sessionSignal")

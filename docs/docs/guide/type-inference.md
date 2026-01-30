@@ -86,13 +86,13 @@ function displayUser(user: User) {
 ### Typed Client
 
 ```typescript
-import { createTypedClient, entityClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import type { API } from "./server/api"
 
-// Create a typed client from your server
-const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+const client = createClient<API>()({
   baseURL: "/api",
-  plugins: [entityClient({ entities: ["user"] })]
+  entities: ["user"],
 })
 
 // Full type inference on all operations

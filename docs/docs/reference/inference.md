@@ -153,15 +153,13 @@ The most common use case is creating a type-safe client.
 
 ```typescript
 // client.ts
-import { createTypedClient, entityClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import type { Api } from "./server"
 
-// 1. Create typed client with entity plugin
-const client = createTypedClient<Api>({
+// Use curried pattern for full type inference
+const client = createClient<Api>()({
   baseURL: "/api",
-  plugins: [
-    entityClient({ entities: ["user", "post"] })
-  ]
+  entities: ["user", "post"],
 })
 
 // 2. Enjoy full autocomplete
@@ -361,18 +359,16 @@ export type Api = typeof api
 
 ```typescript
 // client/api.ts
-import { createTypedClient, entityClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
 import type { Api } from "../server"
 
 
-// Create fully typed client
-export const client = createTypedClient<Api>({
+// Use curried pattern for full type inference
+export const client = createClient<Api>()({
   baseURL: process.env.API_URL,
-  plugins: [
-    entityClient({ entities: ["user", "product"] }),
-    authClient(),
-  ],
+  entities: ["user", "product"],
+  plugins: [authClient()],
 })
 
 // Export typed client for use in app
@@ -470,10 +466,10 @@ import { Api } from "./server"
 
 ### 4. Leverage Autocomplete
 
-With `createTypedClient<Api>`, you get full autocomplete without explicit types:
+With `createClient<Api>()`, you get full autocomplete without explicit types:
 
 ```typescript
-const client = createTypedClient<Api>({ ... })
+const client = createClient<Api>()({ ... })
 
 // No need to type these - TypeScript infers everything
 const { data: users } = await client.users.list()
@@ -516,13 +512,15 @@ export type Api = typeof api  // That's it!
 ```
 
 ```typescript [src/client.ts]
-import { createTypedClient, entityClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
 import type { Api } from "./server"
 
-const client = createTypedClient<Api>({
+// Use curried pattern for full type inference
+const client = createClient<Api>()({
   baseURL: "/api",
-  plugins: [entityClient({ entities: ["user", "product", "order"] }), authClient()],
+  entities: ["user", "product", "order"],
+  plugins: [authClient()],
 })
 
 // Everything is typed automatically!

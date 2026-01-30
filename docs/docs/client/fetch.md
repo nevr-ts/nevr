@@ -372,19 +372,18 @@ const errorInterceptor: ResponseInterceptor = async (ctx) => {
 ## Full Client Setup
 
 ```typescript
-import { createTypedClient, entityClient } from "nevr/client"
+import { createClient } from "nevr/client"
+import type { API } from "./server/api"
 
 // ... (middleware defined above)
 
-// Create client
-const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+const client = createClient<API>()({
   baseURL: "http://localhost:3000",
   basePath: "/api",
   middleware: [authMiddleware, logMiddleware],
   interceptors: [refreshInterceptor],
-  plugins: [
-    entityClient({ entities: ["user", "post", "product"] }),
-  ],
+  entities: ["user", "post", "product"],
 })
 
 // Use the client
@@ -401,7 +400,7 @@ const { data: stats } = await client.$fetch<Stats>("/stats")
 Middleware executes in order, wrapping each subsequent middleware:
 
 ```typescript
-const client = createTypedClient<API>({
+const client = createClient<API>()({
   middleware: [first, second, third],
 })
 

@@ -7,10 +7,10 @@ Multi-method 2FA: TOTP, OTP (email/SMS), and backup codes.
 Add the two-factor plugin inside the auth plugin in your config:
 
 ```typescript
-// src/nevr.config.ts
+// nevr.config.ts
 import { defineConfig } from "nevr"
 import { auth } from "nevr/plugins/auth"
-import { twoFactor } from "nevr/plugins/auth/plugins/two-factor"
+import { twoFactor } from "nevr/plugins/auth/two-factor"
 
 export const config = defineConfig({
   database: "sqlite",
@@ -26,6 +26,29 @@ export default config
 ```
 
 Your server picks it up automatically with `nevr({ ...config, driver })`.
+
+###  Generate and push or migrate the database
+
+```bash
+npx nevr generate    # Generates user + session tables
+npx nevr db:push     # Push to database
+# or
+npx nevr db:migrate  # Create migration files
+```
+
+###  Client Setup
+
+```typescript
+import { createClient } from "nevr/client"
+import { authClient } from "nevr/plugins/auth/client"
+import { twoFactorClient } from "nevr/plugins/auth/two-factor/client"
+import type { API } from "./api"
+
+const client = createClient<API>()({
+  baseURL: "/api",
+  plugins: [authClient(), twoFactorClient()],
+})
+```
 
 ## Configuration
 
@@ -129,21 +152,25 @@ POST /two-factor/generate-backup-codes
 ## Client Usage
 
 ```typescript
-import { twoFactorClient } from "nevr/plugins/auth/plugins/two-factor/client"
+import { createClient } from "nevr/client"
+import { authClient } from "nevr/plugins/auth/client"
+import { twoFactorClient } from "nevr/plugins/auth/two-factor/client"
+import type { API } from "./api"
 
-const client = createTypedClient({
+// Use curried pattern for full type inference
+const client = createClient<API>()({
   plugins: [authClient(), twoFactorClient()],
 })
 
-// Enable 2FA
-const { data } = await client.twoFactor.enable({ password: "..." })
+// Enable 2FA (under auth.twoFactor namespace)
+const { data } = await client.auth.twoFactor.enable({ password: "..." })
 // Show QR code for data.totpUri
 
 // Verify setup
-await client.twoFactor.verifySetup({ code: "123456" })
+await client.auth.twoFactor.verifySetup({ code: "123456" })
 
 // During sign-in (if twoFactorRedirect: true)
-await client.twoFactor.verifyTotp({ code: "123456" })
+await client.auth.twoFactor.verifyTotp({ code: "123456" })
 ```
 
 ## Sign-in Flow

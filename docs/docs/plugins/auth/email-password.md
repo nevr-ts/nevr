@@ -54,11 +54,12 @@ import { auth } from "nevr/plugins/auth"
 ### Setup Client
 
 ```typescript
-import { createTypedClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
 import type { API } from "./server/api"
 
-export const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+export const client = createClient<API>()({
   baseURL: "http://localhost:3000/api",
   plugins: [authClient()],
 })
@@ -67,7 +68,8 @@ export const client = createTypedClient<API>({
 ### Sign Up
 
 ```typescript
-const { data, error } = await client.auth.signUp({
+// All auth methods are under client.auth.* namespace
+const { data, error } = await client.auth.signUp.email({
   email: "user@example.com",
   password: "securePassword123",
   name: "John Doe",  // Optional additional fields
@@ -83,7 +85,7 @@ if (error) {
 ### Sign In
 
 ```typescript
-const { data, error } = await client.auth.signIn({
+const { data, error } = await client.auth.signIn.email({
   email: "user@example.com",
   password: "securePassword123",
 })
@@ -116,7 +118,7 @@ function LoginForm() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     
-    const { data, error } = await client.auth.signIn({ email, password })
+    const { data, error } = await client.auth.signIn.email({ email, password })
     
     if (error) {
       setError(error.message)

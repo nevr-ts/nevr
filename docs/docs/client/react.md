@@ -5,14 +5,15 @@ React hooks for Nevr client using nanostores.
 ## Setup
 
 ```typescript
-import { createTypedClient } from "nevr/client"
-import { entityClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
 import type { API } from "./server/api"
 
-export const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+export const client = createClient<API>()({
   baseURL: "http://localhost:3000",
-  plugins: [authClient(), entityClient({ entities: ["user", "post"] })],
+  entities: ["user", "post"],
+  plugins: [authClient()],
 })
 ```
 
@@ -153,7 +154,7 @@ const session = useStore(client.useSession)
 ```tsx
 function Login() {
   const { execute, error, isPending } = useMutation(
-    (input) => client.signIn.email(input)
+    (input) => client.auth.signIn.email(input)
   )
 
   return (

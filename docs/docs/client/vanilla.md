@@ -5,16 +5,15 @@ Framework-agnostic Nevr client for any JavaScript environment.
 ## Setup
 
 ```typescript
-import { createTypedClient, entityClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
 import type { API } from "./server/api"
 
-const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+const client = createClient<API>()({
   baseURL: "http://localhost:3000",
-  plugins: [
-    entityClient({ entities: ["user"] }),
-    authClient(),
-  ],
+  entities: ["user"],
+  plugins: [authClient()],
 })
 ```
 
@@ -23,12 +22,16 @@ const client = createTypedClient<API>({
 ## Configuration
 
 ```typescript
-const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+const client = createClient<API>()({
   baseURL: "http://localhost:3000",
   basePath: "/api",
 
+  // Entity names for auto-generated CRUD methods
+  entities: ["user"],
+
   // Client plugins
-  plugins: [entityClient({ entities: ["user"] })],
+  plugins: [authClient()],
 
   // Request middleware
   middleware: [authMiddleware, logMiddleware],

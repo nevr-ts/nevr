@@ -4,11 +4,13 @@ Username-based authentication with case-insensitive sign-in.
 
 ## Installation
 
+###  Add the username plugin inside the auth plugin in your config:
+
 ```typescript
-// src/nevr.config.ts
+//nevr.config.ts
 import { defineConfig } from "nevr"
 import { auth } from "nevr/plugins/auth"
-import { username } from "nevr/plugins/auth/plugins/username"
+import { username } from "nevr/plugins/auth/username"
 
 export const config = defineConfig({
   database: "sqlite",
@@ -25,6 +27,28 @@ export default config
 
 Your server picks it up automatically with `nevr({ ...config, driver })`.
 
+###  Generate and push or migrate the database
+
+```bash
+npx nevr generate    # Generates user + session tables
+npx nevr db:push     # Push to database
+# or
+npx nevr db:migrate  # Create migration files
+```
+
+###  Client Setup
+
+```typescript
+import { createClient } from "nevr/client"
+import { authClient } from "nevr/plugins/auth/client"
+import { usernameClient } from "nevr/plugins/auth/username/client"
+import type { API } from "./api"
+
+const client = createClient<API>()({
+  baseURL: "/api",
+  plugins: [authClient(), usernameClient()],
+})
+```
 ## Configuration
 
 ```typescript
@@ -116,20 +140,32 @@ POST /auth/is-username-available
 ## Client Usage
 
 ```typescript
-import { usernameClient } from "nevr/plugins/auth/plugins/username/client"
+import { createClient } from "nevr/client"
+import { authClient } from "nevr/plugins/auth/client"
+import { usernameClient } from "nevr/plugins/auth/username/client"
+import type { API } from "./api"
 
-const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+const client = createClient<API>()({
   plugins: [authClient(), usernameClient()],
 })
 
-// Sign in with username
-const { data } = await client.signIn.username({
+//add username during sign-up
+const { data } = await client.auth.signUp.email({
+  email: "john@example.com",
+  password: "password123",
+  username: "johndoe",
+  displayUsername: "JohnDoe",
+})
+
+// Sign in with username (under auth namespace)
+const { data } = await client.auth.signIn.username({
   username: "johndoe",
   password: "password123",
 })
 
 // Check username availability
-const { data } = await client.isUsernameAvailable({ username: "newuser" })
+const { data } = await client.auth.isUsernameAvailable({ username: "newuser" })
 console.log(data.available) // true or false
 ```
 

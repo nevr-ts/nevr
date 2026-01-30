@@ -7,7 +7,7 @@ Multi-tenant organizations with teams, members, roles, and invitations.
 Add the organization plugin to your config:
 
 ```typescript
-// src/nevr.config.ts
+// nevr.config.ts
 import { defineConfig } from "nevr"
 import { organization } from "nevr/plugins/organization"
 
@@ -36,6 +36,28 @@ import { PrismaClient } from "@prisma/client"
 import { config } from "./nevr.config.js"
 
 const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
+```
+
+###  Generate and push or migrate the database
+
+```bash
+npx nevr generate    # Generates user + session tables
+npx nevr db:push     # Push to database
+# or
+npx nevr db:migrate  # Create migration files
+```
+
+###  Client Setup
+
+```typescript
+import { createClient } from "nevr/client"
+import { organizationClient } from "nevr/plugins/organization/client"
+import type { API } from "./api"
+
+const client = createClient<API>()({
+  baseURL: "/api",
+  plugins: [organizationClient()],
+})
 ```
 
 ## Configuration
@@ -175,16 +197,16 @@ organization({
 
 ## Client SDK
 
-The organization plugin uses the unified client pattern with `createTypedClient`:
+The organization plugin uses the unified client pattern with `createClient`:
 
 ```typescript
-import { createTypedClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
 import { organizationClient } from "nevr/plugins/organization/client"
 import type { API } from "./api"
 
-// Create typed client with server API inference
-export const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+export const client = createClient<API>()({
   baseURL: "http://localhost:3000",
   plugins: [
     authClient(),
@@ -192,8 +214,8 @@ export const client = createTypedClient<API>({
   ],
 })
 
-// Create organization
-const { data } = await client.organization.create({
+// Create organization (namespaced under `org`)
+const { data } = await client.org.create({
   name: "Acme Inc",
   slug: "acme",
 })
@@ -204,23 +226,23 @@ client.$store.atoms.activeOrganization.subscribe(({ organization, member }) => {
 })
 
 // Set active organization
-await client.organization.setActive(data.organization.id)
+await client.org.setActive(data.organization.id)
 
 // Invite member
-await client.organization.invite({
+await client.org.invite({
   organizationId: orgId,
   email: "teammate@example.com",
   role: "admin",
 })
 
 // Create team
-await client.organization.createTeam({
+await client.org.createTeam({
   organizationId: orgId,
   name: "Engineering",
 })
 
 // Check permission
-const { data: result } = await client.organization.hasPermission({
+const { data: result } = await client.org.hasPermission({
   permission: { member: ["create"] },
 })
 ```
@@ -247,7 +269,7 @@ function OrgSwitcher() {
   return (
     <select 
       value={organization?.id} 
-      onChange={(e) => client.organization.setActive(e.target.value)}
+      onChange={(e) => client.org.setActive(e.target.value)}
     >
       {orgs.map(org => <option key={org.id} value={org.id}>{org.name}</option>)}
     </select>

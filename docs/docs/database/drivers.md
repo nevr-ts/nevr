@@ -29,9 +29,10 @@ interface Driver {
 import { nevr } from "nevr"
 import { prisma } from "nevr/drivers/prisma"
 import { PrismaClient } from "@prisma/client"
+import {config} from "./nevr.config"
 
 const api = nevr({
-  entities: [user, post],
+  ...config,
   driver: prisma(new PrismaClient()),
 })
 ```

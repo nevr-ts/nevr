@@ -7,10 +7,10 @@ Guest user accounts with optional account linking.
 Add the anonymous plugin inside the auth plugin in your config:
 
 ```typescript
-// src/nevr.config.ts
+// nevr.config.ts
 import { defineConfig } from "nevr"
 import { auth } from "nevr/plugins/auth"
-import { anonymous } from "nevr/plugins/auth/plugins/anonymous"
+import { anonymous } from "nevr/plugins/auth/anonymous"
 
 export const config = defineConfig({
   database: "sqlite",
@@ -26,6 +26,29 @@ export default config
 ```
 
 Your server picks it up automatically with `nevr({ ...config, driver })`.
+
+###  Generate and push or migrate the database
+
+```bash
+npx nevr generate    # Generates user + session tables
+npx nevr db:push     # Push to database
+# or
+npx nevr db:migrate  # Create migration files
+```
+
+###  Client Setup
+
+```typescript
+import { createClient } from "nevr/client"
+import { authClient } from "nevr/plugins/auth/client"
+import { anonymousClient } from "nevr/plugins/auth/anonymous/client"
+import type { API } from "./api"
+
+const client = createClient<API>()({
+  baseURL: "/api",
+  plugins: [authClient(), anonymousClient()],
+})
+```
 
 ## Configuration
 
@@ -118,17 +141,21 @@ POST /auth/anonymous/link
 ## Client Usage
 
 ```typescript
-import { anonymousClient } from "nevr/plugins/auth/plugins/anonymous/client"
+import { createClient } from "nevr/client"
+import { authClient } from "nevr/plugins/auth/client"
+import { anonymousClient } from "nevr/plugins/auth/anonymous/client"
+import type { API } from "./api"
 
-const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+const client = createClient<API>()({
   plugins: [authClient(), anonymousClient()],
 })
 
-// Create anonymous session
-const { data } = await client.auth.signInAnonymous()
+// Create anonymous session (under auth.signIn namespace)
+const { data } = await client.auth.signIn.anonymous()
 
-// Later, link to full account
-await client.anonymous.linkAccount({
+// Later, link to full account (under auth.anonymous namespace)
+await client.auth.anonymous.linkAccount({
   email: "user@example.com",
   password: "securepassword123",
   name: "John Doe",

@@ -7,7 +7,7 @@ Subscription and payment processing with Stripe integration.
 Add the payment plugin to your config:
 
 ```typescript
-// src/nevr.config.ts
+// nevr.config.ts
 import { defineConfig } from "nevr"
 import { payment } from "nevr/plugins/payment"
 
@@ -48,6 +48,28 @@ import { config } from "./nevr.config.js"
 
 const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 export type API = typeof api
+```
+
+###  Generate and push or migrate the database
+
+```bash
+npx nevr generate    # Generates user + session tables
+npx nevr db:push     # Push to database
+# or
+npx nevr db:migrate  # Create migration files
+```
+
+###  Client Setup
+
+```typescript
+import { createClient } from "nevr/client"
+import { paymentClient } from "nevr/plugins/payment/client"
+import type { API } from "./api"
+
+const client = createClient<API>()({
+  baseURL: "/api",
+  plugins: [paymentClient()],
+})
 ```
 
 ## Configuration
@@ -132,16 +154,15 @@ payment({
 
 ## Client SDK
 
-The payment plugin uses the unified client pattern with `createTypedClient`:
+The payment plugin uses the unified client pattern with `createClient`:
 
 ```typescript
-import { createTypedClient } from "nevr/client"
-import { authClient } from "nevr/plugins/auth/client"
+import { createClient } from "nevr/client"
 import { paymentClient } from "nevr/plugins/payment/client"
 import type { API } from "./api"
 
-// Create typed client with server API inference
-export const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+export const client = createClient<API>()({
   baseURL: "http://localhost:3000",
   plugins: [
     authClient(),

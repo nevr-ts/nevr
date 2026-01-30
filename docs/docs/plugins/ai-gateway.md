@@ -24,14 +24,14 @@ AI Gateway provides:
 
 ---
 
-## Quick Start
+## Installation
 
-### 1. Add AI Gateway Plugin
+### Add AI Gateway Plugin
 
 Add the plugin to your config:
 
 ```typescript
-// src/nevr.config.ts
+// nevr.config.ts
 import { defineConfig } from "nevr"
 import { aiGateway } from "nevr/plugins"
 
@@ -68,39 +68,31 @@ import { config } from "./nevr.config.js"
 const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 ```
 
-### 2. Client Setup
+###  Generate and push or migrate the database
+
+```bash
+npx nevr generate    # Generates user + session tables
+npx nevr db:push     # Push to database
+# or
+npx nevr db:migrate  # Create migration files
+```
+
+###  Client Setup
 
 ```typescript
-import { createTypedClient } from "nevr/client"
-import { aiClient } from "nevr/ai-gateway"
+import { createClient } from "nevr/client"
+import { aiClient } from "nevr/plugins/ai-gateway/client"
 import type { API } from "./api"
 
-const client = createTypedClient<API>({
+const client = createClient<API>()({
   baseURL: "/api",
   plugins: [aiClient()],
 })
 ```
 
-### 3. Send Chat Requests
-
-```typescript
-// Simple chat
-const response = await client.ai.chat({
-  messages: [{ role: "user", content: "Hello, how are you?" }],
-})
-console.log(response.content)
-
-// Streaming with async generator
-for await (const chunk of client.ai.chatStream({
-  messages: [{ role: "user", content: "Write a poem about coding" }],
-})) {
-  process.stdout.write(chunk.content)
-}
-```
-
 ---
 
-## Plugin Options
+## Configuration Reference
 
 ```typescript
 aiGateway({

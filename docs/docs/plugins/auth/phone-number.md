@@ -7,10 +7,10 @@ SMS-based OTP authentication for phone number sign-in.
 Add the phone-number plugin inside the auth plugin in your config:
 
 ```typescript
-// src/nevr.config.ts
+// nevr.config.ts
 import { defineConfig } from "nevr"
 import { auth } from "nevr/plugins/auth"
-import { phoneNumber } from "nevr/plugins/auth/plugins/phone-number"
+import { phoneNumber } from "nevr/plugins/auth/phone-number"
 
 export const config = defineConfig({
   database: "sqlite",
@@ -32,6 +32,29 @@ export default config
 ```
 
 Your server picks it up automatically with `nevr({ ...config, driver })`.
+
+###  Generate and push or migrate the database
+
+```bash
+npx nevr generate    # Generates user + session tables
+npx nevr db:push     # Push to database
+# or
+npx nevr db:migrate  # Create migration files
+```
+
+###  Client Setup
+
+```typescript
+import { createClient } from "nevr/client"
+import { authClient } from "nevr/plugins/auth/client"
+import { phoneNumberClient } from "nevr/plugins/auth/phone-number/client"
+import type { API } from "./api"
+
+const client = createClient<API>()({
+  baseURL: "/api",
+  plugins: [authClient(), phoneNumberClient()],
+})
+```
 
 ## Configuration
 
@@ -148,24 +171,28 @@ POST /auth/phone-number/reset-password
 ## Client Usage
 
 ```typescript
-import { phoneNumberClient } from "nevr/plugins/auth/plugins/phone-number/client"
+import { createClient } from "nevr/client"
+import { authClient } from "nevr/plugins/auth/client"
+import { phoneNumberClient } from "nevr/plugins/auth/phone-number/client"
+import type { API } from "./api"
 
-const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+const client = createClient<API>()({
   plugins: [authClient(), phoneNumberClient()],
 })
 
-// Request OTP
-await client.phoneNumber.sendOTP({ phoneNumber: "+1234567890" })
+// Request OTP (under auth.phoneNumber namespace)
+await client.auth.phoneNumber.sendOTP({ phoneNumber: "+1234567890" })
 
 // Verify phone
-await client.phoneNumber.verify({ phoneNumber: "+1234567890", code: "123456" })
+await client.auth.phoneNumber.verify({ phoneNumber: "+1234567890", code: "123456" })
 
 // Sign in with phone
-await client.signIn.phoneNumber({ phoneNumber: "+1234567890", password: "..." })
+await client.auth.signIn.phoneNumber({ phoneNumber: "+1234567890", code: "123456" })
 
 // Password reset flow
-await client.phoneNumber.requestPasswordReset({ phoneNumber: "+1234567890" })
-await client.phoneNumber.resetPassword({
+await client.auth.phoneNumber.requestPasswordReset({ phoneNumber: "+1234567890" })
+await client.auth.phoneNumber.resetPassword({
   phoneNumber: "+1234567890",
   otp: "123456",
   newPassword: "new-pass",

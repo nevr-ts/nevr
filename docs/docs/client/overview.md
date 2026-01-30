@@ -12,19 +12,27 @@ pnpm add nevr
 
 ---
 
-## createTypedClient()
+## createClient()
 
-The main factory function to create a Nevr client:
+The main factory function to create a Nevr client with full type inference:
 
 ```typescript
-import { createTypedClient } from "nevr/client"
+import { createClient } from "nevr/client"
+import { authClient } from "nevr/plugins/auth/client"
 import type { API } from "./server/api"
 
-const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+const client = createClient<API>()({
   baseURL: "http://localhost:3000",
   basePath: "/api",
+  plugins: [authClient()],
+  entities: ["user", "product"],  // Runtime entity methods
 })
 ```
+
+::: tip Why the curried pattern?
+`createClient<API>()({...})` ensures TypeScript infers both your API entity types AND plugin action types. Without it, plugin types may not be inferred correctly.
+:::
 
 ### NevrClientOptions
 
@@ -69,20 +77,18 @@ interface NevrClientOptions {
 
 ## Entity Methods
 
-Use `entityClient()` plugin to auto-generate CRUD methods:
+Use the `entities` option to auto-generate typed CRUD methods:
 
 ```typescript
-import { createTypedClient, entityClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import type { API } from "./server/api"
 
-const client = createTypedClient<API>({
+const client = createClient<API>()({
   baseURL: "http://localhost:3000",
-  plugins: [
-    entityClient({ entities: ["user", "product", "order"] })
-  ]
+  entities: ["user", "product", "order"],  // Creates runtime CRUD methods
 })
 
-// Auto-generated methods
+// Auto-generated methods with types from API
 await client.users.list()
 await client.users.create({ email: "test@test.com" })
 await client.users.get("user_123")
@@ -92,24 +98,30 @@ await client.users.count({ role: "admin" })
 await client.users.action("verify", "user_123", { token: "abc" })
 ```
 
+::: info Entity names are pluralized
+The entity name `"user"` becomes `client.users.*`, `"product"` becomes `client.products.*`, etc.
+:::
+
 ---
 
 ## Auth Plugin
 
+All auth methods are namespaced under `client.auth.*`:
+
 ```typescript
-import { createTypedClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
 import type { API } from "./server/api"
 
-const client = createTypedClient<API>({
+const client = createClient<API>()({
   plugins: [authClient()]
 })
 
-// Auth methods
-await client.signUp.email({ email: "...", password: "...", name: "..." })
-await client.signIn.email({ email: "...", password: "..." })
-await client.signOut()
-const session = await client.getSession()
+// Auth methods under `auth` namespace
+await client.auth.signUp.email({ email: "...", password: "...", name: "..." })
+await client.auth.signIn.email({ email: "...", password: "..." })
+await client.auth.signOut()
+const session = await client.auth.getSession()
 
 // Reactive session
 client.useSession.subscribe(({ data, isPending, error }) => {
@@ -162,11 +174,11 @@ export type Api = typeof api
 ```
 
 ```typescript [src/client.ts]
-import { createTypedClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import { analyticsPlugin } from "./nevr.config.js"
 import type { Api } from "./server"
 
-const client = createTypedClient<Api>({
+const client = createClient<Api>()({
   baseURL: "/api",
   plugins: [analyticsPlugin],  // Just pass the server plugin!
 })
@@ -180,33 +192,42 @@ const { data } = await client.analytics.getStats.list({ period: "7d" })
 
 ### Pre-built Plugins
 
-| Plugin | Namespace | Description |
+| Plugin | Namespace | Example |
 |:--|:--|:--|
-| `entityClient({ entities })` | `{entity}s` | CRUD methods (list, get, create, update, delete) |
-| `authClient()` | `auth` | Auth with reactive session state |
-| `storageClient()` | `storage` | File upload and management |
-| `paymentsClient()` | `payments` | Stripe payment integration |
-| `aiClient()` | `ai-gateway` | AI model integration |
-| `ragClient()` | `rag` | Retrieval-Augmented Generation |
+| `authClient()` | `client.auth.*` | `client.auth.signIn.email()` |
+| `usernameClient()` | `client.auth.*` | `client.auth.signIn.username()` |
+| `phoneNumberClient()` | `client.auth.*` | `client.auth.phoneNumber.sendOTP()` |
+| `organizationClient()` | `client.org.*` | `client.org.create()` |
+| `storageClient()` | `client.storage.*` | `client.storage.upload()` |
+| `paymentClient()` | `client.payment.*` | `client.payment.subscribe()` |
+| `aiClient()` | `client.ai.*` | `client.ai.chat()` |
+| `ragClient()` | `client.rag.*` | `client.rag.search()` |
 
 ```typescript
-import { createTypedClient, entityClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
+import { usernameClient } from "nevr/plugins/auth/username/client"
+import { organizationClient } from "nevr/plugins/organization/client"
 import type { API } from "./server/api"
 
-const client = createTypedClient<API>({
+const client = createClient<API>()({
+  entities: ["user", "product"],
   plugins: [
-    entityClient({ entities: ["user", "product"] }),
     authClient(),
-    storageClient(),
-    paymentsClient(),
-    aiClient(),
-    ragClient(),
+    usernameClient(),
+    organizationClient(),
   ],
 })
 
+// Entities
 await client.users.list()
-await client.signIn.email({ email, password })
+
+// Auth (namespaced)
+await client.auth.signIn.email({ email, password })
+await client.auth.signIn.username({ username, password })
+
+// Organization (namespaced)
+await client.org.create({ name: "My Org" })
 ```
 
 > **💡 Tip**: For custom plugins, define endpoints on the server and pass the plugin to the client. No need for separate client plugin definitions.
@@ -218,7 +239,7 @@ await client.signIn.email({ email, password })
 Add middleware for all requests:
 
 ```typescript
-const client = createTypedClient<API>({
+const client = createClient<API>()({
   middleware: [
     // Auth middleware
     async (ctx, next) => {
@@ -271,7 +292,7 @@ interface MiddlewareRequestContext {
 Handle responses globally:
 
 ```typescript
-const client = createTypedClient<API>({
+const client = createClient<API>()({
   interceptors: [
     // Refresh token on 401
     async (ctx) => {
@@ -415,14 +436,14 @@ export type Product = API["$Infer"]["Entities"]["product"]
 ```
 
 ```typescript [src/client.ts]
-import { createTypedClient, entityClient } from "nevr/client"
+import { createClient, entityClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
 import type { API, User, Product } from "./server"  // Type-only import!
 
-const client = createTypedClient<API>({
+const client = createClient<API>()({
   baseURL: "http://localhost:3000",
+  entities: ["user", "product"],
   plugins: [
-    entityClient({ entities: ["user", "product"] }),
     authClient(),
   ],
 })
@@ -551,7 +572,7 @@ if (error) {
 
 | Export | Description |
 |--------|-------------|
-| `createTypedClient<T>(options)` | Create typed client instance |
+| `createClient<T>(options)` | Create typed client instance |
 | `createClient(options)` | Create Nevr client instance |
 | `entityClient(options)` | Plugin for auto-generated CRUD methods |
 | `createNevrFetch(options)` | Create standalone fetch function |

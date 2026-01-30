@@ -507,12 +507,13 @@ export type API = typeof api
 
 ```typescript
 // src/client.ts (can be in a different package!)
-import { createTypedClient, entityClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import type { API } from "./server"
 
-const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+const client = createClient<API>()({
   baseURL: "/api",
-  plugins: [entityClient({ entities: ["user", "post"] })],
+  entities: ["user", "post"],
 })
 
 // Full autocomplete & type checking!

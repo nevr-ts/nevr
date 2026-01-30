@@ -385,8 +385,8 @@ const user = entity("user", {
 // Extract types from entity
 type UserFields = typeof user.config.fields
 
-// Use with client
-const client = createTypedClient<typeof api>()
+// Use curried pattern for full type inference
+const client = createClient<typeof api>()()
 
 // Fully typed!
 const users = await client.user.list()

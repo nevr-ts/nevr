@@ -1,6 +1,6 @@
 # Auth Plugin
 
-Self-contained authentication for Nevr. Supports email/password, OAuth providers, session management, and account linking.
+The Auth Plugin provides a complete authentication and user management system for Nevr applications. It includes features like email/password sign-up and sign-in, session management, OAuth social logins, password reset, email verification, account linking, and more.
 
 ## Why Use Auth Plugin?
 
@@ -11,9 +11,10 @@ Self-contained authentication for Nevr. Supports email/password, OAuth providers
 | OAuth flow | PKCE, state, callbacks | One config object |
 | Account security | Build from scratch | Fresh sessions, rate limits |
 
-## Quick Start
+## Installation
 
-### 1. Set your secret
+
+###  Set your secret
 
 Generate a high-entropy secret (minimum 32 characters):
 
@@ -32,17 +33,16 @@ NEVR_AUTH_SECRET="paste-your-generated-secret-here"
 The secret must be at least **32 characters**. It's used for HMAC-SHA256 signing of sessions and tokens. Never commit it to version control.
 :::
 
-### 2. Add the auth plugin
+###  Add the auth plugin
 
 ```typescript
-// src/nevr.config.ts
+// nevr.config.ts
 import { defineConfig } from "nevr"
 import { auth } from "nevr/plugins/auth"
-import { post } from "./entities/post.js"
 
 export const config = defineConfig({
   database: "sqlite",
-  entities: [post],
+  entities: [],
   plugins: [
     auth({
       emailAndPassword: { enabled: true },
@@ -55,7 +55,7 @@ export default config
 
 The plugin reads `NEVR_AUTH_SECRET` (or `AUTH_SECRET`) from your environment automatically — no need to pass `secret` in the options.
 
-### 3. Create the server with `getUser`
+###  Create the server with `getUser`
 
 The auth plugin creates sessions in the database. To resolve the authenticated user on each request, pass `sessionAuth()` as the `getUser` callback in your adapter.
 
@@ -140,13 +140,27 @@ export const { GET, POST, PUT, PATCH, DELETE } = toNextHandler(api, {
 
 `sessionAuth()` reads the `nevr.session_token` cookie (or `Authorization: Bearer` header), finds the session in the database, validates expiry, and returns the user. Without it, `req.user` is always `null` and rules like `"authenticated"` or `"owner"` will deny access.
 
-### 4. Generate and push
+###  Generate and push or migrate the database
 
 ```bash
 npx nevr generate    # Generates user + session tables
 npx nevr db:push     # Push to database
+# or
+npx nevr db:migrate  # Create migration files
 ```
 
+###  Client Setup
+
+```typescript
+import { createClient } from "nevr/client"
+import { authClient } from "nevr/plugins/auth/client"
+import type { API } from "./api"
+
+const client = createClient<API>()({
+  baseURL: "/api",
+  plugins: [authClient()],
+})
+```
 ---
 
 ## Configuration Reference
@@ -429,11 +443,12 @@ auth({
 ## Client Methods
 
 ```typescript
-import { createTypedClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
 import type { API } from "./server/api"
 
-const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+const client = createClient<API>()({
   baseURL: "http://localhost:3000",
   basePath: "/api",
   plugins: [authClient()],

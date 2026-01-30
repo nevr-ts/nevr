@@ -37,17 +37,18 @@ npm install @nanostores/react
 Framework-agnostic client:
 
 ```typescript
-import { createTypedClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import type { API } from "./server/api"
 
-const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+const client = createClient<API>()({
   baseURL: "http://localhost:3000",
   basePath: "/api",
 })
 
 // Type-safe API calls
 const { data, error } = await client.users.list()
-const { data: user } = await client.users.read("123")
+const { data: user } = await client.users.get("123")
 const { data: newPost } = await client.posts.create({
   title: "Hello World",
   authorId: "user-123",
@@ -59,11 +60,12 @@ const { data: newPost } = await client.posts.create({
 With React hooks for reactive state:
 
 ```typescript
-import { createTypedClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
 import type { API } from "./server/api"
 
-export const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+export const client = createClient<API>()({
   baseURL: "http://localhost:3000",
   plugins: [authClient()],
 })
@@ -208,24 +210,25 @@ function CreatePost() {
 With the auth plugin, you get type-safe auth methods:
 
 ```typescript
-import { createTypedClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
 import type { API } from "./server/api"
 
-const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+const client = createClient<API>()({
   baseURL: "http://localhost:3000",
   plugins: [authClient()],
 })
 
-// Sign up
-const { data, error } = await client.auth.signUp({
+// Sign up (auth methods under client.auth.* namespace)
+const { data, error } = await client.auth.signUp.email({
   email: "user@example.com",
   password: "securepassword",
   name: "John Doe",
 })
 
 // Sign in
-const { data, error } = await client.auth.signIn({
+const { data, error } = await client.auth.signIn.email({
   email: "user@example.com",
   password: "securepassword",
 })
@@ -437,11 +440,12 @@ await client.$fetch("/endpoint", {
 
 ```tsx
 // client.ts
-import { createTypedClient } from "nevr/client"
+import { createClient } from "nevr/client"
 import { authClient } from "nevr/plugins/auth/client"
 import type { API } from "./server/api"
 
-export const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+export const client = createClient<API>()({
   baseURL: import.meta.env.VITE_API_URL,
   plugins: [authClient()],
 })

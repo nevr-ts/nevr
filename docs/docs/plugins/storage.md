@@ -7,7 +7,7 @@ File storage with S3-compatible providers (AWS S3, Cloudflare R2, MinIO) and loc
 Add the storage plugin to your config:
 
 ```typescript
-// src/nevr.config.ts
+// nevr.config.ts
 import { defineConfig } from "nevr"
 import { storage } from "nevr/plugins/storage"
 
@@ -41,6 +41,27 @@ import { config } from "./nevr.config.js"
 
 const api = nevr({ ...config, driver: prisma(new PrismaClient()) })
 export type API = typeof api
+```
+###  Generate and push or migrate the database
+
+```bash
+npx nevr generate    # Generates user + session tables
+npx nevr db:push     # Push to database
+# or
+npx nevr db:migrate  # Create migration files
+```
+
+###  Client Setup
+
+```typescript
+import { createClient } from "nevr/client"
+import { storageClient } from "nevr/plugins/storage/client"
+import type { API } from "./api"
+
+const client = createClient<API>()({
+  baseURL: "/api",
+  plugins: [storageClient()],
+})
 ```
 
 ## Configuration
@@ -95,17 +116,18 @@ storage({
 ### Setup
 
 ```typescript
-import { createTypedClient } from "nevr/client"
-import { storageClient } from "nevr/plugins/storage"
+import { createClient } from "nevr/client"
+import { storageClient } from "nevr/plugins/storage/client"
 import type { API } from "./api"
 
-export const client = createTypedClient<API>({
+// Use curried pattern for full type inference
+export const client = createClient<API>()({
   baseURL: "http://localhost:3000",
   plugins: [storageClient()],
 })
 ```
 
-### Upload a File (1 Line!)
+### Upload a File 
 
 ```typescript
 // Upload with automatic 3-step flow
