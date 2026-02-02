@@ -11,6 +11,11 @@ import type {
     ChatChunk,
     ChatMessage,
     ModelInfo,
+    ToolDefinition,
+    ToolCall,
+    MessageContent,
+    TextContent,
+    ImageContent,
 } from "../types.js"
 import { BaseAIProvider, DEFAULT_MODELS, calculateCost } from "./types.js"
 import { AIGatewayError, AI_GATEWAY_ERROR_CODES } from "../error-codes.js"
@@ -40,22 +45,32 @@ export class OpenAIProvider extends BaseAIProvider {
     }
 
     /**
-     * Chat completion
+     * Chat completion with abort signal, tools, and vision support
      */
-    async chat(params: ChatParams): Promise<ChatResponse> {
+    async chat(params: ChatParams, signal?: AbortSignal): Promise<ChatResponse> {
         const model = this.getResolvedModel(params)
         const requestId = this.generateRequestId()
         const baseUrl = this.getBaseUrl() || "https://api.openai.com/v1"
 
         const body = this.buildRequestBody(params, model)
 
+        // Create combined abort signal (user signal + timeout)
+        const timeoutController = new AbortController()
+        const timeout = setTimeout(() => timeoutController.abort(), this.getTimeout())
+
+        const combinedSignal = signal
+            ? AbortSignal.any([signal, timeoutController.signal])
+            : timeoutController.signal
+
         try {
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: "POST",
                 headers: this.buildHeaders(),
                 body: JSON.stringify(body),
-                signal: AbortSignal.timeout(this.getTimeout()),
+                signal: combinedSignal,
             })
+
+            clearTimeout(timeout)
 
             if (!response.ok) {
                 await this.handleErrorResponse(response)
@@ -67,6 +82,16 @@ export class OpenAIProvider extends BaseAIProvider {
             const outputTokens = data.usage?.completion_tokens || 0
             const totalTokens = inputTokens + outputTokens
             const cost = calculateCost("openai", model, inputTokens, outputTokens)
+
+            // Extract tool calls if present
+            const toolCalls = data.choices[0]?.message?.tool_calls?.map((tc): ToolCall => ({
+                id: tc.id,
+                type: "function",
+                function: {
+                    name: tc.function.name,
+                    arguments: tc.function.arguments,
+                },
+            }))
 
             return {
                 id: requestId,
@@ -80,9 +105,17 @@ export class OpenAIProvider extends BaseAIProvider {
                     totalTokens,
                     cost,
                 },
+                toolCalls,
             }
         } catch (error) {
+            clearTimeout(timeout)
             if (error instanceof AIGatewayError) throw error
+            if ((error as Error).name === "AbortError") {
+                throw new AIGatewayError(
+                    AI_GATEWAY_ERROR_CODES.REQUEST_CANCELLED,
+                    "Request was cancelled"
+                )
+            }
             throw new AIGatewayError(
                 AI_GATEWAY_ERROR_CODES.PROVIDER_ERROR,
                 `OpenAI error: ${(error as Error).message}`
@@ -91,9 +124,9 @@ export class OpenAIProvider extends BaseAIProvider {
     }
 
     /**
-     * Streaming chat completion
+     * Streaming chat completion with abort signal and tools support
      */
-    async *chatStream(params: ChatParams): AsyncGenerator<ChatChunk, void, unknown> {
+    async *chatStream(params: ChatParams, signal?: AbortSignal): AsyncGenerator<ChatChunk, void, unknown> {
         const model = this.getResolvedModel(params)
         const requestId = this.generateRequestId()
         const baseUrl = this.getBaseUrl() || "https://api.openai.com/v1"
@@ -102,13 +135,23 @@ export class OpenAIProvider extends BaseAIProvider {
         body.stream = true
         body.stream_options = { include_usage: true }
 
+        // Create combined abort signal (user signal + timeout)
+        const timeoutController = new AbortController()
+        const timeout = setTimeout(() => timeoutController.abort(), this.getTimeout())
+
+        const combinedSignal = signal
+            ? AbortSignal.any([signal, timeoutController.signal])
+            : timeoutController.signal
+
         try {
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: "POST",
                 headers: this.buildHeaders(),
                 body: JSON.stringify(body),
-                signal: AbortSignal.timeout(this.getTimeout()),
+                signal: combinedSignal,
             })
+
+            clearTimeout(timeout)
 
             if (!response.ok) {
                 await this.handleErrorResponse(response)
@@ -123,6 +166,8 @@ export class OpenAIProvider extends BaseAIProvider {
             let buffer = ""
             let totalInputTokens = 0
             let totalOutputTokens = 0
+            // Accumulate tool calls across chunks
+            const toolCallsMap = new Map<number, { id: string; name: string; arguments: string }>()
 
             while (true) {
                 const { done, value } = await reader.read()
@@ -138,6 +183,13 @@ export class OpenAIProvider extends BaseAIProvider {
 
                     const data = trimmed.slice(6)
                     if (data === "[DONE]") {
+                        // Build final tool calls
+                        const toolCalls: ToolCall[] = Array.from(toolCallsMap.values()).map(tc => ({
+                            id: tc.id,
+                            type: "function" as const,
+                            function: { name: tc.name, arguments: tc.arguments },
+                        }))
+
                         yield {
                             id: requestId,
                             content: "",
@@ -148,6 +200,7 @@ export class OpenAIProvider extends BaseAIProvider {
                                 totalTokens: totalInputTokens + totalOutputTokens,
                                 cost: calculateCost("openai", model, totalInputTokens, totalOutputTokens),
                             },
+                            toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
                         }
                         return
                     }
@@ -164,6 +217,24 @@ export class OpenAIProvider extends BaseAIProvider {
                         const delta = parsed.choices?.[0]?.delta
                         const finishReason = parsed.choices?.[0]?.finish_reason
 
+                        // Accumulate tool calls
+                        if (delta?.tool_calls) {
+                            for (const tc of delta.tool_calls) {
+                                const existing = toolCallsMap.get(tc.index)
+                                if (existing) {
+                                    if (tc.function?.arguments) {
+                                        existing.arguments += tc.function.arguments
+                                    }
+                                } else {
+                                    toolCallsMap.set(tc.index, {
+                                        id: tc.id || "",
+                                        name: tc.function?.name || "",
+                                        arguments: tc.function?.arguments || "",
+                                    })
+                                }
+                            }
+                        }
+
                         if (delta?.content) {
                             yield {
                                 id: requestId,
@@ -173,6 +244,12 @@ export class OpenAIProvider extends BaseAIProvider {
                         }
 
                         if (finishReason) {
+                            const toolCalls: ToolCall[] = Array.from(toolCallsMap.values()).map(tc => ({
+                                id: tc.id,
+                                type: "function" as const,
+                                function: { name: tc.name, arguments: tc.arguments },
+                            }))
+
                             yield {
                                 id: requestId,
                                 content: "",
@@ -184,6 +261,7 @@ export class OpenAIProvider extends BaseAIProvider {
                                     totalTokens: totalInputTokens + totalOutputTokens,
                                     cost: calculateCost("openai", model, totalInputTokens, totalOutputTokens),
                                 },
+                                toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
                             }
                         }
                     } catch {
@@ -192,7 +270,14 @@ export class OpenAIProvider extends BaseAIProvider {
                 }
             }
         } catch (error) {
+            clearTimeout(timeout)
             if (error instanceof AIGatewayError) throw error
+            if ((error as Error).name === "AbortError") {
+                throw new AIGatewayError(
+                    AI_GATEWAY_ERROR_CODES.REQUEST_CANCELLED,
+                    "Request was cancelled"
+                )
+            }
             throw new AIGatewayError(
                 AI_GATEWAY_ERROR_CODES.PROVIDER_ERROR,
                 `OpenAI streaming error: ${(error as Error).message}`
@@ -229,7 +314,7 @@ export class OpenAIProvider extends BaseAIProvider {
     private buildRequestBody(params: ChatParams, model: string): OpenAIRequestBody {
         const body: OpenAIRequestBody = {
             model,
-            messages: params.messages.map(this.mapMessage),
+            messages: params.messages.map((m) => this.mapMessage(m)),
         }
 
         if (params.temperature !== undefined) body.temperature = params.temperature
@@ -239,15 +324,75 @@ export class OpenAIProvider extends BaseAIProvider {
         if (params.presencePenalty !== undefined) body.presence_penalty = params.presencePenalty
         if (params.stop) body.stop = params.stop
 
+        // Add tools if provided
+        if (params.tools && params.tools.length > 0) {
+            body.tools = params.tools.map((t) => ({
+                type: "function" as const,
+                function: {
+                    name: t.function.name,
+                    description: t.function.description,
+                    parameters: t.function.parameters,
+                    strict: t.function.strict,
+                },
+            }))
+        }
+
+        // Add tool choice if provided
+        if (params.toolChoice) {
+            body.tool_choice = params.toolChoice
+        }
+
         return body
     }
 
     private mapMessage(message: ChatMessage): OpenAIMessage {
-        return {
-            role: message.role as "system" | "user" | "assistant",
-            content: message.content,
-            ...(message.name && { name: message.name }),
+        const mapped: OpenAIMessage = {
+            role: message.role as "system" | "user" | "assistant" | "tool",
         }
+
+        // Handle content (string or multimodal)
+        if (typeof message.content === "string") {
+            mapped.content = message.content
+        } else if (Array.isArray(message.content)) {
+            // Multimodal content
+            mapped.content = message.content.map((part) => {
+                if (part.type === "text") {
+                    return { type: "text" as const, text: part.text }
+                } else if (part.type === "image") {
+                    // Determine if it's a URL or base64
+                    const isUrl = part.image.startsWith("http://") || part.image.startsWith("https://")
+                    return {
+                        type: "image_url" as const,
+                        image_url: {
+                            url: isUrl ? part.image : `data:${part.mimeType || "image/png"};base64,${part.image}`,
+                            detail: part.detail || "auto",
+                        },
+                    }
+                }
+                return { type: "text" as const, text: "" }
+            })
+        }
+
+        if (message.name) mapped.name = message.name
+
+        // For tool response messages
+        if (message.role === "tool" && message.toolCallId) {
+            mapped.tool_call_id = message.toolCallId
+        }
+
+        // For assistant messages with tool calls
+        if (message.role === "assistant" && message.toolCalls) {
+            mapped.tool_calls = message.toolCalls.map((tc) => ({
+                id: tc.id,
+                type: "function" as const,
+                function: {
+                    name: tc.function.name,
+                    arguments: tc.function.arguments,
+                },
+            }))
+        }
+
+        return mapped
     }
 
     private mapFinishReason(reason?: string): ChatResponse["finishReason"] {
@@ -293,10 +438,33 @@ export class OpenAIProvider extends BaseAIProvider {
 // OpenAI API Types
 // -----------------------------------------------------------------------------
 
+type OpenAIContentPart =
+    | { type: "text"; text: string }
+    | { type: "image_url"; image_url: { url: string; detail?: "low" | "high" | "auto" } }
+
 interface OpenAIMessage {
     role: "system" | "user" | "assistant" | "function" | "tool"
-    content: string
+    content?: string | OpenAIContentPart[]
     name?: string
+    tool_call_id?: string
+    tool_calls?: Array<{
+        id: string
+        type: "function"
+        function: {
+            name: string
+            arguments: string
+        }
+    }>
+}
+
+interface OpenAITool {
+    type: "function"
+    function: {
+        name: string
+        description?: string
+        parameters?: Record<string, unknown>
+        strict?: boolean
+    }
 }
 
 interface OpenAIRequestBody {
@@ -310,6 +478,8 @@ interface OpenAIRequestBody {
     stop?: string[]
     stream?: boolean
     stream_options?: { include_usage: boolean }
+    tools?: OpenAITool[]
+    tool_choice?: "auto" | "none" | "required" | { type: "function"; function: { name: string } }
 }
 
 interface OpenAIChatResponse {
@@ -318,7 +488,15 @@ interface OpenAIChatResponse {
         index: number
         message: {
             role: string
-            content: string
+            content: string | null
+            tool_calls?: Array<{
+                id: string
+                type: "function"
+                function: {
+                    name: string
+                    arguments: string
+                }
+            }>
         }
         finish_reason: string
     }>
@@ -336,6 +514,15 @@ interface OpenAIStreamChunk {
         delta: {
             role?: string
             content?: string
+            tool_calls?: Array<{
+                index: number
+                id?: string
+                type?: "function"
+                function?: {
+                    name?: string
+                    arguments?: string
+                }
+            }>
         }
         finish_reason?: string
     }>

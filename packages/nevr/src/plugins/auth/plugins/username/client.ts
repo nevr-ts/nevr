@@ -193,7 +193,6 @@ export function usernameClient(options?: UsernameClientOptions): UsernameClientP
                             })
                         },
                     },
-
                     isUsernameAvailable: async (input: IsUsernameAvailableInput) => {
                         return $fetch(`${basePath}/is-username-available`, {
                             method: "POST",

@@ -76,19 +76,30 @@ export { createAIGatewayAdapter, incrementRateLimits } from "./api/internal-adap
 export type { AIGatewayAdapter, RecordUsageInput, GetUsageRecordsOptions } from "./api/internal-adapter.js"
 export type { AIGatewayRouteConfig } from "./api/types.js"
 
-// Client
-export {
-    aiClient,
-    aiGatewayClient,
-    createUseAIChat,
-    type AIGatewayClientPlugin,
-    type AIGatewayClientOptions,
-    type AIGatewayClientMethods,
-    type UsageState,
-    type ModelsState,
-    type ChatInput,
-    type ChatOutput,
-    type UsageOutput,
-    type RateLimitStatusOutput,
-    type ModelsOutput,
+// =============================================================================
+// CLIENT EXPORTS - Import from "nevr/ai-gateway/client" instead
+// =============================================================================
+// IMPORTANT: Client plugins are NOT re-exported here to prevent server-side
+// code from leaking into browser bundles.
+//
+// For frontend/client usage:
+//   import { aiGatewayClient, createUseAIChat } from "nevr/ai-gateway/client"
+//
+// Example:
+//   const client = createClient({ plugins: [aiGatewayClient()] })
+//   const useAIChat = createUseAIChat(React, client.ai)
+// =============================================================================
+
+// Re-export type-only client types for convenience
+export type {
+    AIGatewayClientPlugin,
+    AIGatewayClientOptions,
+    AIGatewayClientMethods,
+    UsageState,
+    ModelsState,
+    ChatInput,
+    ChatOutput,
+    UsageOutput,
+    RateLimitStatusOutput,
+    ModelsOutput,
 } from "./client.js"

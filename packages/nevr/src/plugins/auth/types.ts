@@ -290,6 +290,26 @@ export interface AuthSubPlugin {
     endpoints?: Record<string, any>
     /** Schema extensions (additional fields for user, session, etc.) */
     schema?: Record<string, any>
+    /** Request interceptors (before/after handlers) */
+    interceptors?: {
+        before?: Array<{
+            matcher: (ctx: any) => boolean
+            handler: (ctx: any) => void | Promise<void>
+        }>
+        after?: Array<{
+            matcher: (ctx: any) => boolean
+            /** After handlers receive ctx and response, can transform the response */
+            handler: (ctx: any, response?: any) => any | Promise<any>
+        }>
+    }
+    /** Entity hooks (for normalizing username, etc.) */
+    entityHooks?: Record<string, Record<string, Record<string, (ctx: any) => any | Promise<any>>>>
+    /** Rate limiting configuration */
+    rateLimit?: Array<{
+        pathMatcher: (path: string) => boolean
+        window: number
+        max: number
+    }>
     /** Initialize the sub-plugin */
     init?: (context: {
         options: AuthPluginOptions

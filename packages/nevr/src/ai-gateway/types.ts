@@ -47,16 +47,64 @@ export interface GoogleConfig extends AIProviderConfig {
 
 export type ChatRole = "system" | "user" | "assistant" | "function" | "tool"
 
+/** Text content part */
+export interface TextContent {
+    type: "text"
+    text: string
+}
+
+/** Image content part (for vision models) */
+export interface ImageContent {
+    type: "image"
+    /** Base64 encoded image data or URL */
+    image: string
+    /** MIME type (e.g., "image/png", "image/jpeg") */
+    mimeType?: string
+    /** Image detail level for OpenAI (low, high, auto) */
+    detail?: "low" | "high" | "auto"
+}
+
+/** Message content - can be string or array of content parts */
+export type MessageContent = string | Array<TextContent | ImageContent>
+
 export interface ChatMessage {
     role: ChatRole
-    content: string
+    content: MessageContent
     name?: string
-    /** For function/tool responses */
-    functionCall?: {
+    /** Tool call ID (for tool response messages) */
+    toolCallId?: string
+    /** Tool calls made by assistant */
+    toolCalls?: ToolCall[]
+}
+
+/** Tool/Function definition */
+export interface ToolDefinition {
+    type: "function"
+    function: {
+        /** Function name */
+        name: string
+        /** Function description */
+        description?: string
+        /** JSON Schema for parameters */
+        parameters?: Record<string, unknown>
+        /** Whether function execution is strict (OpenAI) */
+        strict?: boolean
+    }
+}
+
+/** Tool call made by the model */
+export interface ToolCall {
+    /** Tool call ID */
+    id: string
+    type: "function"
+    function: {
         name: string
         arguments: string
     }
 }
+
+/** Tool choice option */
+export type ToolChoice = "auto" | "none" | "required" | { type: "function"; function: { name: string } }
 
 export interface ChatParams {
     /** Provider to use (overrides default) */
@@ -81,6 +129,14 @@ export interface ChatParams {
     presencePenalty?: number
     /** Custom metadata for tracking */
     metadata?: Record<string, unknown>
+    /** Tools available to the model */
+    tools?: ToolDefinition[]
+    /** How to choose tools */
+    toolChoice?: ToolChoice
+    /** Abort signal for cancellation */
+    signal?: AbortSignal
+    /** Conversation ID for persistence */
+    conversationId?: string
 }
 
 export interface ChatResponse {
@@ -98,6 +154,8 @@ export interface ChatResponse {
     usage: TokenUsage
     /** Response metadata */
     metadata?: Record<string, unknown>
+    /** Tool calls made by the model */
+    toolCalls?: ToolCall[]
 }
 
 export interface ChatChunk {
@@ -111,6 +169,55 @@ export interface ChatChunk {
     finishReason?: ChatResponse["finishReason"]
     /** Usage (only on last chunk) */
     usage?: TokenUsage
+    /** Tool call deltas */
+    toolCalls?: ToolCall[]
+}
+
+// -----------------------------------------------------------------------------
+// Conversation Types (for persistence)
+// -----------------------------------------------------------------------------
+
+export interface Conversation {
+    /** Unique conversation ID */
+    id: string
+    /** Reference ID (user or organization) */
+    referenceId: string
+    /** Conversation title */
+    title?: string
+    /** System prompt for this conversation */
+    systemPrompt?: string
+    /** Messages in the conversation */
+    messages: ChatMessage[]
+    /** Default model for this conversation */
+    model?: string
+    /** Default provider for this conversation */
+    provider?: AIProviderType
+    /** Custom metadata */
+    metadata?: Record<string, unknown>
+    /** Total tokens used in this conversation */
+    totalTokens: number
+    /** Total cost for this conversation */
+    totalCost: number
+    /** Creation timestamp */
+    createdAt: Date
+    /** Last update timestamp */
+    updatedAt: Date
+}
+
+export interface ConversationCreateInput {
+    title?: string
+    systemPrompt?: string
+    model?: string
+    provider?: AIProviderType
+    metadata?: Record<string, unknown>
+}
+
+export interface ConversationUpdateInput {
+    title?: string
+    systemPrompt?: string
+    model?: string
+    provider?: AIProviderType
+    metadata?: Record<string, unknown>
 }
 
 // -----------------------------------------------------------------------------

@@ -28,23 +28,23 @@ export { createStorageAdapter } from "./api/internal-adapter.js"
 // Unified endpoint utilities
 export { z, endpoint, EndpointError, createMiddleware } from "../unified/endpoint.js"
 
-// Client (consolidated with plugin pattern + utilities)
-export {
-    storageClient,
-    createUseFileUpload,
-    formatSize,
-    isImage,
-    isVideo,
-    isAudio,
-    isDocument,
-    getExtension,
-    getFileIcon,
-    type StorageClientPlugin,
-    type StorageClientMethods,
-    type StorageClientOptions,
-    type FileMetadata,
-    type UploadProgress,
-    type FilesState,
+// =============================================================================
+// CLIENT EXPORTS - Import from "nevr/plugins/storage/client" instead
+// =============================================================================
+
+//
+// For frontend/client usage:
+//   import { storageClient, formatSize, isImage, ... } from "nevr/plugins/storage/client"
+// =============================================================================
+
+// Re-export type-only client types for convenience
+export type {
+    StorageClientPlugin,
+    StorageClientMethods,
+    StorageClientOptions,
+    FileMetadata,
+    UploadProgress,
+    FilesState,
 } from "./client.js"
 
 // =============================================================================

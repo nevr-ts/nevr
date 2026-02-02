@@ -19,7 +19,8 @@ import { createBackupCodesRoutes } from "./routes/backup-codes.js"
 export * from "./error-codes.js"
 export * from "./types.js"
 export { getTwoFactorSchema } from "./schema.js"
-export { twoFactorClient } from "./client.js"
+
+// Client: import from "nevr/plugins/auth/two-factor/client" for frontend use
 
 // Type imports
 import type {

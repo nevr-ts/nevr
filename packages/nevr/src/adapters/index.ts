@@ -21,6 +21,8 @@ export {
   devAuth as expressDevAuth,
   jwtAuth as expressJwtAuth,
   sessionAuth as expressSessionAuth,
+  nevrJson,
+  expressJson,
   type ExpressAdapterOptions,
 } from "./express.js"
 

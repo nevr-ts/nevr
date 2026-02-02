@@ -67,9 +67,11 @@ async function webRequestToNevr(
 
   // Parse body for non-GET requests
   let body: unknown
+  let rawBody: string | undefined
   if (request.method !== "GET" && request.method !== "HEAD") {
     try {
       const text = await request.text()
+      rawBody = text // Preserve raw body for webhook signature verification
       if (text) {
         try {
           body = JSON.parse(text)
@@ -109,6 +111,7 @@ async function webRequestToNevr(
     params,
     query,
     body,
+    rawBody, // Include raw body for webhook signature verification
     headers,
     user,
     context: {

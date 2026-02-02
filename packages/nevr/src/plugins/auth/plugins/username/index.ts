@@ -35,7 +35,8 @@ import { getUsernameSchema } from "./schema.js"
 // Re-exports
 export * from "./error-codes.js"
 export { getUsernameSchema } from "./schema.js"
-export { usernameClient } from "./client.js"
+
+// Client: import from "nevr/plugins/auth/username/client" for frontend use
 
 // -----------------------------------------------------------------------------
 // Types

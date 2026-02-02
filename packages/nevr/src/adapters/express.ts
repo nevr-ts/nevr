@@ -67,6 +67,8 @@ async function expressToNevr(
     params: req.params as Record<string, string>,
     query,
     body: req.body,
+    // Include raw body if available (for webhook signature verification)
+    rawBody: (req as any).rawBody,
     headers,
     user,
     context: {
@@ -350,6 +352,8 @@ export function sessionAuth(
         role: user.role || "user",
         image: user.image,
         emailVerified: user.emailVerified,
+        // Include payment-related fields for billing portal
+        stripeCustomerId: user.stripeCustomerId,
       }
     } catch (error) {
       getLogger().error("[nevr:express] Session auth error:", error)
@@ -362,5 +366,51 @@ export function sessionAuth(
 export { devAuth as expressDevAuth }
 export { jwtAuth as expressJwtAuth }
 export { sessionAuth as expressSessionAuth }
+
+// -----------------------------------------------------------------------------
+// Helper: JSON Middleware with Raw Body Preservation
+// -----------------------------------------------------------------------------
+
+/**
+ * Creates an express.json() middleware that preserves the raw body
+ * for webhook signature verification (Stripe, etc.)
+ *
+ * Use this instead of express.json() when using payment webhooks.
+ *
+ * @example
+ * ```typescript
+ * import express from "express"
+ * import { expressAdapter, sessionAuth, nevrJson } from "nevr/adapters/express"
+ *
+ * const app = express()
+ *
+ * // Use nevrJson(express) instead of express.json()
+ * app.use(nevrJson(express))
+ *
+ * app.use("/api", expressAdapter(api, {
+ *   getUser: sessionAuth(driver),
+ *   cors: true,
+ * }))
+ * ```
+ */
+export function nevrJson(
+  expressModule: { json: (options?: any) => RequestHandler },
+  options?: Parameters<typeof import("express").json>[0]
+): RequestHandler {
+  return expressModule.json({
+    ...options,
+    verify: (req: any, res: any, buf: Buffer) => {
+      // Store raw body for webhook signature verification
+      req.rawBody = buf.toString()
+      // Call user's verify if provided
+      if (options?.verify) {
+        options.verify(req, res, buf, "utf-8")
+      }
+    },
+  })
+}
+
+// Alias
+export { nevrJson as expressJson }
 
 export default expressAdapter

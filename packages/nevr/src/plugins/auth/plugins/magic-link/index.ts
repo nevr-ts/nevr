@@ -11,7 +11,8 @@ import { MAGIC_LINK_ERROR_CODES } from "./error-codes.js"
 
 // Re-exports
 export * from "./error-codes.js"
-export { magicLinkClient } from "./client.js"
+
+// Client: import from "nevr/plugins/auth/magic-link/client" for frontend use
 
 // =============================================================================
 // Types

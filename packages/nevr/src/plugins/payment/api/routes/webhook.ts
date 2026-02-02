@@ -45,15 +45,21 @@ export function stripeWebhook(config: PaymentRouteConfig) {
             }
 
             // Get raw body and signature from request
+            // For Stripe webhook verification, we need the raw unparsed body
             let rawBody: string
-            const nativeRequest = request.native as Request | undefined
 
-            if (nativeRequest && typeof nativeRequest.text === "function") {
-                rawBody = await nativeRequest.text()
-            } else if (typeof request.body === "string") {
-                rawBody = request.body
+            // Check for rawBody from adapter (preferred - set by Express/Hono with verify callback)
+            if (request.rawBody && typeof request.rawBody === "string") {
+                rawBody = request.rawBody
             } else {
-                rawBody = JSON.stringify(request.body)
+                const nativeRequest = request.native as Request | undefined
+                if (nativeRequest && typeof nativeRequest.text === "function") {
+                    rawBody = await nativeRequest.text()
+                } else if (typeof request.body === "string") {
+                    rawBody = request.body
+                } else {
+                    rawBody = JSON.stringify(request.body)
+                }
             }
 
             const signature = request.headers["stripe-signature"]

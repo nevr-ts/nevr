@@ -83,7 +83,7 @@ export function normalizeNewPlugin(modern: NewPlugin): UnifiedPlugin {
         onShutdown: modern.lifecycle?.onShutdown,
     }
 
-    // Convert requestHooks to interceptors
+    // Convert requestHooks to interceptors OR preserve existing interceptors
     let interceptors: RequestInterceptors | undefined
     if (modern.requestHooks) {
         interceptors = {
@@ -96,6 +96,9 @@ export function normalizeNewPlugin(modern: NewPlugin): UnifiedPlugin {
                 handler: hook.handler as any,
             })),
         }
+    } else if ((modern as any).interceptors) {
+        // Preserve existing interceptors if already present
+        interceptors = (modern as any).interceptors
     }
 
     // Convert databaseHooks to entityHooks

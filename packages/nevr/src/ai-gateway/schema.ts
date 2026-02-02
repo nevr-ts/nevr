@@ -16,6 +16,7 @@ import type { PluginSchema } from "../plugins/unified/types.js"
  * Provides entities for:
  * - aiUsage: Tracks all AI requests for billing and analytics
  * - aiRateLimitState: Tracks rate limit state per reference
+ * - aiConversation: Stores conversation history for persistence
  *
  * @returns Plugin schema with entities
  */
@@ -50,6 +51,9 @@ export function getAIGatewaySchema(): PluginSchema {
                     /** Optional request ID for tracing */
                     requestId: string.optional().label("Request ID"),
 
+                    /** Optional conversation ID for linking */
+                    conversationId: string.optional().label("Conversation ID"),
+
                     /** Optional metadata for custom tracking */
                     metadata: json.optional().label("Metadata"),
                 },
@@ -79,6 +83,39 @@ export function getAIGatewaySchema(): PluginSchema {
 
                     /** Month window start timestamp */
                     monthStart: int.default(0).label("Month Start"),
+                },
+            },
+
+            aiConversation: {
+                description: "AI conversation history for persistence",
+                internal: true,
+                fields: {
+                    /** Reference ID (userId, orgId, or custom) */
+                    referenceId: string.label("Reference ID"),
+
+                    /** Conversation title */
+                    title: string.optional().label("Title"),
+
+                    /** System prompt for this conversation */
+                    systemPrompt: string.optional().label("System Prompt"),
+
+                    /** Messages in the conversation (JSON array) */
+                    messages: json.default([]).label("Messages"),
+
+                    /** Default model for this conversation */
+                    model: string.optional().label("Model"),
+
+                    /** Default provider for this conversation */
+                    provider: string.optional().label("Provider"),
+
+                    /** Custom metadata */
+                    metadata: json.optional().label("Metadata"),
+
+                    /** Total tokens used in this conversation */
+                    totalTokens: int.default(0).label("Total Tokens"),
+
+                    /** Total cost for this conversation */
+                    totalCost: float.default(0).label("Total Cost"),
                 },
             },
         },

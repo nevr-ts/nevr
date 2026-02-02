@@ -138,8 +138,20 @@ export function matchRoute(
   }
 
   // Check plugin routes first
+  // Sort routes so static routes take precedence over parameterized routes
+  // This ensures /sign-in/username matches before /sign-in/:provider
   if (pluginRoutes) {
-    for (const route of pluginRoutes) {
+    // Sort routes: static routes first, parameterized routes last
+    const sortedRoutes = [...pluginRoutes].sort((a, b) => {
+      const aHasParams = a.path.includes(":")
+      const bHasParams = b.path.includes(":")
+      if (aHasParams && !bHasParams) return 1  // a comes after b
+      if (!aHasParams && bHasParams) return -1 // a comes before b
+      // For equal param status, prefer more specific paths (more segments)
+      return b.path.split("/").length - a.path.split("/").length
+    })
+
+    for (const route of sortedRoutes) {
       if (matchPluginRoute(req.method, `/${path}`, route.method, route.path)) {
         return { type: "plugin", pluginRoute: route }
       }

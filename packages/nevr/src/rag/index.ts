@@ -67,18 +67,25 @@ export {
     type RAGErrorCode,
 } from "./error-codes.js"
 
-// Re-export client
-export {
-    ragClient,
-    type RAGClientPlugin,
-    type RAGClientOptions,
-    type RAGClientMethods,
-    type SearchParams,
-    type SearchResult,
-    type IndexParams,
-    type IndexResult,
-    type RAGStats,
-    type SearchState,
+// =============================================================================
+// CLIENT EXPORTS - Import from "nevr/rag/client" instead
+// =============================================================================
+
+// For frontend/client usage:
+//   import { ragClient } from "nevr/rag/client"
+// =============================================================================
+
+// Re-export type-only client types for convenience
+export type {
+    RAGClientPlugin,
+    RAGClientOptions,
+    RAGClientMethods,
+    SearchParams,
+    SearchResult,
+    IndexParams,
+    IndexResult,
+    RAGStats,
+    SearchState,
 } from "./client.js"
 
 import type { Entity, FieldDef } from "../types.js"

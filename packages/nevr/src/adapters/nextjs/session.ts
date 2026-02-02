@@ -26,6 +26,7 @@ interface UserRecord {
   role?: string
   image?: string
   emailVerified?: boolean | Date
+  stripeCustomerId?: string
 }
 
 export interface Session {
@@ -120,6 +121,7 @@ export async function getServerSession(
         role: user.role || "user",
         image: user.image,
         emailVerified: user.emailVerified,
+        stripeCustomerId: user.stripeCustomerId,
       },
       expiresAt,
       token,
@@ -260,6 +262,7 @@ export async function getSessionFromRequest(
         role: user.role || "user",
         image: user.image,
         emailVerified: user.emailVerified,
+        stripeCustomerId: user.stripeCustomerId,
       },
       expiresAt,
       token,

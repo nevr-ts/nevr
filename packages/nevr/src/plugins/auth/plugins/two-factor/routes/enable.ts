@@ -9,6 +9,7 @@ import { generateId, verifyPassword } from "../../../crypto/index.js"
 import { TWO_FACTOR_ERROR_CODES } from "../error-codes.js"
 import { generateSecret, generateTOTPUri } from "../utils/totp.js"
 import { generateBackupCodes, encryptBackupCodes } from "../utils/backup-codes.js"
+import { getSessionFromCtx } from "../../../api/routes/session.js"
 import type { TOTPConfig, BackupCodesConfig } from "../types.js"
 
 // Zod Schemas
@@ -33,8 +34,25 @@ export function createEnableRoutes(
     backupConfig: BackupCodesConfig,
     issuer: string,
     encryptionSecret: string,
-    skipVerificationOnEnable?: boolean
+    skipVerificationOnEnable?: boolean,
+    sessionConfig?: { cookieName: string; sessionExpiresIn: number }
 ) {
+    // Default session config if not provided
+    const cookieName = sessionConfig?.cookieName ?? "nevr.session_token"
+    const sessionExpiresIn = sessionConfig?.sessionExpiresIn ?? 60 * 60 * 24 * 7
+
+    // Full cookie config for session helpers
+    const fullCookieConfig = {
+        name: cookieName,
+        expiresIn: sessionExpiresIn,
+        options: {
+            path: "/",
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax" as const,
+        },
+    }
+
     return {
         /**
          * Enable two-factor authentication
@@ -50,15 +68,20 @@ export function createEnableRoutes(
             handler: async (ctx: any) => {
                 const driver = ctx.context?.driver || ctx.driver
                 const body = validateWithZod(enableTwoFactorSchema, ctx.body || ctx.input || {})
-                const session = ctx.session || ctx.context?.session
 
-                if (!session?.user) {
+                // Get session using the auth helper
+                const sessionCtx = await getSessionFromCtx(ctx, {
+                    cookieConfig: fullCookieConfig,
+                    sessionExpiresIn,
+                })
+
+                if (!sessionCtx?.user) {
                     throw new EndpointError("UNAUTHORIZED", {
                         message: "Authentication required",
                     })
                 }
 
-                const user = session.user
+                const user = sessionCtx.user
                 const { password, issuer: customIssuer } = body
 
                 // Verify password
@@ -144,15 +167,20 @@ export function createEnableRoutes(
             handler: async (ctx: any) => {
                 const driver = ctx.context?.driver || ctx.driver
                 const body = validateWithZod(verifySetupSchema, ctx.body || ctx.input || {})
-                const session = ctx.session || ctx.context?.session
 
-                if (!session?.user) {
+                // Get session using the auth helper
+                const sessionCtx = await getSessionFromCtx(ctx, {
+                    cookieConfig: fullCookieConfig,
+                    sessionExpiresIn,
+                })
+
+                if (!sessionCtx?.user) {
                     throw new EndpointError("UNAUTHORIZED", {
                         message: "Authentication required",
                     })
                 }
 
-                const user = session.user
+                const user = sessionCtx.user
                 const { code } = body
 
                 // Get two factor record
@@ -201,15 +229,20 @@ export function createEnableRoutes(
             handler: async (ctx: any) => {
                 const driver = ctx.context?.driver || ctx.driver
                 const body = validateWithZod(disableTwoFactorSchema, ctx.body || ctx.input || {})
-                const session = ctx.session || ctx.context?.session
 
-                if (!session?.user) {
+                // Get session using the auth helper
+                const sessionCtx = await getSessionFromCtx(ctx, {
+                    cookieConfig: fullCookieConfig,
+                    sessionExpiresIn,
+                })
+
+                if (!sessionCtx?.user) {
                     throw new EndpointError("UNAUTHORIZED", {
                         message: "Authentication required",
                     })
                 }
 
-                const user = session.user
+                const user = sessionCtx.user
                 const { password } = body
 
                 // Verify password

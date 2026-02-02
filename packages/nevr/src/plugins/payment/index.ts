@@ -47,8 +47,17 @@ export { createReferenceMiddleware, sessionMiddleware } from "./api/middleware.j
 // Unified endpoint utilities
 export { z, endpoint, EndpointError, createMiddleware } from "../unified/endpoint.js"
 
-// Client
-export { paymentClient, type PaymentClientOptions, type PaymentClientMethods } from "./client.js"
+// =============================================================================
+// CLIENT EXPORTS - Import from "nevr/plugins/payment/client" instead
+// =============================================================================
+
+//
+// For frontend/client usage:
+//   import { paymentClient } from "nevr/plugins/payment/client"
+// =============================================================================
+
+// Re-export type-only client types for convenience
+export type { PaymentClientOptions, PaymentClientMethods } from "./client.js"
 
 // =============================================================================
 // PRE-REGISTRATION (Side Effect)

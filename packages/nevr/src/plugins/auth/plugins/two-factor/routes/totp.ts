@@ -9,6 +9,7 @@ import { generateId } from "../../../crypto/index.js"
 import { createCookieHeader } from "../../../cookies/index.js"
 import { TWO_FACTOR_ERROR_CODES } from "../error-codes.js"
 import { verifyTOTP, generateTOTP as generateTOTPCode, generateTOTPUri } from "../utils/totp.js"
+import { getSessionFromCtx } from "../../../api/routes/session.js"
 import type { TOTPConfig, SessionConfig } from "../types.js"
 
 // Zod Schemas
@@ -32,6 +33,19 @@ export function createTOTPRoutes(
     sessionConfig: SessionConfig,
     setSessionCookie: (headers: Record<string, string>, token: string) => void
 ) {
+    // Full cookie config for session helpers
+    const fullCookieConfig = {
+        name: sessionConfig.cookieName,
+        expiresIn: sessionConfig.expiresIn,
+        options: {
+            path: sessionConfig.cookie.path,
+            domain: sessionConfig.cookie.domain,
+            httpOnly: sessionConfig.cookie.httpOnly,
+            secure: sessionConfig.cookie.secure,
+            sameSite: sessionConfig.cookie.sameSite,
+        },
+    }
+
     return {
         /**
          * Verify TOTP code during sign-in
@@ -132,15 +146,20 @@ export function createTOTPRoutes(
             handler: async (ctx: any) => {
                 const driver = ctx.context?.driver || ctx.driver
                 const body = validateWithZod(getTOTPURISchema, ctx.body || ctx.input || {})
-                const session = ctx.session || ctx.context?.session
 
-                if (!session?.user) {
+                // Get session using the auth helper
+                const sessionCtx = await getSessionFromCtx(ctx, {
+                    cookieConfig: fullCookieConfig,
+                    sessionExpiresIn: sessionConfig.expiresIn,
+                })
+
+                if (!sessionCtx?.user) {
                     throw new EndpointError("UNAUTHORIZED", {
                         message: "Authentication required",
                     })
                 }
 
-                const user = session.user
+                const user = sessionCtx.user
 
                 // Get two factor record
                 const twoFactorRecord = await driver.findOne("twoFactor", { userId: user.id })

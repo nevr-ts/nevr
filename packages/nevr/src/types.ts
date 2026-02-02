@@ -556,6 +556,11 @@ export interface NevrRequest<TNative = unknown> {
   params: Record<string, string>
   query: Record<string, string | string[] | undefined>
   body: unknown
+  /**
+   * Raw request body as string (for webhook signature verification)
+   * Only available if the adapter preserves it.
+   */
+  rawBody?: string
   headers: Record<string, string | undefined>
   user: User | null
   context: Record<string, unknown>

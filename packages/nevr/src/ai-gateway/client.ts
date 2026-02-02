@@ -13,6 +13,12 @@ import type {
     UsageSummary,
     UsageRecord,
     ModelInfo,
+    ToolDefinition,
+    ToolCall,
+    ToolChoice,
+    TextContent,
+    ImageContent,
+    Conversation,
 } from "./types.js"
 
 // -----------------------------------------------------------------------------
@@ -67,9 +73,9 @@ export interface AIGatewayClientOptions {
 
 export interface AIGatewayClientMethods {
     /** Chat completion */
-    chat(params: ChatInput): Promise<ChatOutput>
+    chat(params: ChatInput, options?: ChatRequestOptions): Promise<ChatOutput>
     /** Streaming chat completion */
-    chatStream(params: ChatInput): AsyncGenerator<ChatChunk, void, unknown>
+    chatStream(params: ChatInput, options?: ChatRequestOptions): AsyncGenerator<ChatChunk, void, unknown>
     /** Get usage summary */
     getUsage(options?: UsageQueryInput): Promise<UsageOutput>
     /** Get usage records */
@@ -82,6 +88,51 @@ export interface AIGatewayClientMethods {
     getModelInfo(provider: AIProviderType, model: string): Promise<ModelInfo | null>
     /** Count tokens in text */
     countTokens(text: string, options?: CountTokensInput): Promise<CountTokensOutput>
+    /** Create a new conversation */
+    createConversation(input?: ConversationCreateInput): Promise<ConversationOutput>
+    /** Get a conversation by ID */
+    getConversation(id: string): Promise<ConversationOutput | null>
+    /** List conversations */
+    listConversations(options?: ConversationListInput): Promise<ConversationListOutput>
+    /** Update a conversation */
+    updateConversation(id: string, input: ConversationUpdateInput): Promise<ConversationOutput>
+    /** Delete a conversation */
+    deleteConversation(id: string): Promise<void>
+    /** Add a message to a conversation and get AI response */
+    sendMessage(conversationId: string, content: string, options?: SendMessageOptions): Promise<ChatOutput>
+}
+
+/** Options for chat requests */
+export interface ChatRequestOptions {
+    /** Abort signal for cancellation */
+    signal?: AbortSignal
+}
+
+/** Options for sending a message to a conversation */
+export interface SendMessageOptions {
+    /** Override model for this message */
+    model?: string
+    /** Override provider for this message */
+    provider?: AIProviderType
+    /** Enable streaming */
+    stream?: boolean
+    /** Abort signal for cancellation */
+    signal?: AbortSignal
+}
+
+/** Message content - text or multimodal */
+export type ClientMessageContent = string | Array<TextContent | ImageContent>
+
+/** Chat message for client */
+export interface ClientChatMessage {
+    role: "system" | "user" | "assistant" | "tool"
+    content: ClientMessageContent
+    /** Tool call ID (for tool response messages) */
+    toolCallId?: string
+    /** Tool calls made by assistant */
+    toolCalls?: ToolCall[]
+    /** Name for tool responses */
+    name?: string
 }
 
 export interface ChatInput {
@@ -90,10 +141,7 @@ export interface ChatInput {
     /** Model to use */
     model?: string
     /** Messages for the conversation */
-    messages: Array<{
-        role: "system" | "user" | "assistant"
-        content: string
-    }>
+    messages: ClientChatMessage[]
     /** Temperature (0-2) */
     temperature?: number
     /** Max tokens to generate */
@@ -110,6 +158,12 @@ export interface ChatInput {
     presencePenalty?: number
     /** Custom metadata */
     metadata?: Record<string, unknown>
+    /** Tools available to the model */
+    tools?: ToolDefinition[]
+    /** How to choose tools */
+    toolChoice?: ToolChoice
+    /** Conversation ID for persistence */
+    conversationId?: string
 }
 
 export interface ChatOutput {
@@ -124,6 +178,8 @@ export interface ChatOutput {
         totalTokens: number
         cost: number
     }
+    /** Tool calls made by the model */
+    toolCalls?: ToolCall[]
 }
 
 export interface UsageQueryInput {
@@ -214,36 +270,63 @@ export interface CountTokensOutput {
 }
 
 // -----------------------------------------------------------------------------
-// Client Factory
+// Conversation Types
+// -----------------------------------------------------------------------------
+
+export interface ConversationCreateInput {
+    title?: string
+    systemPrompt?: string
+    model?: string
+    provider?: AIProviderType
+    metadata?: Record<string, unknown>
+}
+
+export interface ConversationUpdateInput {
+    title?: string
+    systemPrompt?: string
+    model?: string
+    provider?: AIProviderType
+    metadata?: Record<string, unknown>
+}
+
+export interface ConversationListInput {
+    limit?: number
+    offset?: number
+}
+
+export interface ConversationOutput {
+    id: string
+    title?: string
+    systemPrompt?: string
+    messages: ClientChatMessage[]
+    model?: string
+    provider?: AIProviderType
+    metadata?: Record<string, unknown>
+    totalTokens: number
+    totalCost: number
+    createdAt: string
+    updatedAt: string
+}
+
+export interface ConversationListOutput {
+    conversations: Array<Omit<ConversationOutput, "messages">>
+    pagination: {
+        limit: number
+        offset: number
+        total: number
+        hasMore: boolean
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Internal Client Factory (used by plugin internally)
 // -----------------------------------------------------------------------------
 
 /**
- * Create an AI Gateway client for frontend usage
- *
- * @example
- * ```typescript
- * import { aiGatewayClient } from "nevr/plugins/ai-gateway/client"
- *
- * const ai = aiGatewayClient({
- *   getToken: () => localStorage.getItem("token"),
- * })
- *
- * // Chat completion
- * const response = await ai.chat({
- *   messages: [{ role: "user", content: "Hello!" }],
- * })
- *
- * // Streaming
- * for await (const chunk of ai.chatStream({ messages, stream: true })) {
- *   console.log(chunk.content)
- * }
- *
- * // Get usage
- * const usage = await ai.getUsage({ period: "month" })
- * console.log(`Used ${usage.totalTokens} of ${usage.limit} tokens`)
- * ```
+ * Internal client factory - creates AI Gateway client methods
+ * @internal Not exported - use aiGatewayClient() plugin with createClient instead
  */
-export function aiGatewayClient(options: AIGatewayClientOptions = {}): AIGatewayClientMethods {
+function createAIClientMethods(options: AIGatewayClientOptions = {}): AIGatewayClientMethods {
     const basePath = options.basePath || "/ai"
     const baseUrl = typeof window !== "undefined" ? window.location.origin : ""
     const fetchFn = options.fetch || fetch
@@ -397,6 +480,38 @@ export function aiGatewayClient(options: AIGatewayClientOptions = {}): AIGateway
                 ...tokenOptions,
             })
         },
+
+        // Conversation methods
+        async createConversation(input = {}) {
+            return request<ConversationOutput>("POST", "/conversations", input as unknown as Record<string, unknown>)
+        },
+
+        async getConversation(id) {
+            try {
+                return await request<ConversationOutput>("GET", `/conversations/${id}`)
+            } catch {
+                return null
+            }
+        },
+
+        async listConversations(listOptions = {}) {
+            return request<ConversationListOutput>("GET", "/conversations", undefined, listOptions as Record<string, unknown>)
+        },
+
+        async updateConversation(id, input) {
+            return request<ConversationOutput>("PATCH", `/conversations/${id}`, input as unknown as Record<string, unknown>)
+        },
+
+        async deleteConversation(id) {
+            await request<void>("DELETE", `/conversations/${id}`)
+        },
+
+        async sendMessage(conversationId, content, sendOptions = {}) {
+            return request<ChatOutput>("POST", `/conversations/${conversationId}/messages`, {
+                content,
+                ...sendOptions,
+            } as Record<string, unknown>)
+        },
     }
 }
 
@@ -405,15 +520,15 @@ export function aiGatewayClient(options: AIGatewayClientOptions = {}): AIGateway
 // -----------------------------------------------------------------------------
 
 /**
- * AI Gateway plugin for use with createClient
+ * AI Gateway client plugin for use with createClient
  *
  * @example
  * ```typescript
  * import { createClient } from "nevr/client"
- * import { aiClient } from "nevr/plugins/ai-gateway/client"
+ * import { aiGatewayClient } from "nevr/ai-gateway/client"
  *
  * const client = createClient({
- *   plugins: [aiClient()],
+ *   plugins: [aiGatewayClient()],
  * })
  *
  * // Now you can use client.ai.*
@@ -422,7 +537,7 @@ export function aiGatewayClient(options: AIGatewayClientOptions = {}): AIGateway
  * })
  * ```
  */
-export function aiClient(options: AIGatewayClientOptions = {}): AIGatewayClientPlugin {
+export function aiGatewayClient(options: AIGatewayClientOptions = {}): AIGatewayClientPlugin {
     const basePath = options.basePath || "/ai"
 
     // Reactive atoms
@@ -439,6 +554,9 @@ export function aiClient(options: AIGatewayClientOptions = {}): AIGatewayClientP
             [`${basePath}/usage/limits`]: "GET",
             [`${basePath}/models`]: "GET",
             [`${basePath}/tokens/count`]: "POST",
+            [`${basePath}/conversations`]: "POST",
+            [`${basePath}/conversations/:id`]: "GET",
+            [`${basePath}/conversations/:id/messages`]: "POST",
         },
 
         getAtoms: ($fetch: NevrFetch) => {
@@ -516,7 +634,7 @@ export function aiClient(options: AIGatewayClientOptions = {}): AIGatewayClientP
                 } as Response
             }
 
-            const client = aiGatewayClient({
+            const client = createAIClientMethods({
                 ...mergedOptions,
                 fetch: fetchFn as typeof fetch,
             })
@@ -542,6 +660,15 @@ export function aiClient(options: AIGatewayClientOptions = {}): AIGatewayClientP
 // React Hooks (if React is available)
 // -----------------------------------------------------------------------------
 
+export interface UseAIChatOptions {
+    /** System prompt to prepend to all conversations */
+    systemPrompt?: string
+    /** Default model to use */
+    model?: string
+    /** Default provider to use */
+    provider?: AIProviderType
+}
+
 export interface UseAIChatResult {
     messages: Array<{ role: "user" | "system" | "assistant"; content: string }>
     isLoading: boolean
@@ -556,14 +683,21 @@ export interface UseAIChatResult {
  *
  * @example
  * ```tsx
- * import { createUseAIChat } from "nevr/plugins/ai-gateway/client"
+ * import { createClient } from "nevr/client"
+ * import { aiGatewayClient, createUseAIChat } from "nevr/ai-gateway/client"
  * import React from "react"
  *
- * const useAIChat = createUseAIChat(React)
+ * // Create the nevr client with AI Gateway plugin
+ * const client = createClient({
+ *   plugins: [aiGatewayClient()],
+ * })
+ *
+ * // Create the hook bound to your client
+ * const useAIChat = createUseAIChat(React, client.ai)
  *
  * function ChatComponent() {
- *   const { messages, isLoading, send, sendStream } = useAIChat({
- *     getToken: () => localStorage.getItem("token"),
+ *   const { messages, isLoading, send } = useAIChat({
+ *     systemPrompt: "You are a helpful assistant.",
  *   })
  *
  *   const handleSend = async () => {
@@ -586,27 +720,15 @@ export function createUseAIChat(
     React: {
         useState: <T>(initial: T) => [T, (value: T | ((prev: T) => T)) => void]
         useCallback: <T extends (...args: any[]) => any>(callback: T, deps: any[]) => T
-        useRef: <T>(initial: T) => { current: T }
-    }
+    },
+    aiClient: AIGatewayClientMethods
 ) {
-    return function useAIChat(
-        options: AIGatewayClientOptions & {
-            systemPrompt?: string
-            model?: string
-            provider?: AIProviderType
-        } = {}
-    ): UseAIChatResult {
-        const { useState, useCallback, useRef } = React
-        const client = useRef<AIGatewayClientMethods | null>(null)
+    return function useAIChat(options: UseAIChatOptions = {}): UseAIChatResult {
+        const { useState, useCallback } = React
 
         const [messages, setMessages] = useState<Array<{ role: "user" | "system" | "assistant"; content: string }>>([])
         const [isLoading, setIsLoading] = useState(false)
         const [error, setError] = useState<Error | null>(null)
-
-        // Initialize client
-        if (!client.current) {
-            client.current = aiGatewayClient(options)
-        }
 
         const send = useCallback(async (content: string) => {
             setIsLoading(true)
@@ -624,7 +746,7 @@ export function createUseAIChat(
                     userMessage,
                 ]
 
-                const response = await client.current!.chat({
+                const response = await aiClient.chat({
                     messages: allMessages,
                     model: options.model,
                     provider: options.provider,
@@ -659,7 +781,7 @@ export function createUseAIChat(
                     userMessage,
                 ]
 
-                for await (const chunk of client.current!.chatStream({
+                for await (const chunk of aiClient.chatStream({
                     messages: allMessages,
                     model: options.model,
                     provider: options.provider,
@@ -703,3 +825,6 @@ export function createUseAIChat(
 // -----------------------------------------------------------------------------
 
 export default aiGatewayClient
+
+// Legacy alias for backwards compatibility (deprecated)
+export { aiGatewayClient as aiClient }

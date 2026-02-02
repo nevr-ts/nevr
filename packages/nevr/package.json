@@ -6,6 +6,7 @@
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "sideEffects": false,
   "bin": {
     "nevr": "./dist/cli/index.js"
   },
@@ -19,10 +20,12 @@
       "types": "./dist/index.d.ts"
     },
     "./client": {
+      "browser": "./dist/client/index.js",
       "import": "./dist/client/index.js",
       "types": "./dist/client/index.d.ts"
     },
     "./client/react": {
+      "browser": "./dist/client/react.js",
       "import": "./dist/client/react.js",
       "types": "./dist/client/react.d.ts"
     },
@@ -59,6 +62,7 @@
       "types": "./dist/plugins/auth/index.d.ts"
     },
     "./plugins/auth/client": {
+      "browser": "./dist/plugins/auth/client.js",
       "import": "./dist/plugins/auth/client.js",
       "types": "./dist/plugins/auth/client.d.ts"
     },
@@ -67,6 +71,7 @@
       "types": "./dist/plugins/auth/plugins/username/index.d.ts"
     },
     "./plugins/auth/username/client": {
+      "browser": "./dist/plugins/auth/plugins/username/client.js",
       "import": "./dist/plugins/auth/plugins/username/client.js",
       "types": "./dist/plugins/auth/plugins/username/client.d.ts"
     },
@@ -75,6 +80,7 @@
       "types": "./dist/plugins/auth/plugins/magic-link/index.d.ts"
     },
     "./plugins/auth/magic-link/client": {
+      "browser": "./dist/plugins/auth/plugins/magic-link/client.js",
       "import": "./dist/plugins/auth/plugins/magic-link/client.js",
       "types": "./dist/plugins/auth/plugins/magic-link/client.d.ts"
     },
@@ -83,6 +89,7 @@
       "types": "./dist/plugins/auth/plugins/two-factor/index.d.ts"
     },
     "./plugins/auth/two-factor/client": {
+      "browser": "./dist/plugins/auth/plugins/two-factor/client.js",
       "import": "./dist/plugins/auth/plugins/two-factor/client.js",
       "types": "./dist/plugins/auth/plugins/two-factor/client.d.ts"
     },
@@ -91,6 +98,7 @@
       "types": "./dist/plugins/auth/plugins/phone-number/index.d.ts"
     },
     "./plugins/auth/phone-number/client": {
+      "browser": "./dist/plugins/auth/plugins/phone-number/client.js",
       "import": "./dist/plugins/auth/plugins/phone-number/client.js",
       "types": "./dist/plugins/auth/plugins/phone-number/client.d.ts"
     },
@@ -99,6 +107,7 @@
       "types": "./dist/plugins/auth/plugins/anonymous/index.d.ts"
     },
     "./plugins/auth/anonymous/client": {
+      "browser": "./dist/plugins/auth/plugins/anonymous/client.js",
       "import": "./dist/plugins/auth/plugins/anonymous/client.js",
       "types": "./dist/plugins/auth/plugins/anonymous/client.d.ts"
     },
@@ -111,6 +120,7 @@
       "types": "./dist/plugins/organization/index.d.ts"
     },
     "./plugins/organization/client": {
+      "browser": "./dist/plugins/organization/client.js",
       "import": "./dist/plugins/organization/client.js",
       "types": "./dist/plugins/organization/client.d.ts"
     },
@@ -119,6 +129,7 @@
       "types": "./dist/plugins/storage/index.d.ts"
     },
     "./plugins/storage/client": {
+      "browser": "./dist/plugins/storage/client.js",
       "import": "./dist/plugins/storage/client.js",
       "types": "./dist/plugins/storage/client.d.ts"
     },
@@ -127,6 +138,7 @@
       "types": "./dist/plugins/payment/index.d.ts"
     },
     "./plugins/payment/client": {
+      "browser": "./dist/plugins/payment/client.js",
       "import": "./dist/plugins/payment/client.js",
       "types": "./dist/plugins/payment/client.d.ts"
     },
@@ -135,6 +147,7 @@
       "types": "./dist/rag/index.d.ts"
     },
     "./rag/client": {
+      "browser": "./dist/rag/client.js",
       "import": "./dist/rag/client.js",
       "types": "./dist/rag/client.d.ts"
     },
@@ -143,6 +156,7 @@
       "types": "./dist/ai-gateway/index.d.ts"
     },
     "./ai-gateway/client": {
+      "browser": "./dist/ai-gateway/client.js",
       "import": "./dist/ai-gateway/client.js",
       "types": "./dist/ai-gateway/client.d.ts"
     },

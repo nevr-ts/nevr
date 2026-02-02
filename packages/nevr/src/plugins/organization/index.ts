@@ -76,8 +76,16 @@ export { sessionMiddleware, createOrgMiddleware, createPermissionMiddleware } fr
 // Unified endpoint utilities
 export { z, endpoint, EndpointError, createMiddleware } from "../unified/endpoint.js"
 
-// Client
-export { organizationClient, type OrganizationClientOptions, type OrganizationClientMethods } from "./client.js"
+// =============================================================================
+// CLIENT EXPORTS - Import from "nevr/plugins/organization/client" instead
+// =============================================================================
+
+// For frontend/client usage:
+//   import { organizationClient } from "nevr/plugins/organization/client"
+// =============================================================================
+
+// Re-export type-only client types for convenience
+export type { OrganizationClientOptions, OrganizationClientMethods } from "./client.js"
 
 // =============================================================================
 // PRE-REGISTRATION (Side Effect)

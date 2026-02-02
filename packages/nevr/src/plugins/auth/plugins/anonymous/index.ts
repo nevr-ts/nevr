@@ -13,7 +13,8 @@ import { getAnonymousSchema } from "./schema.js"
 // Re-exports
 export * from "./error-codes.js"
 export { getAnonymousSchema } from "./schema.js"
-export { anonymousClient } from "./client.js"
+
+// Client: import from "nevr/plugins/auth/anonymous/client" for frontend use
 
 // =============================================================================
 // Types
@@ -90,9 +91,9 @@ export interface AnonymousUser {
 }
 
 /**
- * Auth session type
+ * Anonymous session type
  */
-export interface AuthSession {
+export interface AnonymousSession {
     id: string
     token: string
     userId: string
@@ -277,7 +278,7 @@ export const anonymous = (options?: AnonymousOptions) => {
         ],
 
         $ERROR_CODES: ANONYMOUS_ERROR_CODES,
-        $Infer: { User: {} as AnonymousUser, Session: {} as AuthSession },
+        $Infer: { User: {} as AnonymousUser, Session: {} as AnonymousSession },
     }
 }
 

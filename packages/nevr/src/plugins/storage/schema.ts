@@ -3,7 +3,7 @@
 // Entity definitions for file storage
 // =============================================================================
 
-import { string, int, json, datetime } from "../../index.js"
+import { string, int, json } from "../../index.js"
 import type { PluginSchema } from "../unified/types.js"
 
 // -----------------------------------------------------------------------------
@@ -38,7 +38,7 @@ export function getStorageSchema(): PluginSchema {
                     url: string.optional().label("Public URL"),
 
                     // Custom metadata
-                    metadata: json.optional().label("Metadata"),
+                    metadata: json.optional().label("Metadata (JSON)"),
                 },
             },
         },

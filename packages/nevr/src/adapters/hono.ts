@@ -3,8 +3,12 @@
 // Hono adapter for nevr - lightweight, fast, and edge-ready
 // =============================================================================
 
-import type { Context, MiddlewareHandler, Hono } from "hono"
+import type { Context, Hono } from "hono"
 import type { NevrInstance, NevrRequest, NevrResponse, User } from "../types.js"
+
+// Use a generic handler type to avoid version conflicts between different Hono versions
+// This allows the adapter to work regardless of the exact Hono version the user has installed
+type HonoHandler = (c: any) => Promise<Response> | Response
 import { getLogger } from "../logger.js"
 
 // -----------------------------------------------------------------------------
@@ -15,8 +19,11 @@ export interface HonoAdapterOptions {
   /** Get user from Hono context */
   getUser?: (c: Context) => User | null | Promise<User | null>
 
-  /** Prefix for routes (optional) */
+  /** Prefix for routes (optional, for mountNevr helper) */
   prefix?: string
+
+  /** Base path to strip from URL (e.g., "/api") */
+  basePath?: string
 
   /** Enable debug logs */
   debugLogs?: boolean
@@ -34,8 +41,10 @@ export interface HonoAdapterOptions {
 
 async function honoToNevr(
   c: Context,
-  getUser?: HonoAdapterOptions["getUser"]
+  options: { getUser?: HonoAdapterOptions["getUser"]; basePath?: string } = {}
 ): Promise<NevrRequest> {
+  const { getUser, basePath } = options
+
   // Get user
   const user = getUser ? await getUser(c) : null
 
@@ -63,25 +72,37 @@ async function honoToNevr(
 
   // Get body for non-GET requests
   let body: unknown = undefined
+  let rawBody: string | undefined
   if (c.req.method !== "GET" && c.req.method !== "HEAD") {
     try {
-      body = await c.req.json()
-    } catch {
-      // Body might not be JSON
-      try {
-        body = await c.req.text()
-      } catch {
-        body = undefined
+      // Clone request to read body twice (for rawBody and parsed)
+      const text = await c.req.text()
+      rawBody = text // Preserve raw body for webhook signature verification
+      if (text) {
+        try {
+          body = JSON.parse(text)
+        } catch {
+          body = text
+        }
       }
+    } catch {
+      body = undefined
     }
+  }
+
+  // Extract path and strip basePath if provided
+  let path = url.pathname
+  if (basePath && path.startsWith(basePath)) {
+    path = path.slice(basePath.length) || "/"
   }
 
   return {
     method: c.req.method as NevrRequest["method"],
-    path: url.pathname,
+    path,
     params: c.req.param() as Record<string, string>,
     query,
     body,
+    rawBody, // Include raw body for webhook signature verification
     headers,
     user,
     context: {
@@ -169,8 +190,8 @@ function getCorsHeaders(
 export function honoAdapter(
   nevr: NevrInstance,
   options: HonoAdapterOptions = {}
-): MiddlewareHandler {
-  const { getUser, cors, debugLogs } = options
+): HonoHandler {
+  const { getUser, basePath, cors, debugLogs } = options
 
   return async (c: Context) => {
     try {
@@ -192,7 +213,7 @@ export function honoAdapter(
       }
 
       // Convert Hono context to Nevr request
-      const nevrRequest = await honoToNevr(c, getUser)
+      const nevrRequest = await honoToNevr(c, { getUser, basePath })
 
       if (debugLogs) {
         getLogger().debug(`[nevr:hono] ${c.req.method} ${c.req.path}`)
@@ -427,6 +448,8 @@ export function sessionAuth(
         role: user.role || "user",
         image: user.image,
         emailVerified: user.emailVerified,
+        // Include payment-related fields for billing portal
+        stripeCustomerId: user.stripeCustomerId,
       }
     } catch (error) {
       getLogger().error("[nevr:hono] Session auth error:", error)

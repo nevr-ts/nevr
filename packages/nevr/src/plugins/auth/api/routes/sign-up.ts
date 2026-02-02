@@ -51,6 +51,7 @@ export function signUpEmail(config: SignUpRouteConfig) {
     const secret = options.secret || process.env.AUTH_SECRET || process.env.NEVR_AUTH_SECRET || ""
 
     // Build schema with dynamic password length
+    // Use passthrough() to allow additional fields from sub-plugins (username, displayUsername, etc.)
     const schema = z.object({
         name: z.string().min(1, "Name is required"),
         email: z.string().email("Invalid email address"),
@@ -60,7 +61,10 @@ export function signUpEmail(config: SignUpRouteConfig) {
         image: z.string().url().optional(),
         callbackURL: z.string().optional(),
         rememberMe: z.boolean().optional(),
-    })
+        // Additional fields from sub-plugins (username, displayUsername, etc.)
+        username: z.string().optional(),
+        displayUsername: z.string().optional(),
+    }).passthrough()
 
     return endpoint("/sign-up/email", {
         method: "POST",
@@ -116,10 +120,19 @@ export function signUpEmail(config: SignUpRouteConfig) {
             // Hash password BEFORE creating user (so if hashing fails, user isn't created)
             const hashedPassword = await passwordConfig.hash(body.password)
 
-            // Create user
+            // Create user with additional fields from sub-plugins (username, displayUsername, etc.)
+            // Extract known non-user fields from body
+            const { password, callbackURL, rememberMe, ...userFields } = body
+
+            // Set displayUsername from username if not provided (username plugin convention)
+            if (userFields.username && !userFields.displayUsername) {
+                userFields.displayUsername = userFields.username
+            }
+
             let user: AuthUser
             try {
                 user = await adapter.createUser({
+                    ...userFields, // Include username, displayUsername, and any other sub-plugin fields
                     email: body.email.toLowerCase(),
                     name: body.name,
                     image: body.image || null,

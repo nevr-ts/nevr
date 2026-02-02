@@ -241,11 +241,53 @@ export function collectMiddleware(plugins: UnifiedPlugin[], nevr: NevrInstance):
     for (const plugin of plugins) {
         // Handle interceptors.before as middleware
         if (plugin.interceptors?.before) {
+            const basePath = plugin.meta?.basePath || ''
             for (const interceptor of plugin.interceptors.before) {
                 middleware.push({
                     name: `${plugin.meta?.id || 'plugin'}-interceptor`,
                     handler: async (ctx, next) => {
-                        await interceptor.handler(ctx as any)
+                        // Check if interceptor has a matcher
+                        if (interceptor.matcher) {
+                            // Calculate relative path (remove base path prefix)
+                            const requestPath = ctx.request.path || ''
+                            const relativePath = requestPath.startsWith(basePath)
+                                ? requestPath.slice(basePath.length)
+                                : requestPath
+
+                            // Handle different matcher types (string, RegExp, function)
+                            const matcher = interceptor.matcher
+                            let matches = false
+                            if (typeof matcher === 'function') {
+                                // For function matchers, create a context with path, body, etc.
+                                const matchCtx = {
+                                    path: relativePath,
+                                    body: ctx.request.body,
+                                    method: ctx.request.method,
+                                    context: { driver: (ctx as any).driver },
+                                }
+                                matches = matcher(matchCtx as any)
+                            } else if (typeof matcher === 'string') {
+                                matches = relativePath === matcher
+                            } else if (matcher instanceof RegExp) {
+                                matches = matcher.test(relativePath)
+                            }
+
+                            // Only run handler if matcher returns true
+                            if (matches) {
+                                // Create a handler context with path and body for the interceptor
+                                const handlerCtx = {
+                                    path: relativePath,
+                                    body: ctx.request.body,
+                                    method: ctx.request.method,
+                                    context: { driver: (ctx as any).driver },
+                                    request: ctx.request,
+                                }
+                                await interceptor.handler(handlerCtx as any)
+                            }
+                        } else {
+                            // No matcher - always run
+                            await interceptor.handler(ctx as any)
+                        }
                         await next()
                     },
                 })
@@ -257,10 +299,67 @@ export function collectMiddleware(plugins: UnifiedPlugin[], nevr: NevrInstance):
 }
 
 /**
+ * Collect all after interceptors from plugins
+ */
+function collectAfterInterceptors(plugins: UnifiedPlugin[]): Array<{
+    basePath: string
+    matcher: ((ctx: any) => boolean) | string | RegExp
+    handler: (ctx: any, response: any) => any | Promise<any>
+}> {
+    const afterInterceptors: Array<{
+        basePath: string
+        matcher: ((ctx: any) => boolean) | string | RegExp
+        handler: (ctx: any, response: any) => any | Promise<any>
+    }> = []
+
+    for (const plugin of plugins) {
+        if (plugin.interceptors?.after) {
+            const basePath = plugin.meta?.basePath || ''
+            for (const interceptor of plugin.interceptors.after) {
+                afterInterceptors.push({
+                    basePath,
+                    matcher: interceptor.matcher,
+                    handler: interceptor.handler,
+                })
+            }
+        }
+    }
+    return afterInterceptors
+}
+
+/**
+ * Extract path parameters from URL based on route pattern
+ * E.g., route "/file/:id" with path "/file/123" returns { id: "123" }
+ */
+function extractPathParams(routePattern: string, requestPath: string): Record<string, string> {
+    const params: Record<string, string> = {}
+    const routeParts = routePattern.split('/').filter(Boolean)
+    const pathParts = requestPath.split('/').filter(Boolean)
+
+    if (routeParts.length !== pathParts.length) return params
+
+    for (let i = 0; i < routeParts.length; i++) {
+        const routePart = routeParts[i]
+        const pathPart = pathParts[i]
+
+        if (routePart.startsWith(':')) {
+            // Extract parameter name (remove the colon)
+            const paramName = routePart.slice(1)
+            params[paramName] = decodeURIComponent(pathPart)
+        }
+    }
+
+    return params
+}
+
+/**
  * Collect all routes from plugins (via endpoints)
  */
 export function collectRoutes(plugins: UnifiedPlugin[], nevr: NevrInstance): Route[] {
     const routes: Route[] = []
+
+    // Collect all after interceptors once
+    const afterInterceptors = collectAfterInterceptors(plugins)
 
     for (const plugin of plugins) {
         // Handle endpoints{} pattern
@@ -276,21 +375,61 @@ export function collectRoutes(plugins: UnifiedPlugin[], nevr: NevrInstance): Rou
                         // Create response headers storage
                         const responseHeaders: Record<string, string> = {}
 
+                        // Parse cookies from header
+                        const cookieHeader = req.headers?.cookie || ''
+                        const cookies: Record<string, string> = {}
+                        if (cookieHeader) {
+                            cookieHeader.split(';').forEach((cookie: string) => {
+                                const [name, ...rest] = cookie.trim().split('=')
+                                if (name) {
+                                    cookies[name] = rest.join('=')
+                                }
+                            })
+                        }
+
+                        // Validate body against schema if defined
+                        let validatedBody = req.body || {}
+                        if (endpoint.body && typeof endpoint.body.safeParse === 'function') {
+                            const result = endpoint.body.safeParse(validatedBody)
+                            if (!result.success) {
+                                const errors: Record<string, string[]> = {}
+                                for (const issue of result.error.issues) {
+                                    const path = issue.path.join('.') || 'body'
+                                    if (!errors[path]) errors[path] = []
+                                    errors[path].push(issue.message)
+                                }
+                                return {
+                                    status: 400,
+                                    body: {
+                                        error: { code: 'VALIDATION_ERROR', message: 'Validation failed' },
+                                        errors,
+                                    },
+                                    headers: {},
+                                }
+                            }
+                            validatedBody = result.data
+                        }
+
+                        // Extract path params from route pattern (e.g., /file/:id)
+                        const extractedParams = extractPathParams(fullPath, req.path)
+
                         // Call the endpoint handler with complete context
                         const ctx = {
                             // Validated body/input data
-                            body: req.body || {},
-                            input: req.body || req.query || {},
+                            body: validatedBody,
+                            input: validatedBody || req.query || {},
                             // Request object
                             request: req,
                             // User info
                             user: req.user || null,
                             // Database driver
                             driver: (nevr as any).driver,
-                            // Headers and params
+                            // Headers and params (merge extracted params with any existing)
                             headers: req.headers || {},
-                            params: req.params || {},
+                            params: { ...(req.params || {}), ...extractedParams },
                             query: req.query || {},
+                            // Cookies
+                            cookies,
                             // Plugin context
                             context: {
                                 driver: (nevr as any).driver,
@@ -313,18 +452,71 @@ export function collectRoutes(plugins: UnifiedPlugin[], nevr: NevrInstance): Rou
                         }
 
                         try {
-                            const result = await endpoint.handler(ctx as any)
+                            // Execute endpoint middleware (use array) if defined
+                            if (endpoint.use && Array.isArray(endpoint.use)) {
+                                for (const middleware of endpoint.use) {
+                                    if (typeof middleware === 'function') {
+                                        // Call middleware - it can throw EndpointError to stop execution
+                                        await middleware(ctx as any)
+                                    }
+                                }
+                            }
+
+                            let result = await endpoint.handler(ctx as any)
 
                             // Handle response format (support both raw data and {status, body, headers})
+                            let response: { status: number; body: unknown; headers: Record<string, string> }
                             if (result && typeof result === 'object' && 'status' in result && 'body' in result) {
                                 const res = result as { status: number; body: unknown; headers?: Record<string, string> }
-                                return {
+                                response = {
                                     status: res.status,
                                     body: res.body,
                                     headers: { ...responseHeaders, ...(res.headers || {}) },
                                 }
+                            } else {
+                                response = { status: 200, body: result, headers: responseHeaders }
                             }
-                            return { status: 200, body: result, headers: responseHeaders }
+
+                            // Apply after interceptors
+                            for (const interceptor of afterInterceptors) {
+                                // Calculate relative path for matching
+                                const relativePath = endpoint.path
+
+                                // Check if interceptor matches this route
+                                let matches = false
+                                const matcher = interceptor.matcher
+                                if (typeof matcher === 'function') {
+                                    const matchCtx = {
+                                        path: relativePath,
+                                        body: ctx.body,
+                                        method: endpoint.method,
+                                        context: ctx.context,
+                                    }
+                                    matches = matcher(matchCtx)
+                                } else if (typeof matcher === 'string') {
+                                    matches = relativePath === matcher
+                                } else if (matcher instanceof RegExp) {
+                                    matches = matcher.test(relativePath)
+                                }
+
+                                // If matcher matches, run the after handler
+                                if (matches) {
+                                    const interceptorCtx = {
+                                        path: relativePath,
+                                        body: ctx.body,
+                                        method: endpoint.method,
+                                        context: ctx.context,
+                                        driver: ctx.driver,
+                                        request: ctx.request,
+                                    }
+                                    const transformedResponse = await interceptor.handler(interceptorCtx, response)
+                                    if (transformedResponse) {
+                                        response = transformedResponse
+                                    }
+                                }
+                            }
+
+                            return response
                         } catch (error) {
                             // Handle EndpointError properly
                             if (error && typeof error === 'object' && 'name' in error && (error as any).name === 'EndpointError') {

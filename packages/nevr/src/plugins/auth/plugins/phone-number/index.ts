@@ -13,7 +13,8 @@ import { getPhoneNumberSchema } from "./schema.js"
 // Re-exports
 export * from "./error-codes.js"
 export { getPhoneNumberSchema } from "./schema.js"
-export { phoneNumberClient } from "./client.js"
+
+// Client: import from "nevr/plugins/auth/phone-number/client" for frontend use
 
 // =============================================================================
 // Types

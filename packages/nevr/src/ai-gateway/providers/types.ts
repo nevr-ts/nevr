@@ -28,10 +28,10 @@ export interface AIProviderInterface {
     readonly defaultModel: string
 
     /** Chat completion */
-    chat(params: ChatParams): Promise<ChatResponse>
+    chat(params: ChatParams, signal?: AbortSignal): Promise<ChatResponse>
 
     /** Streaming chat completion */
-    chatStream(params: ChatParams): AsyncGenerator<ChatChunk, void, unknown>
+    chatStream(params: ChatParams, signal?: AbortSignal): AsyncGenerator<ChatChunk, void, unknown>
 
     /** Count tokens for text */
     countTokens(text: string, model?: string): number
@@ -56,8 +56,8 @@ export abstract class BaseAIProvider implements AIProviderInterface {
         this.config = config
     }
 
-    abstract chat(params: ChatParams): Promise<ChatResponse>
-    abstract chatStream(params: ChatParams): AsyncGenerator<ChatChunk, void, unknown>
+    abstract chat(params: ChatParams, signal?: AbortSignal): Promise<ChatResponse>
+    abstract chatStream(params: ChatParams, signal?: AbortSignal): AsyncGenerator<ChatChunk, void, unknown>
 
     /**
      * Count tokens for text (approximate)
@@ -387,6 +387,75 @@ export const DEFAULT_PRICING: Record<AIProviderType, Record<string, ModelPricing
         // Gemini 2.0
         "gemini-2.0-flash": { input: 0.0001, output: 0.0004 },
     },
+}
+
+// -----------------------------------------------------------------------------
+// Retry Utility
+// -----------------------------------------------------------------------------
+
+export interface RetryConfig {
+    /** Max retry attempts (default: 3) */
+    attempts?: number
+    /** Base delay in ms (default: 1000) */
+    delay?: number
+    /** Exponential backoff multiplier (default: 2) */
+    multiplier?: number
+    /** Max delay in ms (default: 30000) */
+    maxDelay?: number
+    /** Whether to retry on this error */
+    shouldRetry?: (error: Error) => boolean
+}
+
+const DEFAULT_RETRY_CONFIG: Required<Omit<RetryConfig, "shouldRetry">> = {
+    attempts: 3,
+    delay: 1000,
+    multiplier: 2,
+    maxDelay: 30000,
+}
+
+/**
+ * Execute a function with exponential backoff retry
+ */
+export async function withRetry<T>(
+    fn: () => Promise<T>,
+    config?: RetryConfig
+): Promise<T> {
+    const opts = { ...DEFAULT_RETRY_CONFIG, ...config }
+    let lastError: Error | undefined
+
+    for (let attempt = 1; attempt <= opts.attempts; attempt++) {
+        try {
+            return await fn()
+        } catch (error) {
+            lastError = error as Error
+
+            // Check if we should retry
+            if (config?.shouldRetry && !config.shouldRetry(lastError)) {
+                throw lastError
+            }
+
+            // Don't retry on last attempt
+            if (attempt === opts.attempts) {
+                throw lastError
+            }
+
+            // Calculate delay with exponential backoff
+            const delay = Math.min(
+                opts.delay * Math.pow(opts.multiplier, attempt - 1),
+                opts.maxDelay
+            )
+
+            // Add jitter (±10%)
+            const jitter = delay * 0.1 * (Math.random() * 2 - 1)
+            await sleep(delay + jitter)
+        }
+    }
+
+    throw lastError
+}
+
+function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 // -----------------------------------------------------------------------------

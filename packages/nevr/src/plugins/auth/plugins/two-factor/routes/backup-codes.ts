@@ -9,6 +9,7 @@ import { generateId, verifyPassword } from "../../../crypto/index.js"
 import { createCookieHeader } from "../../../cookies/index.js"
 import { TWO_FACTOR_ERROR_CODES } from "../error-codes.js"
 import { generateBackupCodes, encryptBackupCodes, decryptBackupCodes } from "../utils/backup-codes.js"
+import { getSessionFromCtx } from "../../../api/routes/session.js"
 import type { BackupCodesConfig, SessionConfig } from "../types.js"
 
 // Zod Schemas
@@ -29,6 +30,19 @@ export function createBackupCodesRoutes(
     encryptionSecret: string,
     setSessionCookie: (headers: Record<string, string>, token: string) => void
 ) {
+    // Full cookie config for session helpers
+    const fullCookieConfig = {
+        name: sessionConfig.cookieName,
+        expiresIn: sessionConfig.expiresIn,
+        options: {
+            path: sessionConfig.cookie.path,
+            domain: sessionConfig.cookie.domain,
+            httpOnly: sessionConfig.cookie.httpOnly,
+            secure: sessionConfig.cookie.secure,
+            sameSite: sessionConfig.cookie.sameSite,
+        },
+    }
+
     return {
         /**
          * Verify backup code during sign-in
@@ -142,15 +156,20 @@ export function createBackupCodesRoutes(
             handler: async (ctx: any) => {
                 const driver = ctx.context?.driver || ctx.driver
                 const body = validateWithZod(generateBackupCodesSchema, ctx.body || ctx.input || {})
-                const session = ctx.session || ctx.context?.session
 
-                if (!session?.user) {
+                // Get session using the auth helper
+                const sessionCtx = await getSessionFromCtx(ctx, {
+                    cookieConfig: fullCookieConfig,
+                    sessionExpiresIn: sessionConfig.expiresIn,
+                })
+
+                if (!sessionCtx?.user) {
                     throw new EndpointError("UNAUTHORIZED", {
                         message: "Authentication required",
                     })
                 }
 
-                const user = session.user
+                const user = sessionCtx.user
                 const { password } = body
 
                 // Verify password

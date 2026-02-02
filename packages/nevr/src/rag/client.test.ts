@@ -4,7 +4,8 @@
 // =============================================================================
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { ragClient, type RAGClientPlugin, RAG_ERROR_CODES } from "./index.js"
+import { ragClient, type RAGClientPlugin } from "./client.js"
+import { RAG_ERROR_CODES } from "./error-codes.js"
 
 describe("RAG Client Plugin", () => {
     describe("Plugin Structure", () => {

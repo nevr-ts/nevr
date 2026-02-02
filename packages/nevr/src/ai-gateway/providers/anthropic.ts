@@ -10,6 +10,9 @@ import type {
     ChatResponse,
     ChatChunk,
     ChatMessage,
+    ToolDefinition,
+    ToolCall,
+    MessageContent,
 } from "../types.js"
 import { BaseAIProvider, DEFAULT_MODELS, calculateCost } from "./types.js"
 import { AIGatewayError, AI_GATEWAY_ERROR_CODES } from "../error-codes.js"
@@ -39,22 +42,32 @@ export class AnthropicProvider extends BaseAIProvider {
     }
 
     /**
-     * Chat completion
+     * Chat completion with abort signal, tools, and vision support
      */
-    async chat(params: ChatParams): Promise<ChatResponse> {
+    async chat(params: ChatParams, signal?: AbortSignal): Promise<ChatResponse> {
         const model = this.getResolvedModel(params)
         const requestId = this.generateRequestId()
         const baseUrl = this.getBaseUrl() || "https://api.anthropic.com/v1"
 
         const body = this.buildRequestBody(params, model)
 
+        // Create combined abort signal (user signal + timeout)
+        const timeoutController = new AbortController()
+        const timeout = setTimeout(() => timeoutController.abort(), this.getTimeout())
+
+        const combinedSignal = signal
+            ? AbortSignal.any([signal, timeoutController.signal])
+            : timeoutController.signal
+
         try {
             const response = await fetch(`${baseUrl}/messages`, {
                 method: "POST",
                 headers: this.buildHeaders(),
                 body: JSON.stringify(body),
-                signal: AbortSignal.timeout(this.getTimeout()),
+                signal: combinedSignal,
             })
+
+            clearTimeout(timeout)
 
             if (!response.ok) {
                 await this.handleErrorResponse(response)
@@ -73,6 +86,18 @@ export class AnthropicProvider extends BaseAIProvider {
                 .map((block) => block.text)
                 .join("")
 
+            // Extract tool calls
+            const toolCalls = data.content
+                .filter((block): block is AnthropicToolUseBlock => block.type === "tool_use")
+                .map((block): ToolCall => ({
+                    id: block.id,
+                    type: "function",
+                    function: {
+                        name: block.name,
+                        arguments: JSON.stringify(block.input),
+                    },
+                }))
+
             return {
                 id: requestId,
                 provider: "anthropic",
@@ -85,9 +110,17 @@ export class AnthropicProvider extends BaseAIProvider {
                     totalTokens,
                     cost,
                 },
+                toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
             }
         } catch (error) {
+            clearTimeout(timeout)
             if (error instanceof AIGatewayError) throw error
+            if ((error as Error).name === "AbortError") {
+                throw new AIGatewayError(
+                    AI_GATEWAY_ERROR_CODES.REQUEST_CANCELLED,
+                    "Request was cancelled"
+                )
+            }
             throw new AIGatewayError(
                 AI_GATEWAY_ERROR_CODES.PROVIDER_ERROR,
                 `Anthropic error: ${(error as Error).message}`
@@ -96,9 +129,9 @@ export class AnthropicProvider extends BaseAIProvider {
     }
 
     /**
-     * Streaming chat completion
+     * Streaming chat completion with abort signal and tools support
      */
-    async *chatStream(params: ChatParams): AsyncGenerator<ChatChunk, void, unknown> {
+    async *chatStream(params: ChatParams, signal?: AbortSignal): AsyncGenerator<ChatChunk, void, unknown> {
         const model = this.getResolvedModel(params)
         const requestId = this.generateRequestId()
         const baseUrl = this.getBaseUrl() || "https://api.anthropic.com/v1"
@@ -106,13 +139,23 @@ export class AnthropicProvider extends BaseAIProvider {
         const body = this.buildRequestBody(params, model)
         body.stream = true
 
+        // Create combined abort signal (user signal + timeout)
+        const timeoutController = new AbortController()
+        const timeout = setTimeout(() => timeoutController.abort(), this.getTimeout())
+
+        const combinedSignal = signal
+            ? AbortSignal.any([signal, timeoutController.signal])
+            : timeoutController.signal
+
         try {
             const response = await fetch(`${baseUrl}/messages`, {
                 method: "POST",
                 headers: this.buildHeaders(),
                 body: JSON.stringify(body),
-                signal: AbortSignal.timeout(this.getTimeout()),
+                signal: combinedSignal,
             })
+
+            clearTimeout(timeout)
 
             if (!response.ok) {
                 await this.handleErrorResponse(response)
@@ -127,6 +170,9 @@ export class AnthropicProvider extends BaseAIProvider {
             let buffer = ""
             let inputTokens = 0
             let outputTokens = 0
+            // Track tool calls
+            const toolCallsMap = new Map<number, { id: string; name: string; input: string }>()
+            let currentToolIndex = -1
 
             while (true) {
                 const { done, value } = await reader.read()
@@ -151,6 +197,17 @@ export class AnthropicProvider extends BaseAIProvider {
                                 inputTokens = event.message?.usage?.input_tokens || 0
                                 break
 
+                            case "content_block_start":
+                                if (event.content_block?.type === "tool_use") {
+                                    currentToolIndex++
+                                    toolCallsMap.set(currentToolIndex, {
+                                        id: event.content_block.id || "",
+                                        name: event.content_block.name || "",
+                                        input: "",
+                                    })
+                                }
+                                break
+
                             case "content_block_delta":
                                 if (event.delta?.type === "text_delta" && event.delta.text) {
                                     yield {
@@ -158,12 +215,23 @@ export class AnthropicProvider extends BaseAIProvider {
                                         content: event.delta.text,
                                         done: false,
                                     }
+                                } else if (event.delta?.type === "input_json_delta" && event.delta.partial_json) {
+                                    const tool = toolCallsMap.get(currentToolIndex)
+                                    if (tool) {
+                                        tool.input += event.delta.partial_json
+                                    }
                                 }
                                 break
 
                             case "message_delta":
                                 outputTokens = event.usage?.output_tokens || 0
                                 if (event.delta?.stop_reason) {
+                                    const toolCalls: ToolCall[] = Array.from(toolCallsMap.values()).map(tc => ({
+                                        id: tc.id,
+                                        type: "function" as const,
+                                        function: { name: tc.name, arguments: tc.input },
+                                    }))
+
                                     yield {
                                         id: requestId,
                                         content: "",
@@ -175,11 +243,18 @@ export class AnthropicProvider extends BaseAIProvider {
                                             totalTokens: inputTokens + outputTokens,
                                             cost: calculateCost("anthropic", model, inputTokens, outputTokens),
                                         },
+                                        toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
                                     }
                                 }
                                 break
 
                             case "message_stop":
+                                const finalToolCalls: ToolCall[] = Array.from(toolCallsMap.values()).map(tc => ({
+                                    id: tc.id,
+                                    type: "function" as const,
+                                    function: { name: tc.name, arguments: tc.input },
+                                }))
+
                                 yield {
                                     id: requestId,
                                     content: "",
@@ -190,6 +265,7 @@ export class AnthropicProvider extends BaseAIProvider {
                                         totalTokens: inputTokens + outputTokens,
                                         cost: calculateCost("anthropic", model, inputTokens, outputTokens),
                                     },
+                                    toolCalls: finalToolCalls.length > 0 ? finalToolCalls : undefined,
                                 }
                                 return
                         }
@@ -199,7 +275,14 @@ export class AnthropicProvider extends BaseAIProvider {
                 }
             }
         } catch (error) {
+            clearTimeout(timeout)
             if (error instanceof AIGatewayError) throw error
+            if ((error as Error).name === "AbortError") {
+                throw new AIGatewayError(
+                    AI_GATEWAY_ERROR_CODES.REQUEST_CANCELLED,
+                    "Request was cancelled"
+                )
+            }
             throw new AIGatewayError(
                 AI_GATEWAY_ERROR_CODES.PROVIDER_ERROR,
                 `Anthropic streaming error: ${(error as Error).message}`
@@ -234,25 +317,125 @@ export class AnthropicProvider extends BaseAIProvider {
 
         const body: AnthropicRequestBody = {
             model,
-            messages: conversationMessages.map(this.mapMessage),
+            messages: conversationMessages.map((m) => this.mapMessage(m)),
             max_tokens: params.maxTokens || 4096,
         }
 
         // Add system prompt if present
         if (systemMessages.length > 0) {
-            body.system = systemMessages.map((m) => m.content).join("\n\n")
+            body.system = systemMessages.map((m) =>
+                typeof m.content === "string" ? m.content : this.extractTextContent(m.content)
+            ).join("\n\n")
         }
 
         if (params.temperature !== undefined) body.temperature = params.temperature
         if (params.topP !== undefined) body.top_p = params.topP
         if (params.stop) body.stop_sequences = params.stop
 
+        // Add tools if provided
+        if (params.tools && params.tools.length > 0) {
+            body.tools = params.tools.map((t) => ({
+                name: t.function.name,
+                description: t.function.description,
+                input_schema: t.function.parameters || { type: "object", properties: {} },
+            }))
+        }
+
+        // Add tool choice if provided
+        if (params.toolChoice) {
+            if (params.toolChoice === "auto") {
+                body.tool_choice = { type: "auto" }
+            } else if (params.toolChoice === "none") {
+                // Anthropic doesn't have "none", just don't include tools
+            } else if (params.toolChoice === "required") {
+                body.tool_choice = { type: "any" }
+            } else if (typeof params.toolChoice === "object") {
+                body.tool_choice = { type: "tool", name: params.toolChoice.function.name }
+            }
+        }
+
         return body
+    }
+
+    private extractTextContent(content: MessageContent): string {
+        if (typeof content === "string") return content
+        return content
+            .filter((part) => part.type === "text")
+            .map((part) => (part as { type: "text"; text: string }).text)
+            .join("")
     }
 
     private mapMessage(message: ChatMessage): AnthropicMessage {
         // Map roles (Anthropic only supports user/assistant)
-        const role = message.role === "user" ? "user" : "assistant"
+        const role = message.role === "user" || message.role === "tool" ? "user" : "assistant"
+
+        // Handle tool response messages
+        if (message.role === "tool" && message.toolCallId) {
+            return {
+                role: "user",
+                content: [{
+                    type: "tool_result",
+                    tool_use_id: message.toolCallId,
+                    content: typeof message.content === "string" ? message.content : this.extractTextContent(message.content),
+                }],
+            }
+        }
+
+        // Handle assistant messages with tool calls
+        if (message.role === "assistant" && message.toolCalls) {
+            const content: AnthropicContentBlock[] = []
+
+            // Add text if present
+            if (message.content) {
+                const text = typeof message.content === "string" ? message.content : this.extractTextContent(message.content)
+                if (text) {
+                    content.push({ type: "text", text })
+                }
+            }
+
+            // Add tool calls
+            for (const tc of message.toolCalls) {
+                content.push({
+                    type: "tool_use",
+                    id: tc.id,
+                    name: tc.function.name,
+                    input: JSON.parse(tc.function.arguments || "{}"),
+                })
+            }
+
+            return { role: "assistant", content }
+        }
+
+        // Handle multimodal content
+        if (typeof message.content !== "string") {
+            const content: AnthropicContentBlock[] = message.content.map((part) => {
+                if (part.type === "text") {
+                    return { type: "text" as const, text: part.text }
+                } else if (part.type === "image") {
+                    // Anthropic expects base64 directly or URL
+                    const isUrl = part.image.startsWith("http://") || part.image.startsWith("https://")
+                    if (isUrl) {
+                        return {
+                            type: "image" as const,
+                            source: {
+                                type: "url" as const,
+                                url: part.image,
+                            },
+                        }
+                    }
+                    return {
+                        type: "image" as const,
+                        source: {
+                            type: "base64" as const,
+                            media_type: (part.mimeType || "image/png") as "image/png" | "image/jpeg" | "image/gif" | "image/webp",
+                            data: part.image,
+                        },
+                    }
+                }
+                return { type: "text" as const, text: "" }
+            })
+            return { role, content }
+        }
 
         return {
             role,
@@ -301,9 +484,21 @@ export class AnthropicProvider extends BaseAIProvider {
 // Anthropic API Types
 // -----------------------------------------------------------------------------
 
+type AnthropicContentBlock =
+    | { type: "text"; text: string }
+    | { type: "image"; source: { type: "base64"; media_type: string; data: string } | { type: "url"; url: string } }
+    | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
+    | { type: "tool_result"; tool_use_id: string; content: string }
+
 interface AnthropicMessage {
     role: "user" | "assistant"
-    content: string
+    content: string | AnthropicContentBlock[]
+}
+
+interface AnthropicTool {
+    name: string
+    description?: string
+    input_schema: Record<string, unknown>
 }
 
 interface AnthropicRequestBody {
@@ -315,6 +510,15 @@ interface AnthropicRequestBody {
     top_p?: number
     stop_sequences?: string[]
     stream?: boolean
+    tools?: AnthropicTool[]
+    tool_choice?: { type: "auto" } | { type: "any" } | { type: "tool"; name: string }
+}
+
+interface AnthropicToolUseBlock {
+    type: "tool_use"
+    id: string
+    name: string
+    input: Record<string, unknown>
 }
 
 interface AnthropicChatResponse {
@@ -324,6 +528,9 @@ interface AnthropicChatResponse {
     content: Array<{
         type: "text" | "tool_use"
         text?: string
+        id?: string
+        name?: string
+        input?: Record<string, unknown>
     }>
     stop_reason: string
     usage: {
@@ -339,9 +546,15 @@ interface AnthropicStreamEvent {
             input_tokens: number
         }
     }
+    content_block?: {
+        type?: "text" | "tool_use"
+        id?: string
+        name?: string
+    }
     delta?: {
-        type?: "text_delta"
+        type?: "text_delta" | "input_json_delta"
         text?: string
+        partial_json?: string
         stop_reason?: string
     }
     usage?: {

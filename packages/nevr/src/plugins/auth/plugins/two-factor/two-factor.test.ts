@@ -156,11 +156,13 @@ describe("Two Factor Plugin", () => {
     let driver: ReturnType<typeof createMockDriver>
     let plugin: ReturnType<typeof twoFactor>
     let userId: string
+    let sessionToken: string
 
     beforeEach(async () => {
         driver = createMockDriver()
         plugin = twoFactor()
         userId = "u1"
+        sessionToken = "test-session-token-12345"
 
         // Seed user and password
         await driver.create("user", {
@@ -174,6 +176,15 @@ describe("Two Factor Plugin", () => {
             providerId: "credential",
             password: await hashPassword("password123")
         })
+        // Create session for authentication
+        await driver.create("session", {
+            id: "s1",
+            token: sessionToken,
+            userId,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        })
     })
 
     describe("enableTwoFactor", () => {
@@ -183,7 +194,8 @@ describe("Two Factor Plugin", () => {
 
             const ctx = {
                 driver,
-                session: { user: { id: userId, email: "test@example.com" } },
+                context: { driver },
+                headers: { cookie: `nevr.session_token=${sessionToken}` },
                 body: { password: "password123" }
             }
 
@@ -207,7 +219,8 @@ describe("Two Factor Plugin", () => {
             const enableHandler = plugin.endpoints.enableTwoFactor.handler
             const enableCtx = {
                 driver,
-                session: { user: { id: userId, email: "test@example.com" } },
+                context: { driver },
+                headers: { cookie: `nevr.session_token=${sessionToken}` },
                 body: { password: "password123" }
             }
             const enableResult = await enableHandler(enableCtx as any) as any
@@ -220,7 +233,8 @@ describe("Two Factor Plugin", () => {
             // @ts-ignore
             const verifyCtx = {
                 driver,
-                session: { user: { id: userId, email: "test@example.com" } },
+                context: { driver },
+                headers: { cookie: `nevr.session_token=${sessionToken}` },
                 body: { code }
             }
             // @ts-ignore

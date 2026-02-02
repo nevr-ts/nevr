@@ -149,68 +149,38 @@ export {
 // Type inference
 export { defineConfig } from "./core/inference.js"
 
-// -----------------------------------------------------------------------------
-// Built-in Plugins
-// -----------------------------------------------------------------------------
+// =============================================================================
+// CANONICAL IMPORT PATHS
+// =============================================================================
+// Each plugin has ONE canonical import path:
+//
+// Main plugins:
+//   import { auth } from "nevr/plugins/auth"
+//   import { organization } from "nevr/plugins/organization"
+//   import { storage } from "nevr/plugins/storage"
+//   import { payment } from "nevr/plugins/payment"
+//   import { timestamps } from "nevr/plugins/timestamps"
+//   import { rag } from "nevr/rag"
+//   import { aiGateway } from "nevr/ai-gateway"
+//
+// Auth sub-plugins:
+//   import { username } from "nevr/plugins/auth/username"
+//   import { anonymous } from "nevr/plugins/auth/anonymous"
+//   import { twoFactor } from "nevr/plugins/auth/two-factor"
+//   import { magicLink } from "nevr/plugins/auth/magic-link"
+//   import { phoneNumber } from "nevr/plugins/auth/phone-number"
+//
+// Client plugins (for frontend):
+//   import { authClient } from "nevr/plugins/auth/client"
+//   import { usernameClient } from "nevr/plugins/auth/username/client"
+//   import { organizationClient } from "nevr/plugins/organization/client"
+//   import { paymentClient } from "nevr/plugins/payment/client"
+//   import { storageClient } from "nevr/plugins/storage/client"
+//   import { ragClient } from "nevr/rag/client"
+//   import { aiGatewayClient } from "nevr/ai-gateway/client"
+// =============================================================================
 
-// Auth Plugin
-export { auth } from "./auth/index.js"
-export type {
-    AuthPluginOptions,
-    AuthUser,
-    AuthSession,
-    AuthAccount,
-    AuthVerification,
-    InternalAdapter,
-    SignUpEmailInput,
-    SignUpEmailOutput,
-    SignInEmailInput,
-    SignInEmailOutput,
-    GetSessionOutput,
-    SignOutOutput,
-    ListSessionsOutput,
-    RevokeSessionInput,
-    RevokeSessionOutput,
-} from "./auth/types.js"
-export { AUTH_ERROR_CODES } from "./auth/error-codes.js"
-
-// Timestamps Plugin
+// -----------------------------------------------------------------------------
+// Timestamps Plugin (simple plugin, kept here for convenience)
+// -----------------------------------------------------------------------------
 export { timestamps } from "./timestamps.js"
-
-// Organization Plugin
-export { organization } from "./organization/index.js"
-
-// Storage Plugin
-export { storage } from "./storage/index.js"
-
-// Payment Plugin
-export { payment } from "./payment/index.js"
-
-// RAG Plugin
-export { rag } from "../rag/plugin.js"
-export type {
-    RAGPluginOptions,
-    HybridSearchOptions,
-    HybridSearchResult,
-} from "../rag/plugin.js"
-
-// AI Gateway Plugin
-export { aiGateway } from "../ai-gateway/plugin.js"
-export type {
-    AIGatewayPluginOptions,
-    AIProviderType,
-    ChatParams,
-    ChatResponse,
-    ChatChunk,
-    TokenUsage,
-    UsageSummary,
-    PlanLimits,
-    ModelInfo,
-} from "../ai-gateway/types.js"
-export { AI_GATEWAY_ERROR_CODES } from "../ai-gateway/error-codes.js"
-
-// Auth Sub-plugins (for use with auth({ plugins: [...] }))
-export { magicLink } from "./auth/plugins/magic-link/index.js"
-export { twoFactor } from "./auth/plugins/two-factor/index.js"
-export { phoneNumber } from "./auth/plugins/phone-number/index.js"
-export { anonymous } from "./auth/plugins/anonymous/index.js"

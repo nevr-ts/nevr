@@ -23,6 +23,7 @@ export const AI_GATEWAY_ERROR_CODES = {
     INVALID_REQUEST: "INVALID_REQUEST",
     EMPTY_MESSAGES: "EMPTY_MESSAGES",
     INVALID_MESSAGE_FORMAT: "INVALID_MESSAGE_FORMAT",
+    REQUEST_CANCELLED: "REQUEST_CANCELLED",
 
     // Provider errors
     PROVIDER_ERROR: "PROVIDER_ERROR",
@@ -61,6 +62,7 @@ export const AI_GATEWAY_ERROR_MESSAGES: Record<AIGatewayErrorCode, string> = {
     [AI_GATEWAY_ERROR_CODES.INVALID_REQUEST]: "Invalid request format",
     [AI_GATEWAY_ERROR_CODES.EMPTY_MESSAGES]: "Messages array cannot be empty",
     [AI_GATEWAY_ERROR_CODES.INVALID_MESSAGE_FORMAT]: "Invalid message format",
+    [AI_GATEWAY_ERROR_CODES.REQUEST_CANCELLED]: "Request was cancelled",
 
     [AI_GATEWAY_ERROR_CODES.PROVIDER_ERROR]: "Error from AI provider",
     [AI_GATEWAY_ERROR_CODES.PROVIDER_TIMEOUT]: "Request to AI provider timed out",
@@ -117,6 +119,10 @@ function getStatusCodeForError(code: AIGatewayErrorCode): number {
         case AI_GATEWAY_ERROR_CODES.EMPTY_MESSAGES:
         case AI_GATEWAY_ERROR_CODES.INVALID_MESSAGE_FORMAT:
             return 400
+
+        // 499 Client Closed Request (nginx convention for cancelled)
+        case AI_GATEWAY_ERROR_CODES.REQUEST_CANCELLED:
+            return 499
 
         // 401 Unauthorized
         case AI_GATEWAY_ERROR_CODES.INVALID_API_KEY:

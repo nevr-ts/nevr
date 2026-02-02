@@ -21,10 +21,18 @@ import {
 } from "./api/routes/index.js"
 
 // -----------------------------------------------------------------------------
-// Provider Cache
+// Provider Cache with Cleanup
 // -----------------------------------------------------------------------------
 
-const providerCache = new Map<string, Map<AIProviderType, AIProviderInterface>>()
+interface CacheEntry {
+    providers: Map<AIProviderType, AIProviderInterface>
+    lastAccessed: number
+    refCount: number
+}
+
+const providerCache = new Map<string, CacheEntry>()
+const CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutes
+let cleanupInterval: NodeJS.Timeout | null = null
 
 function getCacheKey(options: AIGatewayPluginOptions): string {
     const providers = options.providers || {}
@@ -35,13 +43,41 @@ function getCacheKey(options: AIGatewayPluginOptions): string {
     })
 }
 
+function startCacheCleanup(): void {
+    if (cleanupInterval) return
+
+    cleanupInterval = setInterval(() => {
+        const now = Date.now()
+        for (const [key, entry] of providerCache) {
+            // Remove entries that haven't been accessed in TTL and have no references
+            if (entry.refCount <= 0 && now - entry.lastAccessed > CACHE_TTL_MS) {
+                providerCache.delete(key)
+            }
+        }
+
+        // Stop cleanup if cache is empty
+        if (providerCache.size === 0 && cleanupInterval) {
+            clearInterval(cleanupInterval)
+            cleanupInterval = null
+        }
+    }, CACHE_TTL_MS)
+
+    // Don't prevent Node from exiting
+    if (cleanupInterval.unref) {
+        cleanupInterval.unref()
+    }
+}
+
 async function getOrCreateProviders(
     options: AIGatewayPluginOptions
 ): Promise<Map<AIProviderType, AIProviderInterface>> {
     const cacheKey = getCacheKey(options)
 
-    if (providerCache.has(cacheKey)) {
-        return providerCache.get(cacheKey)!
+    const existing = providerCache.get(cacheKey)
+    if (existing) {
+        existing.lastAccessed = Date.now()
+        existing.refCount++
+        return existing.providers
     }
 
     // Merge with auto-configured providers from environment
@@ -59,9 +95,36 @@ async function getOrCreateProviders(
     if (mergedProviders.google?.apiKey) providersToCreate.google = mergedProviders.google
 
     const providers = createProviders(providersToCreate)
-    providerCache.set(cacheKey, providers)
+
+    providerCache.set(cacheKey, {
+        providers,
+        lastAccessed: Date.now(),
+        refCount: 1,
+    })
+
+    // Start cleanup timer
+    startCacheCleanup()
 
     return providers
+}
+
+function releaseProviders(options: AIGatewayPluginOptions): void {
+    const cacheKey = getCacheKey(options)
+    const entry = providerCache.get(cacheKey)
+    if (entry) {
+        entry.refCount = Math.max(0, entry.refCount - 1)
+    }
+}
+
+/**
+ * Clear all cached providers (useful for testing)
+ */
+export function clearProviderCache(): void {
+    providerCache.clear()
+    if (cleanupInterval) {
+        clearInterval(cleanupInterval)
+        cleanupInterval = null
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -213,6 +276,10 @@ export const aiGateway = createPlugin<AIGatewayPluginOptions>({
                         logger.error("[ai-gateway] Failed to initialize providers:", error)
                         throw error
                     }
+                },
+                onDestroy: async () => {
+                    log("Destroying AI Gateway, releasing providers...")
+                    releaseProviders(options)
                 },
             },
 

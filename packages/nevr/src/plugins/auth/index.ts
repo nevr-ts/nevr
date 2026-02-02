@@ -53,11 +53,38 @@ export * from "./hooks.js"
 export { z, endpoint, EndpointError, createMiddleware } from "../unified/endpoint.js"
 export { EndpointError as AuthError } from "../unified/endpoint.js"
 
-// Client plugin
-export { authClient, type AuthClientOptions, type AuthClientMethods, type SessionData } from "./client.js"
+// =============================================================================
+// CLIENT EXPORTS - Import from "nevr/plugins/auth/client" instead
+// =============================================================================
 
-// Sub-plugins
-export * from "./plugins/username/index.js"
+// For frontend/client usage, import from the dedicated client paths:
+//   import { authClient } from "nevr/plugins/auth/client"
+//   import { usernameClient } from "nevr/plugins/auth/username/client"
+//   import { anonymousClient } from "nevr/plugins/auth/anonymous/client"
+//   import { twoFactorClient } from "nevr/plugins/auth/two-factor/client"
+//   import { magicLinkClient } from "nevr/plugins/auth/magic-link/client"
+//   import { phoneNumberClient } from "nevr/plugins/auth/phone-number/client"
+// =============================================================================
+
+// Re-export type-only client types for convenience (types don't cause bundling issues)
+export type { AuthClientOptions, AuthClientMethods, SessionData } from "./client.js"
+
+// =============================================================================
+// SUB-PLUGINS - Import from their own paths
+// =============================================================================
+// Each sub-plugin has ONE canonical import path:
+//
+//   import { username } from "nevr/plugins/auth/username"
+//   import { anonymous } from "nevr/plugins/auth/anonymous"
+//   import { twoFactor } from "nevr/plugins/auth/two-factor"
+//   import { magicLink } from "nevr/plugins/auth/magic-link"
+//   import { phoneNumber } from "nevr/plugins/auth/phone-number"
+//
+// Client plugins:
+//   import { usernameClient } from "nevr/plugins/auth/username/client"
+//   import { anonymousClient } from "nevr/plugins/auth/anonymous/client"
+//   etc.
+// =============================================================================
 
 // =============================================================================
 // PRE-REGISTRATION (Side Effect)
@@ -137,9 +164,16 @@ export const auth = createPlugin<AuthPluginOptions>({
             userFields: options.user.additionalFields as any,
         } : undefined)
 
-        // Merge sub-plugin schemas (like username, two-factor, etc.)
+        // Collect sub-plugin content to merge
+        const subPluginEndpoints: Record<string, any> = {}
+        const subPluginInterceptors: { before: any[], after: any[] } = { before: [], after: [] }
+        const subPluginEntityHooks: Record<string, any> = {}
+        const subPluginRateLimits: any[] = []
+
+        // Merge sub-plugin content (schemas, endpoints, interceptors, entity hooks)
         if (options.plugins && options.plugins.length > 0) {
             for (const subPlugin of options.plugins) {
+                // Merge schemas
                 const subSchema = subPlugin.schema as { extend?: Record<string, Record<string, unknown>>; entities?: Record<string, unknown> } | undefined
                 if (subSchema?.extend) {
                     baseSchema.extend = baseSchema.extend || {}
@@ -155,50 +189,133 @@ export const auth = createPlugin<AuthPluginOptions>({
                     baseSchema.entities = baseSchema.entities || {}
                     Object.assign(baseSchema.entities, subSchema.entities)
                 }
+
+                // Merge endpoints
+                if (subPlugin.endpoints) {
+                    Object.assign(subPluginEndpoints, subPlugin.endpoints)
+                }
+
+                // Merge interceptors
+                const subInterceptors = subPlugin.interceptors as { before?: any[], after?: any[] } | undefined
+                if (subInterceptors?.before) {
+                    subPluginInterceptors.before.push(...subInterceptors.before)
+                }
+                if (subInterceptors?.after) {
+                    subPluginInterceptors.after.push(...subInterceptors.after)
+                }
+
+                // Merge entity hooks
+                const subEntityHooks = subPlugin.entityHooks as Record<string, any> | undefined
+                if (subEntityHooks) {
+                    for (const [entityName, hooks] of Object.entries(subEntityHooks)) {
+                        if (!subPluginEntityHooks[entityName]) {
+                            subPluginEntityHooks[entityName] = {}
+                        }
+                        for (const [operation, opHooks] of Object.entries(hooks as Record<string, any>)) {
+                            if (!subPluginEntityHooks[entityName][operation]) {
+                                subPluginEntityHooks[entityName][operation] = {}
+                            }
+                            Object.assign(subPluginEntityHooks[entityName][operation], opHooks)
+                        }
+                    }
+                }
+
+                // Merge rate limits
+                const subRateLimits = subPlugin.rateLimit as any[] | undefined
+                if (subRateLimits && Array.isArray(subRateLimits)) {
+                    subPluginRateLimits.push(...subRateLimits)
+                }
             }
         }
+
+        // Base endpoints - sub-plugin endpoints are added FIRST so they take precedence
+        // over parameterized routes like /sign-in/:provider
+        const baseEndpoints = {
+            // Core auth
+            signUpEmail: signUpEmail({ options, cookieConfig, passwordConfig }),
+            signInEmail: signInEmail({ options, cookieConfig, passwordConfig }),
+            signOut: signOut({ cookieConfig, sessionExpiresIn: sessionConfig.expiresIn }),
+
+            // Session management
+            getSession: getSession({ cookieConfig, sessionConfig }),
+            listSessions: listSessions({ cookieConfig, sessionConfig }),
+            revokeSession: revokeSession({ cookieConfig, sessionConfig }),
+            revokeSessions: revokeSessions({ cookieConfig, sessionConfig }),
+            revokeOtherSessions: revokeOtherSessions({ cookieConfig, sessionConfig }),
+
+            // Email verification
+            sendVerificationEmail: sendVerificationEmail({ options, cookieConfig, sessionConfig }),
+            verifyEmail: verifyEmail({ options, cookieConfig, sessionConfig }),
+
+            // Password reset
+            requestPasswordReset: requestPasswordReset({ options, sessionConfig, passwordConfig }),
+            resetPasswordCallback: resetPasswordCallback({ options, sessionConfig, passwordConfig }),
+            resetPassword: resetPassword({ options, sessionConfig, passwordConfig }),
+
+            // User management
+            updateUser: updateUser({ options, cookieConfig, sessionConfig, passwordConfig }),
+            changePassword: changePassword({ options, cookieConfig, sessionConfig, passwordConfig }),
+            changeEmail: changeEmail({ options, cookieConfig, sessionConfig, passwordConfig }),
+            deleteUser: deleteUser({ options, cookieConfig, sessionConfig, passwordConfig }),
+
+            // Account management
+            listAccounts: listAccounts({ options, cookieConfig, sessionConfig }),
+            unlinkAccount: unlinkAccount({ options, cookieConfig, sessionConfig }),
+
+            // OAuth
+            signInWithProvider: signInWithProvider({ options, cookieConfig, sessionConfig }),
+            linkSocial: linkSocial({ options, cookieConfig, sessionConfig }),
+            oauthCallback: oauthCallback({ options, cookieConfig, sessionConfig }),
+        }
+
+        // Merge sub-plugin endpoints into base endpoints
+        // Sub-plugin endpoints are added after base but their paths take precedence
+        // because we explicitly check for exact matches before parameterized routes
+        const allEndpoints = { ...baseEndpoints, ...subPluginEndpoints }
+
+        // Base rate limits
+        const baseRateLimits = options.rateLimit === false ? [] : [
+            {
+                // Sign-in protection
+                pathMatcher: (path: string) => path.startsWith("/sign-in"),
+                window: options.rateLimit?.signIn?.window ?? 60 * 1000,
+                max: options.rateLimit?.signIn?.max ?? 10,
+            },
+            {
+                // Sign-up protection
+                pathMatcher: (path: string) => path.startsWith("/sign-up"),
+                window: options.rateLimit?.signUp?.window ?? 60 * 1000,
+                max: options.rateLimit?.signUp?.max ?? 10,
+            },
+            {
+                // Password reset protection
+                pathMatcher: (path: string) => path.includes("password"),
+                window: options.rateLimit?.passwordReset?.window ?? 60 * 1000,
+                max: options.rateLimit?.passwordReset?.max ?? 5,
+            },
+            {
+                // Email verification protection
+                pathMatcher: (path: string) => path.includes("verification") || path.includes("verify-email"),
+                window: options.rateLimit?.emailVerification?.window ?? 60 * 1000,
+                max: options.rateLimit?.emailVerification?.max ?? 5,
+            },
+        ]
 
         return {
             schema: baseSchema,
 
-            // Create endpoints using the route factories (no adapter - routes get it from context)
-            endpoints: {
-                // Core auth
-                signUpEmail: signUpEmail({ options, cookieConfig, passwordConfig }),
-                signInEmail: signInEmail({ options, cookieConfig, passwordConfig }),
-                signOut: signOut({ cookieConfig, sessionExpiresIn: sessionConfig.expiresIn }),
+            // All endpoints (base + sub-plugins)
+            endpoints: allEndpoints as any,
 
-                // Session management
-                getSession: getSession({ cookieConfig, sessionConfig }),
-                listSessions: listSessions({ cookieConfig, sessionConfig }),
-                revokeSession: revokeSession({ cookieConfig, sessionConfig }),
-                revokeSessions: revokeSessions({ cookieConfig, sessionConfig }),
-                revokeOtherSessions: revokeOtherSessions({ cookieConfig, sessionConfig }),
+            // Merged interceptors from sub-plugins
+            interceptors: subPluginInterceptors.before.length > 0 || subPluginInterceptors.after.length > 0
+                ? subPluginInterceptors
+                : undefined,
 
-                // Email verification
-                sendVerificationEmail: sendVerificationEmail({ options, cookieConfig, sessionConfig }),
-                verifyEmail: verifyEmail({ options, cookieConfig, sessionConfig }),
-
-                // Password reset
-                requestPasswordReset: requestPasswordReset({ options, sessionConfig, passwordConfig }),
-                resetPasswordCallback: resetPasswordCallback({ options, sessionConfig, passwordConfig }),
-                resetPassword: resetPassword({ options, sessionConfig, passwordConfig }),
-
-                // User management
-                updateUser: updateUser({ options, cookieConfig, sessionConfig, passwordConfig }),
-                changePassword: changePassword({ options, cookieConfig, sessionConfig, passwordConfig }),
-                changeEmail: changeEmail({ options, cookieConfig, sessionConfig, passwordConfig }),
-                deleteUser: deleteUser({ options, cookieConfig, sessionConfig, passwordConfig }),
-
-                // Account management
-                listAccounts: listAccounts({ options, cookieConfig, sessionConfig }),
-                unlinkAccount: unlinkAccount({ options, cookieConfig, sessionConfig }),
-
-                // OAuth
-                signInWithProvider: signInWithProvider({ options, cookieConfig, sessionConfig }),
-                linkSocial: linkSocial({ options, cookieConfig, sessionConfig }),
-                oauthCallback: oauthCallback({ options, cookieConfig, sessionConfig }),
-            } as any,
+            // Merged entity hooks from sub-plugins
+            entityHooks: Object.keys(subPluginEntityHooks).length > 0
+                ? subPluginEntityHooks
+                : undefined,
 
             lifecycle: {
                 onInit: () => {
@@ -206,33 +323,8 @@ export const auth = createPlugin<AuthPluginOptions>({
                 },
             },
 
-            // Rate limiting for auth endpoints (developer-configurable)
-            rateLimit: options.rateLimit === false ? [] : [
-                {
-                    // Sign-in protection
-                    pathMatcher: (path: string) => path.startsWith("/sign-in"),
-                    window: options.rateLimit?.signIn?.window ?? 60 * 1000,
-                    max: options.rateLimit?.signIn?.max ?? 10,
-                },
-                {
-                    // Sign-up protection
-                    pathMatcher: (path: string) => path.startsWith("/sign-up"),
-                    window: options.rateLimit?.signUp?.window ?? 60 * 1000,
-                    max: options.rateLimit?.signUp?.max ?? 10,
-                },
-                {
-                    // Password reset protection
-                    pathMatcher: (path: string) => path.includes("password"),
-                    window: options.rateLimit?.passwordReset?.window ?? 60 * 1000,
-                    max: options.rateLimit?.passwordReset?.max ?? 5,
-                },
-                {
-                    // Email verification protection
-                    pathMatcher: (path: string) => path.includes("verification") || path.includes("verify-email"),
-                    window: options.rateLimit?.emailVerification?.window ?? 60 * 1000,
-                    max: options.rateLimit?.emailVerification?.max ?? 5,
-                },
-            ],
+            // Merged rate limits (base + sub-plugins)
+            rateLimit: [...baseRateLimits, ...subPluginRateLimits],
 
             $Infer: { User: {} as AuthUser, Session: {} as AuthSession },
             $ERROR_CODES: {} as typeof import("./error-codes.js").AUTH_ERROR_CODES,
