@@ -31,9 +31,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build all packages
+        env:
+          NODE_OPTIONS: "--max-old-space-size=6144"
         run: pnpm build
 
       - name: Run tests
+        env:
+          NODE_OPTIONS: "--max-old-space-size=6144"
         run: pnpm test
 
       - name: Publish to npm

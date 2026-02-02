@@ -32,12 +32,18 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build all packages
+        env:
+          NODE_OPTIONS: "--max-old-space-size=6144"
         run: pnpm build
 
       - name: Run tests
+        env:
+          NODE_OPTIONS: "--max-old-space-size=6144"
         run: pnpm test
 
       - name: Type check
+        env:
+          NODE_OPTIONS: "--max-old-space-size=6144"
         run: pnpm typecheck
 
   lint:
@@ -61,4 +67,6 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Type check
+        env:
+          NODE_OPTIONS: "--max-old-space-size=6144"
         run: pnpm typecheck
