@@ -144,6 +144,28 @@ app.use(express.json())
 app.use("/api", expressAdapter(api))
 ```
 
+## Webhook Support (Payment Plugin)
+
+If you're using the payment plugin with Stripe webhooks, use `nevrJson(express)` instead of `express.json()`. This preserves the raw request body needed for webhook signature verification:
+
+```typescript
+import express from "express"
+import { expressAdapter, sessionAuth, nevrJson } from "nevr/adapters/express"
+
+const app = express()
+
+// Use nevrJson(express) instead of express.json()
+app.use(nevrJson(express))
+
+app.use("/api", expressAdapter(api, {
+  getUser: sessionAuth(driver),
+}))
+```
+
+::: tip
+`nevrJson(express)` is a drop-in replacement for `express.json()` that stores `req.rawBody` for webhook signature verification. It accepts the same options as `express.json()`.
+:::
+
 ## Custom Routes Alongside Nevr
 
 ```typescript

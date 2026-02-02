@@ -81,12 +81,12 @@ npx nevr db:migrate  # Create migration files
 
 ```typescript
 import { createClient } from "nevr/client"
-import { aiClient } from "nevr/plugins/ai-gateway/client"
+import { aiGatewayClient } from "nevr/plugins/ai-gateway/client"
 import type { API } from "./api"
 
 const client = createClient<API>()({
   baseURL: "/api",
-  plugins: [aiClient()],
+  plugins: [aiGatewayClient()],
 })
 ```
 
@@ -250,6 +250,137 @@ const response = await client.ai.chat({
 }
 ```
 
+### Tool/Function Calling
+
+AI Gateway supports tool/function calling across all providers with a unified interface:
+
+```typescript
+// Define tools
+const tools = [
+  {
+    type: "function" as const,
+    function: {
+      name: "get_weather",
+      description: "Get current weather for a location",
+      parameters: {
+        type: "object",
+        properties: {
+          location: { type: "string", description: "City name" },
+          unit: { type: "string", enum: ["celsius", "fahrenheit"] },
+        },
+        required: ["location"],
+      },
+    },
+  },
+]
+
+// Chat with tools
+const response = await client.ai.chat({
+  messages: [{ role: "user", content: "What's the weather in Tokyo?" }],
+  tools,
+  toolChoice: "auto",  // "auto" | "none" | "required" | { type: "function", function: { name: "..." } }
+})
+
+// Handle tool calls
+if (response.toolCalls && response.toolCalls.length > 0) {
+  for (const toolCall of response.toolCalls) {
+    const args = JSON.parse(toolCall.function.arguments)
+
+    // Execute your function
+    const result = await getWeather(args.location, args.unit)
+
+    // Continue conversation with tool result
+    const followUp = await client.ai.chat({
+      messages: [
+        { role: "user", content: "What's the weather in Tokyo?" },
+        { role: "assistant", content: response.content, toolCalls: response.toolCalls },
+        { role: "tool", toolCallId: toolCall.id, content: JSON.stringify(result) },
+      ],
+      tools,
+    })
+  }
+}
+```
+
+### Image/Vision Support
+
+Send images in messages for multimodal analysis:
+
+```typescript
+// Using base64 image
+const response = await client.ai.chat({
+  messages: [
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "What's in this image?" },
+        {
+          type: "image",
+          image: "data:image/jpeg;base64,/9j/4AAQ...",  // base64 or URL
+          mimeType: "image/jpeg",  // Optional
+          detail: "high",          // "low" | "high" | "auto"
+        },
+      ],
+    },
+  ],
+  model: "gpt-5",  // Use a vision-capable model
+})
+
+// Using image URL
+const response = await client.ai.chat({
+  messages: [
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "Describe this diagram" },
+        { type: "image", image: "https://example.com/diagram.png" },
+      ],
+    },
+  ],
+})
+```
+
+### Request Cancellation
+
+Cancel in-flight requests using AbortSignal:
+
+```typescript
+// Create abort controller
+const controller = new AbortController()
+
+// Start request
+const responsePromise = client.ai.chat({
+  messages: [{ role: "user", content: "Write a long essay..." }],
+  signal: controller.signal,
+})
+
+// Cancel after 5 seconds
+setTimeout(() => controller.abort(), 5000)
+
+try {
+  const response = await responsePromise
+} catch (error) {
+  if (error.code === "REQUEST_CANCELLED") {
+    console.log("Request was cancelled")
+  }
+}
+
+// Cancel streaming
+const streamController = new AbortController()
+
+await client.ai.stream({
+  messages: [{ role: "user", content: "Tell me a very long story" }],
+  signal: streamController.signal,
+  onToken: (token) => {
+    console.log(token)
+    // Cancel if we got enough content
+    if (totalLength > 1000) {
+      streamController.abort()
+    }
+  },
+})
+```
+
 ### Streaming
 
 ```typescript
@@ -287,12 +418,21 @@ for await (const chunk of stream) {
 
 ```typescript
 import { createUseAIChat } from "nevr/ai-gateway"
+import { createClient } from "nevr/client"
+import { aiGatewayClient } from "nevr/plugins/ai-gateway/client"
 import React from "react"
 
-const useAIChat = createUseAIChat(React)
+// Create your client
+const client = createClient<API>()({
+  baseURL: "/api",
+  plugins: [aiGatewayClient()],
+})
+
+// Create the hook with React and client.ai
+const useAIChat = createUseAIChat(React, client.ai)
 
 function ChatComponent() {
-  const { messages, isLoading, error, send, clear } = useAIChat({
+  const { messages, isLoading, error, send, clear, abort } = useAIChat({
     systemPrompt: "You are a helpful assistant.",
     model: "gpt-5-mini",
   })
@@ -304,10 +444,102 @@ function ChatComponent() {
           {msg.content}
         </div>
       ))}
-      {isLoading && <div>Thinking...</div>}
+      {isLoading && (
+        <div>
+          Thinking...
+          <button onClick={abort}>Cancel</button>
+        </div>
+      )}
       <input onKeyDown={(e) => e.key === 'Enter' && send(e.target.value)} />
     </div>
   )
+}
+```
+
+#### Understanding `createUseAIChat(React, client.ai)`
+
+The `createUseAIChat` function is a **factory function** that creates a React hook. Here's why it takes two parameters:
+
+**Parameter 1: `React`**
+
+```typescript
+createUseAIChat(React, client.ai)
+//              ^^^^^ Why pass React?
+```
+
+Nevr doesn't bundle React as a dependency. This "dependency injection" pattern:
+- **Avoids React version conflicts** — Your app uses its own React version
+- **Keeps bundle size small** — No duplicate React in the bundle
+- **Supports SSR** — Works with any React environment (Next.js, Remix, etc.)
+- **Framework agnostic** — Could work with Preact or other React-compatible libraries
+
+The function only needs `useState` and `useCallback` from React:
+
+```typescript
+function createUseAIChat(
+  React: {
+    useState: <T>(initial: T) => [T, (value: T) => void]
+    useCallback: <T extends Function>(callback: T, deps: any[]) => T
+  },
+  aiClient: AIGatewayClientMethods
+)
+```
+
+**Parameter 2: `client.ai`**
+
+```typescript
+createUseAIChat(React, client.ai)
+//                     ^^^^^^^^^ Why pass the client?
+```
+
+The hook needs the **actual client instance** because:
+- **Authentication** — The client handles cookies/tokens automatically
+- **Base URL** — Uses the configured API endpoint
+- **Error handling** — Inherits client's error handling and typing
+- **Type safety** — Full TypeScript inference from your API types
+
+Without passing the client, the hook would need to:
+- Create its own fetch logic (duplicating code)
+- Handle authentication separately (breaking the pattern)
+- Lose type inference from your API
+
+**How it works internally:**
+
+```typescript
+// 1. Factory creates the hook bound to your client
+const useAIChat = createUseAIChat(React, client.ai)
+
+// 2. Hook manages state and calls client.ai methods
+function useAIChat(options) {
+  const [messages, setMessages] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  const send = useCallback(async (content) => {
+    // Uses client.ai.chat() with auth headers, base URL, etc.
+    const response = await client.ai.chat({
+      messages: [...messages, { role: "user", content }],
+      model: options.model,
+    })
+    setMessages([...messages, response])
+  }, [messages])
+
+  return { messages, isLoading, send, clear }
+}
+```
+
+**Alternative: Stream with hook**
+
+```typescript
+function ChatComponent() {
+  const { messages, sendStream } = useAIChat()
+  const [streaming, setStreaming] = useState("")
+
+  const handleSend = async (input) => {
+    setStreaming("")
+    for await (const token of sendStream(input)) {
+      setStreaming(prev => prev + token)  // Real-time updates
+    }
+  }
 }
 ```
 
@@ -329,6 +561,129 @@ function UsageDashboard() {
     </div>
   )
 }
+```
+
+---
+
+## Conversation Persistence
+
+AI Gateway can persist conversations to your database, enabling chat history, conversation resumption, and multi-turn interactions.
+
+### Create a Conversation
+
+```typescript
+const conversation = await client.ai.createConversation({
+  title: "Project Discussion",
+  systemPrompt: "You are a helpful project manager.",
+  model: "gpt-5-mini",
+  provider: "openai",
+  metadata: { projectId: "proj_123" },
+})
+
+// Returns
+{
+  id: "conv_abc123",
+  title: "Project Discussion",
+  systemPrompt: "You are a helpful project manager.",
+  messages: [],
+  model: "gpt-5-mini",
+  provider: "openai",
+  metadata: { projectId: "proj_123" },
+  totalTokens: 0,
+  totalCost: 0,
+  createdAt: "2026-02-02T10:00:00Z",
+  updatedAt: "2026-02-02T10:00:00Z",
+}
+```
+
+### Send Messages to Conversation
+
+```typescript
+// Send a message and get AI response
+const response = await client.ai.sendMessage("conv_abc123", "What are our project deadlines?", {
+  temperature: 0.7,
+  maxTokens: 500,
+})
+
+// Response includes AI reply and updates conversation
+{
+  content: "Based on the project timeline...",
+  usage: { promptTokens: 45, completionTokens: 120, totalTokens: 165 },
+  model: "gpt-5-mini",
+  provider: "openai",
+  finishReason: "stop",
+}
+```
+
+### Retrieve Conversation
+
+```typescript
+const conversation = await client.ai.getConversation("conv_abc123")
+
+// Returns full conversation with message history
+{
+  id: "conv_abc123",
+  title: "Project Discussion",
+  messages: [
+    { role: "user", content: "What are our project deadlines?" },
+    { role: "assistant", content: "Based on the project timeline..." },
+  ],
+  totalTokens: 165,
+  totalCost: 0.00012,
+  // ...
+}
+```
+
+### List Conversations
+
+```typescript
+const { conversations, pagination } = await client.ai.listConversations({
+  limit: 20,
+  offset: 0,
+  orderBy: "updatedAt",
+  order: "desc",
+})
+
+// Returns paginated list
+{
+  conversations: [
+    { id: "conv_abc123", title: "Project Discussion", ... },
+    { id: "conv_def456", title: "Code Review", ... },
+  ],
+  pagination: {
+    total: 42,
+    limit: 20,
+    offset: 0,
+    hasMore: true,
+  },
+}
+```
+
+### Update Conversation
+
+```typescript
+await client.ai.updateConversation("conv_abc123", {
+  title: "Q1 Project Discussion",
+  metadata: { projectId: "proj_123", quarter: "Q1" },
+})
+```
+
+### Delete Conversation
+
+```typescript
+await client.ai.deleteConversation("conv_abc123")
+```
+
+### Chat with Conversation Context
+
+You can also use conversations with the regular chat endpoint:
+
+```typescript
+// Chat continues existing conversation
+const response = await client.ai.chat({
+  conversationId: "conv_abc123",
+  messages: [{ role: "user", content: "Follow up question..." }],
+})
 ```
 
 ---
@@ -447,10 +802,20 @@ aiGateway({
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/ai-gateway/chat` | Chat completion |
-| POST | `/ai-gateway/chat/stream` | Streaming chat (SSE) |
-| GET | `/ai-gateway/usage` | Get usage statistics |
-| GET | `/ai-gateway/models` | List available models |
+| POST | `/ai/chat` | Chat completion |
+| POST | `/ai/chat/stream` | Streaming chat (SSE) |
+| GET | `/ai/usage` | Get usage statistics |
+| GET | `/ai/usage/records` | Get detailed usage records |
+| GET | `/ai/rate-limit-status` | Get current rate limit state |
+| GET | `/ai/models` | List available models |
+| GET | `/ai/models/:provider/:model` | Get model info |
+| POST | `/ai/count-tokens` | Count tokens for text |
+| POST | `/ai/conversations` | Create conversation |
+| GET | `/ai/conversations` | List conversations |
+| GET | `/ai/conversations/:id` | Get conversation |
+| PATCH | `/ai/conversations/:id` | Update conversation |
+| DELETE | `/ai/conversations/:id` | Delete conversation |
+| POST | `/ai/conversations/:id/messages` | Send message to conversation |
 
 ### Client Methods
 
@@ -459,7 +824,16 @@ const ai = client.ai
 
 // Chat
 ai.chat(params: ChatInput): Promise<ChatOutput>
-ai.chatStream(params: ChatInput): AsyncGenerator<ChatChunk>
+ai.stream(params: StreamInput): Promise<void>
+ai.streamIterator(params: ChatInput): AsyncGenerator<ChatChunk>
+
+// Conversation Persistence
+ai.createConversation(params?: ConversationCreateInput): Promise<ConversationOutput>
+ai.getConversation(id: string): Promise<ConversationOutput | null>
+ai.listConversations(params?: ConversationListInput): Promise<ConversationListOutput>
+ai.updateConversation(id: string, params: ConversationUpdateInput): Promise<ConversationOutput>
+ai.deleteConversation(id: string): Promise<void>
+ai.sendMessage(conversationId: string, content: string, options?: SendMessageOptions): Promise<ChatOutput>
 
 // Usage
 ai.getUsage(params?: UsageQueryInput): Promise<UsageOutput>
@@ -487,16 +861,40 @@ client.$atoms.models // WritableAtom<ModelsState>
 ### Types
 
 ```typescript
+// Message content can be text or multimodal
+type MessageContent = string | Array<TextContent | ImageContent>
+
+interface TextContent {
+  type: "text"
+  text: string
+}
+
+interface ImageContent {
+  type: "image"
+  image: string              // base64 data URL or http(s) URL
+  mimeType?: string          // "image/jpeg", "image/png", etc.
+  detail?: "low" | "high" | "auto"
+}
+
+interface ChatMessage {
+  role: "user" | "system" | "assistant" | "tool"
+  content: MessageContent
+  toolCallId?: string        // For tool role messages
+  toolCalls?: ToolCall[]     // For assistant messages with tool calls
+  name?: string              // Optional name for the message author
+}
+
 interface ChatParams {
-  messages: Array<{
-    role: "user" | "system" | "assistant"
-    content: string
-  }>
+  messages: ChatMessage[]
   provider?: "openai" | "anthropic" | "google"
   model?: string
   temperature?: number
   maxTokens?: number
   stream?: boolean
+  tools?: ToolDefinition[]
+  toolChoice?: ToolChoice
+  signal?: AbortSignal       // For request cancellation
+  conversationId?: string    // Link to persisted conversation
 }
 
 interface ChatResponse {
@@ -504,7 +902,8 @@ interface ChatResponse {
   usage: TokenUsage
   model: string
   provider: string
-  finishReason: "stop" | "length" | "error"
+  finishReason: "stop" | "length" | "tool_calls" | "error"
+  toolCalls?: ToolCall[]     // Present if model wants to call tools
 }
 
 interface TokenUsage {
@@ -512,7 +911,107 @@ interface TokenUsage {
   completionTokens: number
   totalTokens: number
 }
+
+// Tool/Function calling types
+interface ToolDefinition {
+  type: "function"
+  function: {
+    name: string
+    description?: string
+    parameters?: Record<string, unknown>  // JSON Schema
+    strict?: boolean
+  }
+}
+
+interface ToolCall {
+  id: string
+  type: "function"
+  function: {
+    name: string
+    arguments: string  // JSON string
+  }
+}
+
+type ToolChoice =
+  | "auto"                                           // Model decides
+  | "none"                                           // No tool calls
+  | "required"                                       // Must call a tool
+  | { type: "function"; function: { name: string } } // Call specific tool
+
+// Conversation types
+interface Conversation {
+  id: string
+  title?: string
+  systemPrompt?: string
+  messages: ChatMessage[]
+  model?: string
+  provider?: "openai" | "anthropic" | "google"
+  metadata?: Record<string, unknown>
+  totalTokens: number
+  totalCost: number
+  createdAt: string
+  updatedAt: string
+}
 ```
+
+---
+
+## Schema
+
+The AI Gateway plugin creates three database entities when `trackUsage: true`:
+
+### aiUsage
+
+Tracks every AI request for billing and analytics.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | Unique identifier |
+| referenceId | string | User/Org ID for tracking |
+| provider | string | Provider used (openai, anthropic, google) |
+| model | string | Model used (gpt-5-mini, claude-sonnet-4-5, etc.) |
+| inputTokens | int | Input/prompt token count |
+| outputTokens | int | Output/completion token count |
+| totalTokens | int | Total tokens (input + output) |
+| cost | float | Calculated cost in USD |
+| requestId | string? | Optional request ID for tracing |
+| conversationId | string? | Link to conversation if used |
+| metadata | json? | Custom metadata |
+| createdAt | datetime | Record creation time |
+
+### aiRateLimitState
+
+Tracks rate limit state per reference for enforcing limits.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | Unique identifier |
+| referenceId | string | User/Org ID |
+| minuteCount | int | Current minute request count |
+| minuteStart | int | Minute window start timestamp |
+| dayCount | int | Current day request count |
+| dayStart | int | Day window start timestamp |
+| monthTokens | int | Current month token count |
+| monthStart | int | Month window start timestamp |
+
+### aiConversation
+
+Stores conversation history for persistence.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | Unique identifier |
+| referenceId | string | User/Org ID (owner) |
+| title | string? | Conversation title |
+| systemPrompt | string? | System prompt for this conversation |
+| messages | json | Messages array (ChatMessage[]) |
+| model | string? | Default model for this conversation |
+| provider | string? | Default provider for this conversation |
+| metadata | json? | Custom metadata |
+| totalTokens | int | Total tokens used in conversation |
+| totalCost | float | Total cost for conversation |
+| createdAt | datetime | Creation time |
+| updatedAt | datetime | Last update time |
 
 ---
 
@@ -550,17 +1049,45 @@ rateLimiting: {
 
 ```typescript
 try {
-  const response = await client.ai.chat({ messages })
+  const response = await client.ai.chat({ messages, signal: controller.signal })
 } catch (error) {
-  if (error.code === "RATE_LIMIT_EXCEEDED") {
-    // Show upgrade prompt or retry later
-  } else if (error.code === "PROVIDER_ERROR") {
-    // Fallback to different provider
-  } else if (error.code === "INVALID_MODEL") {
-    // Use default model
+  switch (error.code) {
+    case "RATE_LIMIT_EXCEEDED":
+      // Show upgrade prompt or retry later
+      console.log("Retry after:", error.retryAfter)
+      break
+    case "REQUEST_CANCELLED":
+      // User cancelled the request
+      console.log("Request was cancelled")
+      break
+    case "PROVIDER_ERROR":
+      // Fallback to different provider
+      break
+    case "INVALID_MODEL":
+      // Use default model
+      break
+    case "CONVERSATION_NOT_FOUND":
+      // Handle missing conversation
+      break
+    case "INVALID_TOOL_CALL":
+      // Handle malformed tool call
+      break
   }
 }
 ```
+
+### Error Codes
+
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `RATE_LIMIT_EXCEEDED` | 429 | User exceeded rate limits |
+| `REQUEST_CANCELLED` | 499 | Request was cancelled via AbortSignal |
+| `PROVIDER_ERROR` | 502 | AI provider returned an error |
+| `INVALID_MODEL` | 400 | Requested model not available |
+| `INVALID_PROVIDER` | 400 | Provider not configured |
+| `CONVERSATION_NOT_FOUND` | 404 | Conversation ID doesn't exist |
+| `INVALID_TOOL_CALL` | 400 | Malformed tool definition or call |
+| `UNAUTHORIZED` | 401 | User not authenticated |
 
 ### 4. Stream for Better UX
 
@@ -590,13 +1117,79 @@ if (usage.totalCost > 100) {
 
 ---
 
+## Advanced Features
+
+### Automatic Retry with Exponential Backoff
+
+AI Gateway automatically retries failed requests with exponential backoff:
+
+```typescript
+aiGateway({
+  providers: { /* ... */ },
+  retry: {
+    attempts: 3,        // Max retry attempts (default: 3)
+    delay: 1000,        // Initial delay in ms (default: 1000)
+    multiplier: 2,      // Backoff multiplier (default: 2)
+    maxDelay: 30000,    // Max delay cap in ms (default: 30000)
+  },
+})
+```
+
+**Retry behavior:**
+- Retries on network errors and 5xx responses
+- Does NOT retry on 4xx errors (bad request, rate limit)
+- Adds ±10% jitter to prevent thundering herd
+- Respects AbortSignal cancellation
+
+### Provider Fallback
+
+Configure multiple providers for high availability:
+
+```typescript
+aiGateway({
+  providers: {
+    openai: { apiKey: process.env.OPENAI_API_KEY },
+    anthropic: { apiKey: process.env.ANTHROPIC_API_KEY },
+  },
+  defaultProvider: "openai",
+  // On provider error, client can retry with different provider
+})
+
+// Client-side fallback
+try {
+  response = await client.ai.chat({ messages, provider: "openai" })
+} catch (error) {
+  if (error.code === "PROVIDER_ERROR") {
+    response = await client.ai.chat({ messages, provider: "anthropic" })
+  }
+}
+```
+
+### Custom Reference ID for Multi-tenant
+
+Track usage per organization, team, or custom identifier:
+
+```typescript
+aiGateway({
+  referenceMode: "custom",
+  getReferenceId: async (ctx) => {
+    // Track by organization instead of user
+    return ctx.session?.user?.organizationId || ctx.session?.user?.id
+  },
+})
+```
+
+---
+
 ## Production Checklist
 
 - [ ] Set all provider API keys in environment
 - [ ] Configure appropriate rate limits
 - [ ] Enable usage tracking for cost monitoring
 - [ ] Set up plan-based limits if using subscriptions
-- [ ] Add error handling for rate limits and provider errors
+- [ ] Add error handling for rate limits, cancellation, and provider errors
 - [ ] Use streaming for chat interfaces
 - [ ] Monitor costs with `getUsage()` endpoint
 - [ ] Consider fallback providers for high availability
+- [ ] Use AbortController for user-cancellable operations
+- [ ] Implement conversation persistence for chat history

@@ -150,7 +150,32 @@ payment({
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/payment/webhook/stripe` | Stripe webhook handler |
+| POST | `/payment/stripe/webhook` | Stripe webhook handler |
+
+::: warning Webhook Setup Required
+Stripe webhooks require the raw request body for signature verification. Setup depends on your adapter:
+
+**Express** — Use `nevrJson(express)` instead of `express.json()`:
+
+```typescript
+import express from "express"
+import { expressAdapter, sessionAuth, nevrJson } from "nevr/adapters/express"
+
+const app = express()
+
+// Use nevrJson(express) instead of express.json()
+// This preserves rawBody for webhook signature verification
+app.use(nevrJson(express))
+
+app.use("/api", expressAdapter(api, {
+  getUser: sessionAuth(driver),
+}))
+```
+
+**Next.js** — No extra setup needed. The Next.js adapter automatically preserves rawBody.
+
+**Hono** — No extra setup needed. The Hono adapter automatically preserves rawBody.
+:::
 
 ## Client SDK
 
